@@ -310,14 +310,7 @@ input::placeholder{color:#CBD5E1;}
       <span id="btnTxt">Sign In →</span>
     </button>
 
-    <div class="quick-box">
-      <div class="quick-head">🔑 Quick Access</div>
-      <div class="quick-item" onclick="fill('darpan','admin123')"><span class="quick-role">Admin — Full Access</span><span class="quick-user">darpan</span></div>
-      <div class="quick-item" onclick="fill('mohit','mohit123')"><span class="quick-role">Sales — Mohit</span><span class="quick-user">mohit</span></div>
-      <div class="quick-item" onclick="fill('surender','surender123')"><span class="quick-role">Production — Surender</span><span class="quick-user">surender</span></div>
-      <div class="quick-item" onclick="fill('kamal','kamal123')"><span class="quick-role">CRM — Kamal</span><span class="quick-user">kamal</span></div>
-      <div class="quick-hint">Click any row to auto-fill</div>
-    </div>
+
 
     <div class="bottom-bar">
       <span>Role-based Access</span><div class="dot"></div>
@@ -333,12 +326,6 @@ const API='https://script.google.com/macros/s/AKfycbwRDTVZIAr2FoHSZlLOXechjFA-av
 
 document.getElementById('pword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('uname').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pword').focus();});
-
-function fill(u,p){
-  document.getElementById('uname').value=u;
-  document.getElementById('pword').value=p;
-  document.getElementById('uname').focus();
-}
 
 function toggleEye(){
   const i=document.getElementById('pword');
