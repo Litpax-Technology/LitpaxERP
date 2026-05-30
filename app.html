@@ -688,7 +688,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzujVEUmrViQl71ftMwLL9wASiiGYFISHRtpQPPuO5chwz0I64FEeCF4nykr5_ZTmwEqg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwLir3iGqx4GoitBuwx61wz2Pg9kStEonJKB-pG_7xV5mNpQmRNhU3uYkGC7CJYXGhj/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1199,7 +1199,7 @@ function submitCRMUpdate() {
     var val = el.value;
     if (!val) return; // skip blank — dont overwrite existing
     // Format date fields
-    if (dateFields.includes(id)) val = fmtDate(val);
+    if (dateFields.includes(id)) val = fmtDisplayDate(val);
     params[key] = val;
   });
 
