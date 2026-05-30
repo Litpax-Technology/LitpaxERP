@@ -3,177 +3,361 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NexERP — Enterprise Manufacturing Suite</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>LitpaxERP — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#060818;--surface:#0c0f1e;--surface2:#111528;
-  --border:rgba(99,120,255,0.12);--border2:rgba(99,120,255,0.22);
-  --text:#eef0ff;--text2:#8892b0;--text3:rgba(136,146,176,0.5);
-  --accent:#6378ff;--accent2:#7c8fff;
-  --accent-glow:rgba(99,120,255,0.2);--accent-dim:rgba(99,120,255,0.08);
-  --gold:#f0c060;--gold-dim:rgba(240,192,96,0.1);
-  --success:#4ade80;--error:#f87171;
-  --r:14px;--r-sm:8px;
-}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
-.bg-canvas{position:fixed;inset:0;z-index:0;overflow:hidden;}
-.bg-orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orbFloat 8s ease-in-out infinite;}
-.bg-orb:nth-child(1){width:500px;height:500px;background:rgba(99,120,255,0.07);top:-100px;left:-100px;animation-delay:0s;}
-.bg-orb:nth-child(2){width:400px;height:400px;background:rgba(120,80,255,0.05);bottom:-80px;right:-80px;animation-delay:3s;}
-.bg-orb:nth-child(3){width:300px;height:300px;background:rgba(99,120,255,0.04);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:1.5s;}
-@keyframes orbFloat{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-30px) scale(1.05);}}
-.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(99,120,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(99,120,255,0.025) 1px,transparent 1px);background-size:50px 50px;}
-.page{position:relative;z-index:1;width:100%;max-width:1000px;padding:20px;animation:pageIn 0.6s cubic-bezier(0.16,1,0.3,1) both;}
-@keyframes pageIn{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px;padding:0 4px;}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#9b6bff);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;letter-spacing:-1px;box-shadow:0 0 20px rgba(99,120,255,0.4);}
-.logo-text{font-size:19px;font-weight:700;letter-spacing:-0.5px;}
-.logo-text span{color:var(--accent);}
-.topbar-badge{font-size:11px;font-weight:500;background:var(--gold-dim);border:1px solid rgba(240,192,96,0.2);color:var(--gold);padding:5px 12px;border-radius:20px;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;min-height:520px;box-shadow:0 40px 80px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.04);}
-.panel-left{flex:1;padding:44px 48px;background:linear-gradient(155deg,#0e1226 0%,#080c1a 100%);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;}
-.panel-left::before{content:'';position:absolute;width:350px;height:350px;background:radial-gradient(circle,rgba(99,120,255,0.1) 0%,transparent 70%);bottom:-100px;left:-80px;pointer-events:none;}
-.panel-left::after{content:'';position:absolute;width:1px;height:60%;background:linear-gradient(transparent,var(--accent),transparent);right:0;top:20%;opacity:0.4;}
-.eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:20px;font-family:'JetBrains Mono',monospace;}
-.eyebrow::before{content:'';width:20px;height:1px;background:var(--accent);}
-.hero-title{font-size:32px;font-weight:700;line-height:1.2;letter-spacing:-0.8px;margin-bottom:14px;}
-.hero-title em{font-style:normal;color:var(--accent);}
-.hero-desc{font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:340px;}
-.flow{display:flex;flex-direction:column;gap:0;}
-.flow-step{display:flex;align-items:center;gap:12px;padding:10px 0;position:relative;}
-.flow-step:not(:last-child)::after{content:'';position:absolute;left:15px;top:36px;width:1px;height:calc(100% - 14px);background:linear-gradient(var(--border2),transparent);}
-.flow-dot{width:30px;height:30px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;position:relative;z-index:1;transition:all 0.3s;}
-.flow-step:hover .flow-dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px rgba(99,120,255,0.4);}
-.flow-label{font-size:13px;color:var(--text2);font-weight:500;transition:color 0.3s;}
-.flow-step:hover .flow-label{color:var(--text);}
-.stat-row{display:flex;gap:24px;}
-.stat-val{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;}
-.stat-val span{color:var(--accent);font-size:14px;}
-.stat-label{font-size:11px;color:var(--text3);margin-top:2px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;}
-.panel-right{width:400px;padding:44px 40px;background:var(--surface2);display:flex;flex-direction:column;justify-content:center;}
-.form-title{font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:6px;}
-.form-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
-.form-group{margin-bottom:18px;}
-.field-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;display:block;font-family:'JetBrains Mono',monospace;}
-.field-wrap{position:relative;}
-.field-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--text3);pointer-events:none;transition:color 0.2s;}
-.field-wrap:focus-within .field-icon{color:var(--accent2);}
-input[type=text],input[type=password]{width:100%;padding:13px 14px 13px 44px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,background 0.2s,box-shadow 0.2s;}
-input:focus{border-color:var(--accent);background:var(--accent-dim);box-shadow:0 0 0 3px rgba(99,120,255,0.1);}
-input::placeholder{color:rgba(136,146,176,0.3);}
-.eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px;line-height:1;transition:color 0.2s;}
-.eye-btn:hover{color:var(--text2);}
-.error-box{display:none;align-items:center;gap:8px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;color:var(--error);margin-bottom:16px;}
-.error-box.show{display:flex;}
-.btn-submit{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#8a6aff);border:none;border-radius:var(--r-sm);color:#fff;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity 0.2s,transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 20px rgba(99,120,255,0.3);margin-top:4px;letter-spacing:0.2px;}
-.btn-submit:hover{opacity:0.92;box-shadow:0 6px 24px rgba(99,120,255,0.45);}
-.btn-submit:active{transform:scale(0.98);}
-.btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
-.btn-arrow{font-size:16px;transition:transform 0.2s;}
-.btn-submit:hover .btn-arrow{transform:translateX(3px);}
-.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+body{
+  font-family:'Inter',sans-serif;
+  background:#F0F4FF;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+/* BG PATTERN */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(59,91,219,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(99,102,241,0.05) 0%, transparent 50%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.wrap{
+  position:relative;
+  z-index:1;
+  width:100%;
+  max-width:960px;
+  display:flex;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(59,91,219,0.12),0 4px 16px rgba(0,0,0,0.06);
+  min-height:540px;
+}
+
+/* LEFT */
+.left{
+  flex:1;
+  background:linear-gradient(145deg,#3B5BDB 0%,#4C6EF5 50%,#6366F1 100%);
+  padding:48px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  position:relative;
+  overflow:hidden;
+}
+.left::before{
+  content:'';
+  position:absolute;
+  width:400px;height:400px;
+  background:rgba(255,255,255,0.05);
+  border-radius:50%;
+  bottom:-120px;right:-80px;
+}
+.left::after{
+  content:'';
+  position:absolute;
+  width:200px;height:200px;
+  background:rgba(255,255,255,0.04);
+  border-radius:50%;
+  top:-60px;left:-40px;
+}
+
+.brand{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
+.brand-mark{
+  width:40px;height:40px;border-radius:10px;
+  background:rgba(255,255,255,0.2);
+  border:1px solid rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;
+}
+.brand-name{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.3px;}
+.brand-tag{font-size:11px;color:rgba(255,255,255,0.65);margin-top:1px;}
+
+.left-mid{position:relative;z-index:1;}
+.left-title{font-size:30px;font-weight:700;color:#fff;line-height:1.25;letter-spacing:-0.5px;margin-bottom:12px;}
+.left-desc{font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;margin-bottom:28px;}
+
+.flow-list{display:flex;flex-direction:column;gap:0;}
+.flow-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  position:relative;
+}
+.flow-item:last-child{border-bottom:none;}
+.flow-num{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;color:#fff;flex-shrink:0;
+}
+.flow-text{font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;}
+
+.left-foot{
+  position:relative;z-index:1;
+  display:flex;gap:20px;
+}
+.left-stat{text-align:left;}
+.left-stat-val{font-size:20px;font-weight:700;color:#fff;}
+.left-stat-lbl{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;text-transform:uppercase;letter-spacing:0.4px;}
+
+/* RIGHT */
+.right{
+  width:420px;
+  background:#fff;
+  padding:48px 44px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.form-head{margin-bottom:28px;}
+.form-title{font-size:22px;font-weight:700;color:#0F172A;letter-spacing:-0.3px;margin-bottom:6px;}
+.form-sub{font-size:13px;color:#94A3B8;}
+
+.form-group{margin-bottom:16px;}
+.form-label{
+  display:block;font-size:11px;font-weight:600;
+  color:#64748B;text-transform:uppercase;letter-spacing:0.6px;
+  margin-bottom:7px;
+}
+.input-wrap{position:relative;}
+.input-icon{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:16px;color:#CBD5E1;pointer-events:none;
+  transition:color 0.15s;
+}
+.input-wrap:focus-within .input-icon{color:#3B5BDB;}
+input[type=text],input[type=password]{
+  width:100%;
+  padding:11px 13px 11px 42px;
+  background:#F8FAFC;
+  border:1.5px solid #E2E8F0;
+  border-radius:9px;
+  color:#0F172A;
+  font-family:'Inter',sans-serif;
+  font-size:14px;
+  outline:none;
+  transition:border-color 0.15s,background 0.15s,box-shadow 0.15s;
+}
+input:focus{
+  border-color:#3B5BDB;
+  background:#fff;
+  box-shadow:0 0 0 3px rgba(59,91,219,0.1);
+}
+input::placeholder{color:#CBD5E1;}
+.eye-btn{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:#CBD5E1;cursor:pointer;
+  font-size:16px;padding:4px;line-height:1;transition:color 0.15s;
+}
+.eye-btn:hover{color:#64748B;}
+
+.err-box{
+  display:none;align-items:center;gap:8px;
+  background:#FEF2F2;border:1.5px solid #FECACA;
+  border-radius:8px;padding:10px 13px;
+  font-size:13px;color:#DC2626;margin-bottom:14px;
+}
+.err-box.show{display:flex;}
+
+.btn-login{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,#3B5BDB,#4C6EF5);
+  border:none;border-radius:9px;
+  color:#fff;font-family:'Inter',sans-serif;
+  font-size:14px;font-weight:600;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all 0.15s;
+  box-shadow:0 4px 14px rgba(59,91,219,0.3);
+  margin-top:4px;letter-spacing:0.1px;
+}
+.btn-login:hover{box-shadow:0 6px 20px rgba(59,91,219,0.4);transform:translateY(-1px);}
+.btn-login:active{transform:scale(0.98);}
+.btn-login:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+
+.spinner{
+  width:16px;height:16px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin 0.7s linear infinite;display:none;
+}
 @keyframes spin{to{transform:rotate(360deg);}}
-.cred-box{margin-top:22px;background:var(--accent-dim);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;}
-.cred-title{font-size:10px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:6px;}
-.cred-title::after{content:'';flex:1;height:1px;background:var(--border2);}
-.cred-item{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;cursor:pointer;border-radius:5px;transition:background 0.15s;}
-.cred-item:hover{background:rgba(99,120,255,0.08);}
-.cred-role{font-size:12px;color:var(--text2);font-weight:500;}
-.cred-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);background:rgba(99,120,255,0.1);padding:3px 8px;border-radius:4px;}
-.cred-hint{font-size:11px;color:var(--text3);margin-top:8px;text-align:center;}
-.bottombar{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:24px;font-size:12px;color:var(--text3);}
-.bottombar-dot{width:4px;height:4px;border-radius:50%;background:var(--border2);}
-@media(max-width:720px){.panel-left{display:none;}.panel-right{width:100%;padding:36px 28px;}.card{border-radius:16px;}.topbar{margin-bottom:24px;}}
+
+/* QUICK ACCESS */
+.quick-box{
+  margin-top:20px;
+  border:1.5px solid #EEF2FF;
+  border-radius:10px;
+  overflow:hidden;
+}
+.quick-head{
+  background:#EEF2FF;
+  padding:8px 14px;
+  font-size:10px;font-weight:700;
+  color:#3B5BDB;text-transform:uppercase;
+  letter-spacing:0.8px;
+  display:flex;align-items:center;gap:6px;
+}
+.quick-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;cursor:pointer;
+  border-bottom:1px solid #F1F5F9;
+  transition:background 0.12s;
+}
+.quick-item:last-child{border-bottom:none;}
+.quick-item:hover{background:#F8FAFF;}
+.quick-role{font-size:12px;font-weight:500;color:#475569;}
+.quick-user{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:#3B5BDB;
+  background:#EEF2FF;
+  padding:3px 9px;border-radius:5px;font-weight:500;
+}
+.quick-hint{
+  font-size:11px;color:#94A3B8;
+  text-align:center;padding:8px;
+  background:#FAFAFA;border-top:1px solid #F1F5F9;
+}
+
+.bottom-bar{
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;margin-top:20px;
+  font-size:11px;color:#CBD5E1;
+}
+.dot{width:3px;height:3px;border-radius:50%;background:#E2E8F0;}
+
+@media(max-width:700px){
+  .left{display:none;}
+  .right{width:100%;padding:36px 24px;}
+  .wrap{max-width:440px;border-radius:16px;}
+}
 </style>
 </head>
 <body>
-<div class="bg-canvas">
-  <div class="bg-orb"></div><div class="bg-orb"></div><div class="bg-orb"></div>
-</div>
-<div class="bg-grid"></div>
-<div class="page">
-  <div class="topbar">
-    <div class="logo">
-      <div class="logo-mark">N</div>
-      <div class="logo-text">Nex<span>ERP</span></div>
-    </div>
-    <div class="topbar-badge">v2.0 · Enterprise</div>
-  </div>
-  <div class="card">
-    <div class="panel-left">
+
+<div class="wrap">
+
+  <!-- LEFT -->
+  <div class="left">
+    <div class="brand">
+      <div class="brand-mark">L</div>
       <div>
-        <div class="eyebrow">Manufacturing ERP</div>
-        <div class="hero-title">One platform.<br><em>Every order.</em><br>Full control.</div>
-        <div class="hero-desc">From sales order to final delivery — track every step, automate every update, zero manual errors.</div>
-        <div class="flow">
-          <div class="flow-step"><div class="flow-dot">📋</div><div class="flow-label">Sales Order Created</div></div>
-          <div class="flow-step"><div class="flow-dot">⚙️</div><div class="flow-label">Production Work Order</div></div>
-          <div class="flow-step"><div class="flow-dot">🧾</div><div class="flow-label">Billing &amp; Invoice</div></div>
-          <div class="flow-step"><div class="flow-dot">📦</div><div class="flow-label">Dispatch &amp; Challan</div></div>
-          <div class="flow-step"><div class="flow-dot">✅</div><div class="flow-label">Delivery Confirmed</div></div>
-        </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-val">100% <span>Auto</span></div><div class="stat-label">Status Updates</div></div>
-        <div class="stat"><div class="stat-val">6 <span>Roles</span></div><div class="stat-label">Access Control</div></div>
-        <div class="stat"><div class="stat-val">Live <span>Data</span></div><div class="stat-label">Google Sheets</div></div>
+        <div class="brand-name">LitpaxERP</div>
+        <div class="brand-tag">Manufacturing Suite</div>
       </div>
     </div>
-    <div class="panel-right">
-      <div class="form-title">Sign in</div>
-      <div class="form-sub">Enter your credentials to access ERP</div>
-      <div class="error-box" id="errBox"><span>⚠</span><span id="errTxt">Invalid credentials</span></div>
-      <div class="form-group">
-        <label class="field-label">Username</label>
-        <div class="field-wrap">
-          <span class="field-icon">👤</span>
-          <input type="text" id="uname" placeholder="your.username" autocomplete="username">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="field-label">Password</label>
-        <div class="field-wrap">
-          <span class="field-icon">🔐</span>
-          <input type="password" id="pword" placeholder="••••••••" autocomplete="current-password">
-          <button class="eye-btn" onclick="toggleEye()">👁</button>
-        </div>
-      </div>
-      <button class="btn-submit" id="loginBtn" onclick="doLogin()">
-        <div class="spinner" id="spin"></div>
-        <span id="btnTxt">Sign In</span>
-        <span class="btn-arrow" id="btnArrow">→</span>
-      </button>
-      <div class="cred-box">
-        <div class="cred-title">Quick Access</div>
-        <div class="cred-item" onclick="fillCred('darpan','admin123')"><span class="cred-role">Admin (Full Access)</span><span class="cred-val">darpan</span></div>
-        <div class="cred-item" onclick="fillCred('rahul','prod123')"><span class="cred-role">Production</span><span class="cred-val">rahul</span></div>
-        <div class="cred-item" onclick="fillCred('simran','sales123')"><span class="cred-role">Sales</span><span class="cred-val">simran</span></div>
-        <div class="cred-item" onclick="fillCred('vikram','disp123')"><span class="cred-role">Dispatch</span><span class="cred-val">vikram</span></div>
-        <div class="cred-hint">Click any row to auto-fill credentials</div>
+
+    <div class="left-mid">
+      <div class="left-title">Order to Delivery,<br>fully connected.</div>
+      <div class="left-desc">Ek jagah se manage karo — orders, CRM tracking, production aur dispatch.</div>
+      <div class="flow-list">
+        <div class="flow-item"><div class="flow-num">1</div><div class="flow-text">Sales Order Create</div></div>
+        <div class="flow-item"><div class="flow-num">2</div><div class="flow-text">CRM Tracker Update</div></div>
+        <div class="flow-item"><div class="flow-num">3</div><div class="flow-text">Production Start</div></div>
+        <div class="flow-item"><div class="flow-num">4</div><div class="flow-text">Billing & Dispatch</div></div>
+        <div class="flow-item"><div class="flow-num">5</div><div class="flow-text">Delivery Confirmed</div></div>
       </div>
     </div>
+
+    <div class="left-foot">
+      <div class="left-stat"><div class="left-stat-val">7</div><div class="left-stat-lbl">Users</div></div>
+      <div class="left-stat"><div class="left-stat-val">3</div><div class="left-stat-lbl">Sheets</div></div>
+      <div class="left-stat"><div class="left-stat-val">Live</div><div class="left-stat-lbl">Data Sync</div></div>
+    </div>
   </div>
-  <div class="bottombar">
-    <span>Secured · Role-based Access</span>
-    <div class="bottombar-dot"></div>
-    <span>Google Sheets Backend</span>
-    <div class="bottombar-dot"></div>
-    <span>GitHub Hosted</span>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="form-head">
+      <div class="form-title">Welcome back</div>
+      <div class="form-sub">Sign in to access your ERP</div>
+    </div>
+
+    <div class="err-box" id="errBox">
+      <span>⚠</span><span id="errTxt">Invalid credentials</span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <div class="input-wrap">
+        <span class="input-icon">👤</span>
+        <input type="text" id="uname" placeholder="Enter username" autocomplete="username">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="pword" placeholder="Enter password" autocomplete="current-password">
+        <button class="eye-btn" onclick="toggleEye()">👁</button>
+      </div>
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <div class="spinner" id="spin"></div>
+      <span id="btnTxt">Sign In →</span>
+    </button>
+
+    <div class="quick-box">
+      <div class="quick-head">🔑 Quick Access</div>
+      <div class="quick-item" onclick="fill('darpan','admin123')"><span class="quick-role">Admin — Full Access</span><span class="quick-user">darpan</span></div>
+      <div class="quick-item" onclick="fill('mohit','mohit123')"><span class="quick-role">Sales — Mohit</span><span class="quick-user">mohit</span></div>
+      <div class="quick-item" onclick="fill('surender','surender123')"><span class="quick-role">Production — Surender</span><span class="quick-user">surender</span></div>
+      <div class="quick-item" onclick="fill('kamal','kamal123')"><span class="quick-role">CRM — Kamal</span><span class="quick-user">kamal</span></div>
+      <div class="quick-hint">Click any row to auto-fill</div>
+    </div>
+
+    <div class="bottom-bar">
+      <span>Role-based Access</span><div class="dot"></div>
+      <span>Google Sheets</span><div class="dot"></div>
+      <span>GitHub Hosted</span>
+    </div>
   </div>
+
 </div>
+
 <script>
-const API='https://script.google.com/macros/s/AKfycbzGJB1DCZNv37urxSyTj9cqq5kpE_fnXm3ZpRbxor_06OLObcxJzyCPH5blP059vM-p3Q/exec';
+const API='https://script.google.com/macros/s/AKfycbwRDTVZIAr2FoHSZlLOXechjFA-avqMR9aQiJUJX32sPSFH-bPEzXFbnx5vI4qtFH3zRw/exec';
+
 document.getElementById('pword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('uname').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pword').focus();});
-function fillCred(u,p){document.getElementById('uname').value=u;document.getElementById('pword').value=p;}
-function toggleEye(){const i=document.getElementById('pword');i.type=i.type==='password'?'text':'password';}
-function setLoad(on){document.getElementById('loginBtn').disabled=on;document.getElementById('spin').style.display=on?'block':'none';document.getElementById('btnTxt').textContent=on?'Signing in...':'Sign In';document.getElementById('btnArrow').style.display=on?'none':'inline';}
-function showErr(m){document.getElementById('errTxt').textContent=m;document.getElementById('errBox').classList.add('show');}
+
+function fill(u,p){
+  document.getElementById('uname').value=u;
+  document.getElementById('pword').value=p;
+  document.getElementById('uname').focus();
+}
+
+function toggleEye(){
+  const i=document.getElementById('pword');
+  i.type=i.type==='password'?'text':'password';
+}
+
+function setLoad(on){
+  document.getElementById('loginBtn').disabled=on;
+  document.getElementById('spin').style.display=on?'block':'none';
+  document.getElementById('btnTxt').textContent=on?'Signing in...':'Sign In →';
+}
+
+function showErr(m){
+  document.getElementById('errTxt').textContent=m;
+  document.getElementById('errBox').classList.add('show');
+}
+
 function hideErr(){document.getElementById('errBox').classList.remove('show');}
+
 function doLogin(){
   const u=document.getElementById('uname').value.trim();
   const p=document.getElementById('pword').value.trim();
@@ -185,10 +369,15 @@ function doLogin(){
   document.body.appendChild(s);
   setTimeout(()=>{if(!window._done){setLoad(false);showErr('Timeout — please retry');}},12000);
 }
+
 function onLogin(res){
   window._done=true;setLoad(false);
-  if(res.success){sessionStorage.setItem('erp_user',JSON.stringify(res.user));window.location.href='app.html';}
-  else{showErr(res.message||'Login failed');}
+  if(res.success){
+    sessionStorage.setItem('erp_user',JSON.stringify(res.user));
+    window.location.href='app.html';
+  }else{
+    showErr(res.message||'Login failed');
+  }
 }
 </script>
 </body>
