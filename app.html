@@ -663,7 +663,10 @@ textarea.form-control{resize:vertical;min-height:70px;}
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="detailOrderID">Order Details</div><button class="modal-close" onclick="closeModal('orderDetailModal')">✕</button></div>
     <div class="modal-body" id="orderDetailBody"></div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('orderDetailModal')">Close</button></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('orderDetailModal')">Close</button>
+      <button class="btn btn-primary" id="editOrderBtn" onclick="openEditOrder()">✏️ Edit Order</button>
+    </div>
   </div>
 </div>
 
@@ -812,8 +815,83 @@ textarea.form-control{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<!-- EDIT ORDER MODAL -->
+<div class="modal-overlay" id="editOrderModal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Edit Order</div><button class="modal-close" onclick="closeModal('editOrderModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-section">Order Details</div>
+        <div class="form-group"><label class="form-label">Order ID</label><input class="form-control" id="e-orderid" readonly></div>
+        <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="e-cust" placeholder="Customer name"></div>
+        <div class="form-group"><label class="form-label">Customer Phone</label><input class="form-control" id="e-phone" placeholder="Phone"></div>
+        <div class="form-group"><label class="form-label">City</label><input class="form-control" id="e-city" placeholder="City"></div>
+        <div class="form-group"><label class="form-label">Priority</label>
+          <select class="form-control" id="e-priority">
+            <option value="">Select</option><option>Low</option><option>Medium</option><option>High</option>
+          </select>
+        </div>
+        <div class="form-section">Payment & Status</div>
+        <div class="form-group"><label class="form-label">Price Type</label>
+          <select class="form-control" id="e-pricetype">
+            <option value="">Select</option><option>Absolute</option><option>Credit</option><option>Last Price</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Payment Mode</label>
+          <select class="form-control" id="e-paymode">
+            <option value="">Select</option><option>Advance</option><option>Credit</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Order Status</label>
+          <select class="form-control" id="e-status">
+            <option value="">Select</option>
+            <optgroup label="Advance">
+              <option>Advance - Order Received</option><option>Advance - In Processing</option>
+              <option>Advance - Ready for Dispatch</option><option>Advance - Dispatched</option>
+            </optgroup>
+            <optgroup label="PDC">
+              <option>PDC - Order Received</option><option>PDC - In Processing</option>
+              <option>PDC - Ready for Dispatch</option><option>PDC - Dispatched</option>
+              <option>PDC - Delay Reminder</option>
+            </optgroup>
+            <optgroup label="Credit">
+              <option>Credit - Order Received</option><option>Credit - In Progressing</option>
+              <option>Credit - Ready for Dispatch</option><option>Credit - Dispatched</option>
+              <option>Credit - Delay Reminder</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Payment Status</label>
+          <select class="form-control" id="e-paystatus">
+            <option value="">Select</option>
+            <option>Advance Pending</option><option>Advance Received</option>
+            <option>Request Full Payment</option><option>Paid</option>
+            <option>PDC</option><option>Credit</option><option>Pending</option>
+          </select>
+        </div>
+        <div class="form-section">Dispatch & Other</div>
+        <div class="form-group"><label class="form-label">Suggested Transport</label><input class="form-control" id="e-transport" placeholder="Transport"></div>
+        <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="e-plandispatch"></div>
+        <div class="form-group"><label class="form-label">Transportation Charges</label><input class="form-control" type="number" id="e-transchg" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Warranty</label><input class="form-control" id="e-warranty" placeholder="e.g. 1 Year"></div>
+        <div class="form-group"><label class="form-label">Assigned CRM</label>
+          <select class="form-control" id="e-crm">
+            <option value="">Select</option><option>Kamal</option><option>Self</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Final Status</label><input class="form-control" id="e-finalstatus" placeholder="Final status"></div>
+        <div class="form-group form-full"><label class="form-label">Order Remarks</label><textarea class="form-control" id="e-remarks"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('editOrderModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEditOrder()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyQmDGRe8ltAzADiUOOfrO44lNGD1-Nk-hNabr1_evLN9ijLHUa2rexZE4ovmPIDMZEKQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbydWoE3gQWwzpMAfZOU2zPLFRIKBWtLSN9fL6U1wMK99kD0f8hJ1EqiHGpMEbWiuNuWdA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1030,6 +1108,7 @@ function filterOrders(f, el) {
 function searchOrders() { renderOrders(); }
 
 function viewOrder(o) {
+  currentEditOrder = o;
   document.getElementById('detailOrderID').textContent = 'Order: ' + (o['Order ID'] || '');
   const fields = [
     ['Order ID', o['Order ID']], ['Date', o['Date']], ['Sales Person', o['Sales Person Name']],
@@ -1130,6 +1209,10 @@ function submitOrder() {
   const cust = document.getElementById('o-cust').value.trim();
   if (!cust) { toast('Customer Name zaroori hai', 'e'); return; }
 
+  // Check at least one product is filled
+  const items = getItemRows();
+  if (items.length === 0) { toast('Kam se kam ek product add karo', 'e'); return; }
+
   let totalQty = 0;
   document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
 
@@ -1162,7 +1245,6 @@ function submitOrder() {
     toast('Order created: ' + orderID);
 
     // Submit items
-    const items = getItemRows();
     if (items.length === 0) { closeModal('orderModal'); resetOrderForm(); loadOrders(); return; }
 
     let pending = items.length;
@@ -1469,6 +1551,65 @@ function submitUser() {
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
 
+// ========== EDIT ORDER ==========
+let currentEditOrder = null;
+
+function openEditOrder() {
+  if (!currentEditOrder) return;
+  const o = currentEditOrder;
+  document.getElementById('e-orderid').value = o['Order ID'] || '';
+  document.getElementById('e-cust').value = o['Customer Name'] || '';
+  document.getElementById('e-phone').value = o['Customer Phone'] || '';
+  document.getElementById('e-city').value = o['City'] || '';
+  document.getElementById('e-priority').value = o['Priority'] || '';
+  document.getElementById('e-pricetype').value = o['Price Type'] || '';
+  document.getElementById('e-paymode').value = o['Payment Mode'] || '';
+  document.getElementById('e-status').value = o['Order Status'] || '';
+  document.getElementById('e-paystatus').value = o['Payment Status'] || '';
+  document.getElementById('e-transport').value = o['Suggested Transport'] || '';
+  document.getElementById('e-plandispatch').value = toInputDate(o['Plan Dispatch Date'] || '');
+  document.getElementById('e-transchg').value = o['Transportation Charges'] || '';
+  document.getElementById('e-warranty').value = o['Warranty'] || '';
+  document.getElementById('e-crm').value = o['Assigned CRM'] || '';
+  document.getElementById('e-finalstatus').value = o['Final Status'] || '';
+  document.getElementById('e-remarks').value = o['Order Remarks'] || '';
+  closeModal('orderDetailModal');
+  openModal('editOrderModal');
+}
+
+function submitEditOrder() {
+  const orderID = document.getElementById('e-orderid').value;
+  if (!orderID) return;
+
+  const params = {
+    action: 'updateOrder',
+    'Order ID': orderID,
+    'Customer Name': document.getElementById('e-cust').value,
+    'Customer Phone': document.getElementById('e-phone').value,
+    'City': document.getElementById('e-city').value,
+    'Priority': document.getElementById('e-priority').value,
+    'Price Type': document.getElementById('e-pricetype').value,
+    'Payment Mode': document.getElementById('e-paymode').value,
+    'Order Status': document.getElementById('e-status').value,
+    'Payment Status': document.getElementById('e-paystatus').value,
+    'Suggested Transport': document.getElementById('e-transport').value,
+    'Plan Dispatch Date': fmtDisplayDate(document.getElementById('e-plandispatch').value),
+    'Transportation Charges': document.getElementById('e-transchg').value,
+    'Warranty': document.getElementById('e-warranty').value,
+    'Assigned CRM': document.getElementById('e-crm').value,
+    'Final Status': document.getElementById('e-finalstatus').value,
+    'Order Remarks': document.getElementById('e-remarks').value
+  };
+
+  api(params, r => {
+    if (r.success) {
+      toast('Order updated!');
+      closeModal('editOrderModal');
+      loadOrders();
+    } else toast(r.message, 'e');
+  });
+}
+
 // Sidebar toggle for mobile
 function toggleSidebar() {
   const sb = document.querySelector('.sidebar');
@@ -1489,6 +1630,20 @@ document.querySelectorAll('.nav-item').forEach(el => {
 
 // Set today's date
 document.getElementById('o-date').value = new Date().toISOString().split('T')[0];
+
+// Auto-fill sales person if role is Sales
+if (user.role === 'Sales' && user.salesName) {
+  const sel = document.getElementById('o-sales');
+  if (sel) {
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === user.salesName) {
+        sel.selectedIndex = i;
+        sel.disabled = true; // Sales user can't change their own name
+        break;
+      }
+    }
+  }
+}
 
 // INIT
 loadOrders();
