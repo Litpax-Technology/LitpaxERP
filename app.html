@@ -412,14 +412,19 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div class="form-grid">
         <div class="form-section">Order Details</div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-control" type="date" id="o-date"></div>
-        <div class="form-group"><label class="form-label">Sales Person Name</label><input class="form-control" id="o-sales" placeholder="Sales person name"></div>
+        <div class="form-group"><label class="form-label">Sales Person Name</label>
+          <select class="form-control" id="o-sales">
+            <option value="">Select Sales Person</option>
+            <option>Mohit</option><option>Vijay</option><option>Sahil</option><option>Sneha</option>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="o-cust" placeholder="Customer name"></div>
         <div class="form-group"><label class="form-label">Customer Phone</label><input class="form-control" id="o-phone" placeholder="Phone number"></div>
         <div class="form-group"><label class="form-label">City</label><input class="form-control" id="o-city" placeholder="City"></div>
         <div class="form-group"><label class="form-label">Priority</label>
           <select class="form-control" id="o-priority">
             <option value="">Select Priority</option>
-            <option>High</option><option>Medium</option><option>Low</option>
+            <option>Low</option><option>Medium</option><option>High</option>
           </select>
         </div>
 
@@ -430,7 +435,12 @@ textarea.form-control{resize:vertical;min-height:70px;}
             <option>Absolute</option><option>Credit</option><option>Last Price</option>
           </select>
         </div>
-        <div class="form-group"><label class="form-label">Payment Mode</label><input class="form-control" id="o-paymode" placeholder="NEFT / Cheque / Cash / UPI"></div>
+        <div class="form-group"><label class="form-label">Payment Mode</label>
+          <select class="form-control" id="o-paymode">
+            <option value="">Select Payment Mode</option>
+            <option>Advance</option><option>Credit</option>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Plan Payment Date</label><input class="form-control" type="date" id="o-planpay"></div>
         <div class="form-group"><label class="form-label">Order Status</label>
           <select class="form-control" id="o-status">
@@ -475,7 +485,12 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="o-plandispatch"></div>
         <div class="form-group"><label class="form-label">Transportation Charges</label><input class="form-control" type="number" id="o-transchg" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Warranty</label><input class="form-control" id="o-warranty" placeholder="e.g. 1 Year"></div>
-        <div class="form-group"><label class="form-label">Assigned CRM</label><input class="form-control" id="o-crm" placeholder="CRM person name"></div>
+        <div class="form-group"><label class="form-label">Assigned CRM</label>
+          <select class="form-control" id="o-crm">
+            <option value="">Select CRM</option>
+            <option>Kamal</option><option>Self</option>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Final Status</label><input class="form-control" id="o-finalstatus" placeholder="Final status"></div>
         <div class="form-group form-full"><label class="form-label">Order Remarks</label><textarea class="form-control" id="o-remarks" placeholder="Any remarks..."></textarea></div>
       </div>
@@ -494,7 +509,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <tbody id="itemsBody">
             <tr id="item-row-1">
               <td><input id="im-model-1" placeholder="Product model"></td>
-              <td><input id="im-btype-1" placeholder="Battery type"></td>
+              <td><select id="im-btype-1"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
               <td><input id="im-qty-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
               <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
               <td><input id="im-total-1" readonly placeholder="Auto"></td>
@@ -873,7 +888,7 @@ function addItemRow() {
   tr.id = `item-row-${id}`;
   tr.innerHTML = `
     <td><input id="im-model-${id}" placeholder="Product model"></td>
-    <td><input id="im-btype-${id}" placeholder="Battery type"></td>
+    <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
     <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
     <td><input id="im-price-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
     <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
@@ -984,7 +999,7 @@ function resetOrderForm() {
   });
   document.getElementById('itemsBody').innerHTML = `<tr id="item-row-1">
     <td><input id="im-model-1" placeholder="Product model"></td>
-    <td><input id="im-btype-1" placeholder="Battery type"></td>
+    <td><select id="im-btype-1"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
     <td><input id="im-qty-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
     <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
     <td><input id="im-total-1" readonly placeholder="Auto"></td>
