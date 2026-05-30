@@ -1783,6 +1783,8 @@ function submitEditOrder() {
     const finish = () => {
       done++;
       if (done >= total) {
+        // Update Total Qty in Orders sheet
+        updateOrderTotalQty(orderID, allRows);
         toast('Order updated!');
         if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
         closeModal('editOrderModal');
@@ -1791,6 +1793,8 @@ function submitEditOrder() {
     };
 
     if (total === 0) {
+      // Update Total Qty in Orders sheet
+      updateOrderTotalQty(orderID, allRows);
       toast('Order updated!');
       if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
       closeModal('editOrderModal');
@@ -1802,9 +1806,33 @@ function submitEditOrder() {
       api({ action: 'updateOrderItem', ...item }, finish);
     });
     addTasks.forEach(item => {
-      api({ action: 'addOrderItem', ...item }, finish);
+      api({ action: 'addOrderItem', ...item }, ir => {
+        // After adding item, update production too
+        if (ir.success && currentEditOrder) {
+          api({
+            action: 'updateProdItems',
+            'Order ID': orderID,
+            'Product Model': item['Product Model'] || '',
+            'Battery Type': item['Battery Type'] || ''
+          }, () => {});
+        }
+        finish();
+      });
     });
   });
+}
+
+function updateOrderTotalQty(orderID, allRows) {
+  let totalQty = 0;
+  allRows.forEach(row => {
+    const id = row.id.replace('edit-item-row-', '');
+    const qty = parseFloat(document.getElementById('eim-qty-' + id)?.value) || 0;
+    const model = document.getElementById('eim-model-' + id)?.value?.trim();
+    if (model) totalQty += qty;
+  });
+  if (totalQty > 0) {
+    api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': totalQty }, () => {});
+  }
 }
 
 // Sidebar toggle for mobile
