@@ -404,52 +404,16 @@ textarea.form-control{resize:vertical;min-height:70px;}
 <div class="page active" id="page-orders">
   <!-- SALES DASHBOARD — only shown for Sales role -->
   <div id="salesDashboard" style="display:none;margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">My Orders Status</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--warning);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">Pending</div>
-        <div style="font-size:22px;font-weight:700;color:var(--warning);" id="sd-pending">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--info);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">In Production</div>
-        <div style="font-size:22px;font-weight:700;color:var(--info);" id="sd-production">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--purple);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">Billed</div>
-        <div style="font-size:22px;font-weight:700;color:var(--purple);" id="sd-billed">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--accent);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">Dispatched</div>
-        <div style="font-size:22px;font-weight:700;color:var(--accent);" id="sd-dispatched">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--success);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">Delivered</div>
-        <div style="font-size:22px;font-weight:700;color:var(--success);" id="sd-delivered">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--sh);border-left:3px solid var(--error);">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">Delayed</div>
-        <div style="font-size:22px;font-weight:700;color:var(--error);" id="sd-delayed">0</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Orders</div>
-      </div>
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Production Updates — My Orders</div>
+    <div id="salesProdAlerts">
+      <div class="loading"><div class="spin"></div> Loading updates...</div>
     </div>
-
-    <!-- Production status of my orders -->
-    <div id="salesProdAlerts" style="margin-top:12px;"></div>
   </div>
 
   <div class="pipeline">
     <div class="pipe-node active" onclick="filterOrders('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="pc-all">0</div><div class="pipe-lbl">All</div></div>
     <div class="pipe-sep">›</div>
     <div class="pipe-node" onclick="filterOrders('advance',this)"><div class="pipe-icon">💰</div><div class="pipe-count" id="pc-adv">0</div><div class="pipe-lbl">Advance</div></div>
-    <div class="pipe-sep">›</div>
-    <div class="pipe-node" onclick="filterOrders('pdc',this)"><div class="pipe-icon">📄</div><div class="pipe-count" id="pc-pdc">0</div><div class="pipe-lbl">PDC</div></div>
-    <div class="pipe-sep">›</div>
-    <div class="pipe-node" onclick="filterOrders('credit',this)"><div class="pipe-icon">🏦</div><div class="pipe-count" id="pc-crd">0</div><div class="pipe-lbl">Credit</div></div>
     <div class="pipe-sep">›</div>
     <div class="pipe-node" onclick="filterOrders('dispatched',this)"><div class="pipe-icon">🚚</div><div class="pipe-count" id="pc-dis">0</div><div class="pipe-lbl">Dispatched</div></div>
   </div>
@@ -1147,8 +1111,6 @@ function renderOrders() {
   const dis = allOrders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
   document.getElementById('pc-all').textContent = allOrders.length;
   document.getElementById('pc-adv').textContent = adv;
-  document.getElementById('pc-pdc').textContent = pdc;
-  document.getElementById('pc-crd').textContent = crd;
   document.getElementById('pc-dis').textContent = dis;
 
   // Update sales dashboard if Sales role
@@ -1645,60 +1607,50 @@ function logout() { sessionStorage.removeItem('erp_user'); window.location.href 
 
 // ========== SALES DASHBOARD ==========
 function updateSalesDashboard(orders) {
-  const pending    = orders.filter(o => (o['Order Status']||'').includes('Order Received') || (o['Order Status']||'').includes('In Processing') || (o['Order Status']||'').includes('In Progressing')).length;
-  const production = orders.filter(o => (o['Order Status']||'').includes('Processing') || (o['Order Status']||'').includes('Progressing')).length;
-  const billed     = orders.filter(o => (o['Order Status']||'').includes('Billed')).length;
-  const dispatched = orders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
-  const delivered  = orders.filter(o => (o['Order Status']||'').includes('Delivered')).length;
-  const delayed    = orders.filter(o => (o['Order Status']||'').includes('Delay')).length;
+  const el = document.getElementById('salesProdAlerts');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
 
-  document.getElementById('sd-pending').textContent    = pending;
-  document.getElementById('sd-production').textContent = production;
-  document.getElementById('sd-billed').textContent     = billed;
-  document.getElementById('sd-dispatched').textContent = dispatched;
-  document.getElementById('sd-delivered').textContent  = delivered;
-  document.getElementById('sd-delayed').textContent    = delayed;
-
-  // Fetch production status for my orders
   api({ action: 'getProduction' }, r => {
-    if (!r.success || !r.data.length) return;
+    if (!r.success || !r.data.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px;">No production updates yet.</div>';
+      return;
+    }
+
     const myOrderIDs = new Set(orders.map(o => o['Order ID']));
     const myProd = r.data.filter(p => myOrderIDs.has(p['Order ID']));
-    if (!myProd.length) return;
 
-    const alerts = [];
-    myProd.forEach(p => {
-      if (!p['Order ID']) return;
-      let msg = '';
-      let color = '';
+    if (!myProd.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px;">No production updates yet.</div>';
+      return;
+    }
+
+    const rows = myProd.map(p => {
+      let icon = '📋', color = 'var(--border2)', statusText = 'Pending';
       if (p['Status'] === 'Completed') {
-        msg = `✅ <strong>${p['Order ID']}</strong> — ${p['Product Model']||''} production complete`;
-        color = 'var(--success)';
+        icon = '✅'; color = 'var(--success)'; statusText = 'Production Complete';
       } else if (p['Status'] === 'In Progress') {
-        const plan = p['Production Complete Plan'] ? ` | Plan: ${p['Production Complete Plan']}` : '';
-        msg = `⚙️ <strong>${p['Order ID']}</strong> — ${p['Product Model']||''} production in progress${plan}`;
-        color = 'var(--info)';
+        icon = '⚙️'; color = 'var(--info)'; statusText = 'In Progress';
       } else if (p['Status'] === 'Delayed') {
-        msg = `⚠️ <strong>${p['Order ID']}</strong> — ${p['Product Model']||''} production delayed`;
-        color = 'var(--error)';
+        icon = '⚠️'; color = 'var(--error)'; statusText = 'Delayed';
       } else if (p['Production Start Plan']) {
-        msg = `📅 <strong>${p['Order ID']}</strong> — ${p['Product Model']||''} production start planned: ${p['Production Start Plan']}`;
-        color = 'var(--warning)';
+        icon = '📅'; color = 'var(--warning)'; statusText = 'Planned';
       }
-      if (msg) alerts.push({ msg, color });
+
+      const planDate = p['Production Start Plan'] ? `Start: ${p['Production Start Plan']}` : '';
+      const completeDate = p['Production Complete Plan'] ? `Complete: ${p['Production Complete Plan']}` : '';
+      const dates = [planDate, completeDate].filter(Boolean).join(' | ');
+
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;border-left:3px solid ${color};box-shadow:var(--sh);display:flex;align-items:center;gap:12px;">
+        <span style="font-size:18px;">${icon}</span>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);">${p['Order ID']} — ${p['Product Model']||''} ${p['Battery Type']?'('+p['Battery Type']+')':''}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${p['Customer Name']||''} ${dates ? '| '+dates : ''}</div>
+        </div>
+        <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;background:${color}15;color:${color};">${statusText}</span>
+      </div>`;
     });
 
-    const el = document.getElementById('salesProdAlerts');
-    if (!alerts.length) { el.innerHTML = ''; return; }
-
-    el.innerHTML = `
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Production Updates</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${alerts.map(a => `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:12px;color:var(--text2);border-left:3px solid ${a.color};box-shadow:var(--sh);">
-            ${a.msg}
-          </div>`).join('')}
-      </div>`;
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;">${rows.join('')}</div>`;
   });
 }
 
