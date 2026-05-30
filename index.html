@@ -237,10 +237,28 @@ input::placeholder{color:#CBD5E1;}
 }
 .dot{width:3px;height:3px;border-radius:50%;background:#E2E8F0;}
 
+/* Tablet */
+@media(max-width:900px){
+  .wrap{max-width:700px;}
+  .left{padding:36px 32px;}
+  .right{width:340px;padding:40px 32px;}
+  .left-title{font-size:24px;}
+}
+
+/* Mobile */
 @media(max-width:700px){
   .left{display:none;}
-  .right{width:100%;padding:36px 24px;}
-  .wrap{max-width:440px;border-radius:16px;}
+  .right{width:100%;padding:36px 28px;}
+  .wrap{max-width:100%;border-radius:16px;min-height:auto;}
+  body{padding:16px;align-items:center;}
+}
+
+/* Small mobile */
+@media(max-width:400px){
+  .right{padding:28px 20px;}
+  .form-title{font-size:20px;}
+  .btn-login{padding:12px;}
+  body{padding:12px;}
 }
 </style>
 </head>
@@ -322,7 +340,7 @@ input::placeholder{color:#CBD5E1;}
 </div>
 
 <script>
-const API='https://script.google.com/macros/s/AKfycbwLir3iGqx4GoitBuwx61wz2Pg9kStEonJKB-pG_7xV5mNpQmRNhU3uYkGC7CJYXGhj/exec';
+const API='https://script.google.com/macros/s/AKfycbyQmDGRe8ltAzADiUOOfrO44lNGD1-Nk-hNabr1_evLN9ijLHUa2rexZE4ovmPIDMZEKQ/exec';
 
 document.getElementById('pword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('uname').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pword').focus();});
