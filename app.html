@@ -699,12 +699,10 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin: ['orders','crm','production','customers','products','suppliers','users'],
-  Sales: ['orders','customers','products'],
-  Production: ['production','products'],
-  Accounts: ['orders','crm'],
-  Dispatch: ['orders','crm'],
-  CRM: ['crm','orders']
+  Admin:      ['orders','crm','production','customers','products','suppliers','users'],
+  Sales:      ['orders','customers','products'],
+  Production: ['production'],
+  CRM:        ['crm','orders']
 };
 (function applyRole(){
   const allowed = roleAccess[user.role] || roleAccess['Admin'];
@@ -712,6 +710,12 @@ const roleAccess = {
     const mod = el.id.replace('nav-','');
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
+  // Auto redirect based on role
+  if (user.role === 'Production') {
+    setTimeout(() => nav('production', document.getElementById('nav-production')), 100);
+  } else if (user.role === 'CRM') {
+    setTimeout(() => nav('crm', document.getElementById('nav-crm')), 100);
+  }
 })();
 
 // PAGE META
@@ -799,7 +803,12 @@ let allOrders = [], orderFilter = 'all';
 function loadOrders() {
   api({ action: 'getOrders' }, r => {
     if (!r.success) { document.getElementById('ordersTable').innerHTML = `<tr><td colspan="13"><div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No orders found</div></div></td></tr>`; return; }
-    allOrders = r.data || [];
+    let data = r.data || [];
+    // Sales user — sirf apne orders dikhao
+    if (user.role === 'Sales' && user.salesName) {
+      data = data.filter(o => (o['Sales Person Name']||'') === user.salesName);
+    }
+    allOrders = data;
     renderOrders();
   });
 }
