@@ -797,6 +797,45 @@ function priorityBadge(s) {
 }
 function fmt(n) { return Number(n||0).toLocaleString('en-IN'); }
 
+function fmtDisplayDate(val) {
+  if (!val) return '';
+  if (typeof val === 'object' && val instanceof Date) {
+    return val.getDate().toString().padStart(2,'0') + '/' +
+           (val.getMonth()+1).toString().padStart(2,'0') + '/' +
+           val.getFullYear();
+  }
+  var s = String(val);
+  if (s.indexOf('T') > -1 || /^\d{4}-\d{2}-\d{2}/.test(s)) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      var ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+      return ist.getUTCDate().toString().padStart(2,'0') + '/' +
+             (ist.getUTCMonth()+1).toString().padStart(2,'0') + '/' +
+             ist.getUTCFullYear();
+    }
+  }
+  return s;
+}
+
+function toInputDate(val) {
+  if (!val) return '';
+  var s = String(val);
+  // dd/mm/yyyy to yyyy-mm-dd for input[type=date]
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    var parts = s.split('/');
+    return parts[2] + '-' + parts[1] + '-' + parts[0];
+  }
+  // ISO format — extract date part
+  if (s.indexOf('T') > -1) {
+    var d = new Date(s);
+    var ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+    return ist.getUTCFullYear() + '-' +
+           (ist.getUTCMonth()+1).toString().padStart(2,'0') + '-' +
+           ist.getUTCDate().toString().padStart(2,'0');
+  }
+  return s;
+}
+
 // ========== ORDERS ==========
 let allOrders = [], orderFilter = 'all';
 
@@ -1068,10 +1107,10 @@ function renderCRM(data) {
     <td><span class="badge b-processing">${c['Current Stage']||''}</span></td>
     <td>${c['Next Stage']||''}</td>
     <td>${c['Follow-up With']||''}</td>
-    <td>${c['Production Start Plan']||''}</td>
-    <td>${c['Production Start Actual']||''}</td>
-    <td>${c['Production Complete Plan']||''}</td>
-    <td>${c['Production Complete Actual']||''}</td>
+    <td>${fmtDisplayDate(c['Production Start Plan']||'')}</td>
+    <td>${fmtDisplayDate(c['Production Start Actual']||'')}</td>
+    <td>${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
+    <td>${fmtDisplayDate(c['Production Complete Actual']||'')}</td>
     <td>${c['Production Delay']?`<span class="badge b-delay">${c['Production Delay']}</span>`:''}</td>
     <td>${c['Payment Received Plan']||''}</td>
     <td>${c['Payment Received Actual']||''}</td>
@@ -1100,19 +1139,19 @@ function openCRMUpdate(c) {
   document.getElementById('cu-stage').value = c['Current Stage']||'';
   document.getElementById('cu-nextstage').value = c['Next Stage']||'';
   document.getElementById('cu-followup').value = c['Follow-up With']||'';
-  document.getElementById('cu-ps-plan').value = c['Production Start Plan']||'';
-  document.getElementById('cu-ps-actual').value = c['Production Start Actual']||'';
-  document.getElementById('cu-pc-plan').value = c['Production Complete Plan']||'';
-  document.getElementById('cu-pc-actual').value = c['Production Complete Actual']||'';
+  document.getElementById('cu-ps-plan').value = toInputDate(c['Production Start Plan']||'');
+  document.getElementById('cu-ps-actual').value = toInputDate(c['Production Start Actual']||'');
+  document.getElementById('cu-pc-plan').value = toInputDate(c['Production Complete Plan']||'');
+  document.getElementById('cu-pc-actual').value = toInputDate(c['Production Complete Actual']||'');
   document.getElementById('cu-prod-delay').value = c['Production Delay']||'';
-  document.getElementById('cu-pay-plan').value = c['Payment Received Plan']||'';
-  document.getElementById('cu-pay-actual').value = c['Payment Received Actual']||'';
+  document.getElementById('cu-pay-plan').value = toInputDate(c['Payment Received Plan']||'');
+  document.getElementById('cu-pay-actual').value = toInputDate(c['Payment Received Actual']||'');
   document.getElementById('cu-pay-delay').value = c['Payment Delay']||'';
-  document.getElementById('cu-disp-plan').value = c['Ready to Dispatch Plan']||'';
-  document.getElementById('cu-disp-actual').value = c['Ready to Dispatch Actual']||'';
+  document.getElementById('cu-disp-plan').value = toInputDate(c['Ready to Dispatch Plan']||'');
+  document.getElementById('cu-disp-actual').value = toInputDate(c['Ready to Dispatch Actual']||'');
   document.getElementById('cu-disp-delay').value = c['Dispatch Delay']||'';
-  document.getElementById('cu-bill-plan').value = c['Billing Docs Plan']||'';
-  document.getElementById('cu-bill-actual').value = c['Billing Docs Actual']||'';
+  document.getElementById('cu-bill-plan').value = toInputDate(c['Billing Docs Plan']||'');
+  document.getElementById('cu-bill-actual').value = toInputDate(c['Billing Docs Actual']||'');
   document.getElementById('cu-bill-delay').value = c['Billing Delay']||'';
   document.getElementById('cu-verify').value = c['Order Verification']||'';
   document.getElementById('cu-advcheck').value = c['Payment/Advance Check']||'';
@@ -1187,10 +1226,10 @@ function loadProduction() {
       <td>${p['Qty']||''}</td>
       <td>${p['Sales Person']||''}</td>
       <td>${p['Assigned CRM']||''}</td>
-      <td>${p['Production Start Plan']||''}</td>
-      <td>${p['Production Start Actual']||''}</td>
-      <td>${p['Production Complete Plan']||''}</td>
-      <td>${p['Production Complete Actual']||''}</td>
+      <td>${fmtDisplayDate(p['Production Start Plan']||'')}</td>
+      <td>${fmtDisplayDate(p['Production Start Actual']||'')}</td>
+      <td>${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
+      <td>${fmtDisplayDate(p['Production Complete Actual']||'')}</td>
       <td>${p['Production Delay']?`<span class="badge b-delay">${p['Production Delay']}</span>`:''}</td>
       <td><span class="badge ${p['Status']==='Completed'?'b-ready':p['Status']==='In Progress'?'b-processing':p['Status']==='Delayed'?'b-delay':'b-pending'}">${p['Status']||'Pending'}</span></td>
       <td>${p['Remarks']||''}</td>
@@ -1204,54 +1243,45 @@ function openProdUpdate(p) {
   document.getElementById('pu-model').value = p['Product Model']||'';
   document.getElementById('pu-btype').value = p['Battery Type']||'';
   document.getElementById('pu-status').value = p['Status']||'Pending';
-  document.getElementById('pu-sp').value = p['Production Start Plan']||'';
-  document.getElementById('pu-sa').value = p['Production Start Actual']||'';
-  document.getElementById('pu-cp').value = p['Production Complete Plan']||'';
-  document.getElementById('pu-ca').value = p['Production Complete Actual']||'';
+  // Convert dates to input format yyyy-mm-dd
+  document.getElementById('pu-sp').value = toInputDate(p['Production Start Plan']||'');
+  document.getElementById('pu-sa').value = toInputDate(p['Production Start Actual']||'');
+  document.getElementById('pu-cp').value = toInputDate(p['Production Complete Plan']||'');
+  document.getElementById('pu-ca').value = toInputDate(p['Production Complete Actual']||'');
   document.getElementById('pu-delay').value = p['Production Delay']||'';
   document.getElementById('pu-remarks').value = p['Remarks']||'';
   openModal('prodUpdateModal');
 }
 
-function fmtDate(val) {
-  if (!val) return '';
-  // If already dd/mm/yyyy format, return as is
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
-  // Convert from yyyy-mm-dd or ISO format
-  var d = new Date(val);
-  if (isNaN(d.getTime())) return val;
-  return d.getDate().toString().padStart(2,'0') + '/' +
-         (d.getMonth()+1).toString().padStart(2,'0') + '/' +
-         d.getFullYear();
-}
-
 function submitProdUpdate() {
-  // Only send fields that have values — dont overwrite existing with blank
   var params = { action: 'updateProduction', 'Order ID': document.getElementById('pu-orderid').value };
 
+  var dateIds = ['pu-sp','pu-sa','pu-cp','pu-ca'];
   var fields = [
-    ['Product Model',            'pu-model'],
-    ['Battery Type',             'pu-btype'],
-    ['Status',                   'pu-status'],
-    ['Production Start Plan',    'pu-sp'],
-    ['Production Start Actual',  'pu-sa'],
-    ['Production Complete Plan', 'pu-cp'],
+    ['Product Model',             'pu-model'],
+    ['Battery Type',              'pu-btype'],
+    ['Status',                    'pu-status'],
+    ['Production Start Plan',     'pu-sp'],
+    ['Production Start Actual',   'pu-sa'],
+    ['Production Complete Plan',  'pu-cp'],
     ['Production Complete Actual','pu-ca'],
-    ['Production Delay',         'pu-delay'],
-    ['Remarks',                  'pu-remarks']
+    ['Production Delay',          'pu-delay'],
+    ['Remarks',                   'pu-remarks']
   ];
 
   fields.forEach(([key, id]) => {
     var el = document.getElementById(id);
     if (!el) return;
     var val = el.value;
-    if (!val) return; // skip blank — dont overwrite existing
-    // Format date fields
-    if (id.startsWith('pu-s') || id.startsWith('pu-c')) {
-      val = fmtDate(val);
-    }
+    if (!val) return;
+    // Format date fields to dd/mm/yyyy
+    if (dateIds.includes(id)) val = fmtDisplayDate(val);
     params[key] = val;
   });
+
+  // Auto status: if actual complete date filled → Completed
+  var actualComplete = document.getElementById('pu-ca').value;
+  if (actualComplete) params['Status'] = 'Completed';
 
   api(params, r => {
     if (r.success) { toast('Production updated!'); closeModal('prodUpdateModal'); loadProduction(); }
