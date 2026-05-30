@@ -504,7 +504,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <table class="items-table">
           <thead><tr>
             <th>Product Model</th><th>Battery Type</th><th>Qty</th>
-            <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th></th>
+            <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
           </tr></thead>
           <tbody id="itemsBody">
             <tr id="item-row-1">
@@ -514,6 +514,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
               <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
               <td><input id="im-total-1" readonly placeholder="Auto"></td>
               <td><input id="im-crm-1" placeholder="CRM name"></td>
+              <td><input id="im-remarks-1" placeholder="Remarks"></td>
               <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(1)">✕</button></td>
             </tr>
           </tbody>
@@ -687,7 +688,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwii-NEIIycjSoLJCv94HdYNlG7hp7lwt1zKaooHBkqxGM2WHjPItbxioZyX5X3JGTBFA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbx-yo6FRuoSXglYHmEwuMd7bCsDhctT5rVYSLCBdeDa3523ecoqEwA_t5p-yFlGJOmb/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -949,6 +950,7 @@ function addItemRow() {
     <td><input id="im-price-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
     <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
     <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
+    <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
     <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
   tbody.appendChild(tr);
 }
@@ -991,7 +993,8 @@ function getItemRows() {
         'Qty': document.getElementById(`im-qty-${id}`)?.value || 0,
         'Price Unit (Excluding GST)': document.getElementById(`im-price-${id}`)?.value || 0,
         'Total': document.getElementById(`im-total-${id}`)?.value || 0,
-        'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || ''
+        'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || '',
+        'Remarks': document.getElementById(`im-remarks-${id}`)?.value || ''
       });
     }
   });
@@ -1073,6 +1076,7 @@ function resetOrderForm() {
     <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
     <td><input id="im-total-1" readonly placeholder="Auto"></td>
     <td><input id="im-crm-1" placeholder="CRM name"></td>
+    <td><input id="im-remarks-1" placeholder="Remarks"></td>
     <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(1)">✕</button></td>
   </tr>`;
   itemRowCount = 1;
