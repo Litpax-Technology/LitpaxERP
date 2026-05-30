@@ -1591,13 +1591,15 @@ function logout() { sessionStorage.removeItem('erp_user'); window.location.href 
 let currentEditOrder = null;
 let editItemRowCount = 0;
 
-function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='') {
+function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false) {
   editItemRowCount++;
   const id = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
   const tbody = document.getElementById('editItemsBody');
   const tr = document.createElement('tr');
   tr.id = `edit-item-row-${id}`;
+  tr.dataset.existing = isExisting ? 'true' : 'false';
+  if (isExisting) tr.style.background = 'var(--surface2)';
   tr.innerHTML = `
     <td><input id="eim-model-${id}" value="${model}" placeholder="Product model"></td>
     <td><select id="eim-btype-${id}">
@@ -1634,6 +1636,8 @@ function calcEditItemTotal(id) {
 function getEditItemRows() {
   const items = [];
   document.querySelectorAll('[id^="edit-item-row-"]').forEach(row => {
+    // Skip existing items — only save NEW ones
+    if (row.dataset.existing === 'true') return;
     const id = row.id.replace('edit-item-row-', '');
     const model = document.getElementById(`eim-model-${id}`)?.value?.trim();
     if (model) {
@@ -1673,8 +1677,9 @@ function openEditOrder() {
   closeModal('orderDetailModal');
   openModal('editOrderModal');
 
-  // Load existing items
+  // Load existing items — mark as existing (not to be re-saved)
   editItemRowCount = 0;
+  window._existingItemIds = new Set();
   document.getElementById('editItemsBody').innerHTML = '';
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (r.success && r.data.length) {
@@ -1686,12 +1691,13 @@ function openEditOrder() {
           item['Price Unit (Excluding GST)'] || '',
           item['Total'] || '',
           item['Assigned CRM'] || '',
-          item['Remarks'] || ''
+          item['Remarks'] || '',
+          true // isExisting = true
         );
       });
-    } else {
-      addEditItemRow(); // empty row if no items
     }
+    // Always add one blank new row at bottom
+    addEditItemRow('','','','','','','', false);
   });
 }
 
