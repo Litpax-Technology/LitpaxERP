@@ -574,7 +574,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Price Type</label>
           <select class="form-control" id="o-pricetype" onchange="updateOrderStatus()">
             <option value="">Select Price Type</option>
-            <option>Absolute</option><option>Credit</option><option>Last Price</option>
+            <option>Absolute</option><option>Per Watt</option><option>Last Price</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Payment Mode</label>
@@ -851,7 +851,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-section">Payment & Status</div>
         <div class="form-group"><label class="form-label">Price Type</label>
           <select class="form-control" id="e-pricetype">
-            <option value="">Select</option><option>Absolute</option><option>Credit</option><option>Last Price</option>
+            <option value="">Select</option><option>Absolute</option><option>Per Watt</option><option>Last Price</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Payment Mode</label>
@@ -1783,22 +1783,38 @@ function submitEditOrder() {
     const finish = () => {
       done++;
       if (done >= total) {
-        // Update Total Qty in Orders sheet
-        updateOrderTotalQty(orderID, allRows);
-        toast('Order updated!');
-        if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
-        closeModal('editOrderModal');
-        loadOrders();
+        // Calculate total qty from all rows
+        let totalQty = 0;
+        allRows.forEach(row => {
+          const id = row.id.replace('edit-item-row-', '');
+          const qty = parseFloat(document.getElementById('eim-qty-' + id)?.value) || 0;
+          const model = document.getElementById('eim-model-' + id)?.value?.trim();
+          if (model) totalQty += qty;
+        });
+        // Update Orders sheet Total Qty directly
+        api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': String(totalQty) }, () => {
+          toast('Order updated!');
+          if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
+          closeModal('editOrderModal');
+          loadOrders();
+        });
       }
     };
 
     if (total === 0) {
-      // Update Total Qty in Orders sheet
-      updateOrderTotalQty(orderID, allRows);
-      toast('Order updated!');
-      if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
-      closeModal('editOrderModal');
-      loadOrders();
+      let totalQty = 0;
+      allRows.forEach(row => {
+        const id = row.id.replace('edit-item-row-', '');
+        const qty = parseFloat(document.getElementById('eim-qty-' + id)?.value) || 0;
+        const model = document.getElementById('eim-model-' + id)?.value?.trim();
+        if (model) totalQty += qty;
+      });
+      api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': String(totalQty) }, () => {
+        toast('Order updated!');
+        if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
+        closeModal('editOrderModal');
+        loadOrders();
+      });
       return;
     }
 
