@@ -670,7 +670,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('orderModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitOrder()">Create Order</button>
+      <button class="btn btn-primary" id="submitOrderBtn" onclick="submitOrder()">Create Order</button>
     </div>
   </div>
 </div>
@@ -923,13 +923,13 @@ textarea.form-control{resize:vertical;min-height:70px;}
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('editOrderModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitEditOrder()">Save Changes</button>
+      <button class="btn btn-primary" id="submitEditBtn" onclick="submitEditOrder()">Save Changes</button>
     </div>
   </div>
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbydWoE3gQWwzpMAfZOU2zPLFRIKBWtLSN9fL6U1wMK99kD0f8hJ1EqiHGpMEbWiuNuWdA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzGNRdYy7fvQuhze5LN78vbFuwSRSKrlJDz70tdH2-OQpo8-3xOOcMbdijHlD2E25F64A/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1244,12 +1244,18 @@ function getItemRows() {
 }
 
 function submitOrder() {
+  const btn = document.getElementById('submitOrderBtn');
+  if (btn && btn.disabled) return;
+
   const cust = document.getElementById('o-cust').value.trim();
   if (!cust) { toast('Customer Name zaroori hai', 'e'); return; }
 
   // Check at least one product is filled
   const items = getItemRows();
   if (items.length === 0) { toast('Kam se kam ek product add karo', 'e'); return; }
+
+  // Disable button to prevent double submit
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
 
   let totalQty = 0;
   document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
@@ -1308,6 +1314,10 @@ function submitOrder() {
 }
 
 function resetOrderForm() {
+  // Re-enable submit button
+  const btn = document.getElementById('submitOrderBtn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; }
+
   ['o-date','o-sales','o-cust','o-phone','o-city','o-pricetype','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg','o-warranty',
    'o-crm','o-finalstatus','o-remarks','o-priority'].forEach(id => {
@@ -1591,7 +1601,7 @@ function logout() { sessionStorage.removeItem('erp_user'); window.location.href 
 let currentEditOrder = null;
 let editItemRowCount = 0;
 
-function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false) {
+function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false, itemID='') {
   editItemRowCount++;
   const id = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
@@ -1599,7 +1609,7 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
   const tr = document.createElement('tr');
   tr.id = `edit-item-row-${id}`;
   tr.dataset.existing = isExisting ? 'true' : 'false';
-  if (isExisting) tr.style.background = 'var(--surface2)';
+  tr.dataset.itemid = itemID;
   tr.innerHTML = `
     <td><input id="eim-model-${id}" value="${model}" placeholder="Product model"></td>
     <td><select id="eim-btype-${id}">
@@ -1681,9 +1691,11 @@ function openEditOrder() {
   editItemRowCount = 0;
   window._existingItemIds = new Set();
   document.getElementById('editItemsBody').innerHTML = '';
+  window._existingItems = [];
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (r.success && r.data.length) {
-      r.data.forEach(item => {
+      window._existingItems = r.data;
+      r.data.forEach((item, idx) => {
         addEditItemRow(
           item['Product Model'] || '',
           item['Battery Type'] || '',
@@ -1692,12 +1704,13 @@ function openEditOrder() {
           item['Total'] || '',
           item['Assigned CRM'] || '',
           item['Remarks'] || '',
-          true // isExisting = true
+          true, // isExisting
+          item['Item ID'] || '' // pass item ID
         );
       });
     }
     // Always add one blank new row at bottom
-    addEditItemRow('','','','','','','', false);
+    addEditItemRow('','','','','','','', false, '');
   });
 }
 
@@ -1725,24 +1738,72 @@ function submitEditOrder() {
     'Order Remarks': document.getElementById('e-remarks').value
   };
 
-  api(params, r => {
-    if (!r.success) { toast(r.message, 'e'); return; }
-    toast('Order updated!');
+  // Disable edit submit button
+  const editBtn = document.getElementById('submitEditBtn');
+  if (editBtn) { editBtn.disabled = true; editBtn.textContent = 'Saving...'; }
 
-    // Save new items added during edit
-    const newItems = getEditItemRows();
-    if (newItems.length > 0) {
-      let pending = newItems.length;
-      newItems.forEach(item => {
-        api({ action: 'addOrderItem', 'Order ID': orderID, ...item }, () => {
-          pending--;
-          if (pending === 0) { closeModal('editOrderModal'); loadOrders(); }
-        });
-      });
-    } else {
+  api(params, r => {
+    if (!r.success) {
+      toast(r.message, 'e');
+      if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
+      return;
+    }
+
+    // Collect existing rows to update + new rows to add
+    const allRows = document.querySelectorAll('[id^="edit-item-row-"]');
+    const updateTasks = [];
+    const addTasks = [];
+
+    allRows.forEach(row => {
+      const id = row.id.replace('edit-item-row-', '');
+      const model = document.getElementById(`eim-model-${id}`)?.value?.trim();
+      if (!model) return;
+
+      const itemData = {
+        'Product Model': model,
+        'Battery Type': document.getElementById(`eim-btype-${id}`)?.value || '',
+        'Qty': document.getElementById(`eim-qty-${id}`)?.value || 0,
+        'Price Unit (Excluding GST)': document.getElementById(`eim-price-${id}`)?.value || 0,
+        'Total': document.getElementById(`eim-total-${id}`)?.value || 0,
+        'Assigned CRM': document.getElementById(`eim-crm-${id}`)?.value || '',
+        'Remarks': document.getElementById(`eim-remarks-${id}`)?.value || ''
+      };
+
+      if (row.dataset.existing === 'true' && row.dataset.itemid) {
+        // Existing item — update it
+        updateTasks.push({ ...itemData, 'Item ID': row.dataset.itemid, 'Order ID': orderID });
+      } else {
+        // New item — add it
+        addTasks.push({ ...itemData, 'Order ID': orderID });
+      }
+    });
+
+    let total = updateTasks.length + addTasks.length;
+    let done = 0;
+    const finish = () => {
+      done++;
+      if (done >= total) {
+        toast('Order updated!');
+        if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
+        closeModal('editOrderModal');
+        loadOrders();
+      }
+    };
+
+    if (total === 0) {
+      toast('Order updated!');
+      if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
       closeModal('editOrderModal');
       loadOrders();
+      return;
     }
+
+    updateTasks.forEach(item => {
+      api({ action: 'updateOrderItem', ...item }, finish);
+    });
+    addTasks.forEach(item => {
+      api({ action: 'addOrderItem', ...item }, finish);
+    });
   });
 }
 
