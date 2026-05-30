@@ -210,6 +210,125 @@ textarea.form-control{resize:vertical;min-height:70px;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* Hide hamburger on desktop */
+.hamburger{display:none;}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablet (768px - 1024px) */
+@media(max-width:1024px){
+  :root{--sidebar:200px;}
+  .main{padding:16px;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* Mobile (max 768px) */
+@media(max-width:768px){
+  :root{--topbar:52px;}
+
+  /* Hide sidebar — hamburger menu */
+  .sidebar{
+    position:fixed;left:-100%;top:var(--topbar);
+    height:calc(100% - var(--topbar));
+    z-index:200;width:240px;
+    transition:left 0.25s ease;
+    box-shadow:4px 0 20px rgba(0,0,0,0.1);
+  }
+  .sidebar.open{left:0;}
+
+  /* Sidebar overlay */
+  .sidebar-overlay{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,0.3);z-index:199;
+    top:var(--topbar);
+  }
+  .sidebar-overlay.show{display:block;}
+
+  /* Topbar */
+  .topbar{padding:0 12px 0 0;}
+  .topbar-brand{width:auto;padding-left:12px;border-right:none;gap:8px;}
+  .brand-name{font-size:14px;}
+  .topbar-mid{padding:0 10px;}
+  .page-title{font-size:13px;}
+  .page-sub{display:none;}
+  .user-nm{font-size:12px;}
+  .user-rl{display:none;}
+  .btn-logout{padding:5px 10px;font-size:11px;}
+
+  /* Hamburger button */
+  .hamburger{
+    display:flex;flex-direction:column;justify-content:center;
+    gap:4px;width:32px;height:32px;cursor:pointer;
+    padding:4px;border-radius:6px;flex-shrink:0;
+  }
+  .hamburger:hover{background:var(--accent-light);}
+  .hamburger span{
+    display:block;width:18px;height:2px;
+    background:var(--text2);border-radius:2px;
+    transition:all 0.2s;
+  }
+
+  /* Main */
+  .main{padding:12px;}
+
+  /* Stats */
+  .stats-row{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .stat{padding:10px 12px;}
+  .stat-val{font-size:18px;}
+
+  /* Pipeline scroll */
+  .pipeline{padding:8px 10px;gap:2px;}
+  .pipe-node{min-width:64px;padding:6px 6px;}
+  .pipe-count{font-size:15px;}
+  .pipe-lbl{font-size:9px;}
+  .pipe-icon{font-size:14px;}
+
+  /* Card */
+  .card-head{padding:10px 12px;flex-wrap:wrap;gap:8px;}
+  .card-actions{width:100%;justify-content:space-between;}
+  .card-actions .search-input{flex:1;width:auto !important;}
+
+  /* Table — horizontal scroll */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:600px;}
+  th,td{padding:8px 10px;font-size:11px;}
+
+  /* Modal */
+  .modal-overlay{padding:0;align-items:flex-end;}
+  .modal{
+    border-radius:16px 16px 0 0;
+    max-height:90vh;
+    max-width:100%;
+    margin:0;
+  }
+  .modal-head{padding:14px 16px;}
+  .modal-body{padding:14px 16px;}
+  .modal-foot{padding:12px 16px;}
+
+  /* Forms */
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid-3{grid-template-columns:1fr;}
+  .form-full{grid-column:1;}
+
+  /* Items table */
+  .items-table{min-width:500px;}
+
+  /* Buttons */
+  .btn{padding:6px 10px;font-size:11px;}
+  .btn-primary{font-size:12px;}
+}
+
+/* Small mobile (max 480px) */
+@media(max-width:480px){
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .topbar-brand .brand-name{display:none;}
+  .user-pill{padding:4px 8px 4px 4px;}
+  .pipeline{gap:1px;}
+  .pipe-node{min-width:56px;padding:5px 4px;}
+  .pipe-sep{font-size:12px;padding:0;}
+}
 </style>
 </head>
 <body>
@@ -217,6 +336,9 @@ textarea.form-control{resize:vertical;min-height:70px;}
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-brand">
+    <div class="hamburger" onclick="toggleSidebar()" id="hamburger">
+      <span></span><span></span><span></span>
+    </div>
     <div class="brand-mark">L</div>
     <div class="brand-name">Litpax<span>ERP</span></div>
   </div>
@@ -253,6 +375,9 @@ textarea.form-control{resize:vertical;min-height:70px;}
   <div class="nav-item" onclick="nav('users',this)" id="nav-users"><span class="nav-icon">🔐</span>Users</div>
   <div class="sidebar-foot"><div class="sidebar-ver">LitpaxERP v3.0</div></div>
 </div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <!-- MAIN -->
 <div class="main">
@@ -688,7 +813,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwLir3iGqx4GoitBuwx61wz2Pg9kStEonJKB-pG_7xV5mNpQmRNhU3uYkGC7CJYXGhj/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyQmDGRe8ltAzADiUOOfrO44lNGD1-Nk-hNabr1_evLN9ijLHUa2rexZE4ovmPIDMZEKQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1343,6 +1468,24 @@ function submitUser() {
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
+
+// Sidebar toggle for mobile
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('show');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+// Close sidebar on nav item click (mobile)
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    if (window.innerWidth <= 768) closeSidebar();
+  });
+});
 
 // Set today's date
 document.getElementById('o-date').value = new Date().toISOString().split('T')[0];
