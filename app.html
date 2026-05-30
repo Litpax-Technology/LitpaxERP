@@ -227,6 +227,24 @@ textarea.form-control{resize:vertical;min-height:70px;}
 /* Mobile (max 768px) */
 @media(max-width:768px){
   :root{--topbar:52px;}
+  
+  /* Modal full screen on mobile */
+  .modal-overlay{
+    padding:0 !important;
+    align-items:flex-end !important;
+    overflow-y:auto;
+  }
+  .modal{
+    border-radius:20px 20px 0 0 !important;
+    max-height:92vh !important;
+    max-width:100% !important;
+    width:100% !important;
+    margin:0 !important;
+    overflow-y:auto;
+  }
+  .modal-head{padding:14px 16px !important;position:sticky;top:0;background:var(--surface);z-index:1;}
+  .modal-body{padding:12px 14px !important;overflow-y:auto;}
+  .modal-foot{padding:12px 14px !important;position:sticky;bottom:0;background:var(--surface2);}
 
   /* Hide sidebar — hamburger menu */
   .sidebar{
@@ -436,8 +454,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <table>
         <thead><tr>
           <th>Sr</th><th>Order ID</th><th>Order Date</th><th>Customer</th><th>Product Model</th>
-          <th>Qty</th><th>Sales Person</th><th>Current Stage</th><th>Next Stage</th>
-          <th>Follow-up With</th><th>Prod Start Plan</th><th>Prod Start Actual</th>
+          <th>Qty</th><th>Sales Person</th><th>Current Stage</th><th>Prod Start Plan</th><th>Prod Start Actual</th>
           <th>Prod Complete Plan</th><th>Prod Complete Actual</th><th>Prod Delay</th>
           <th>Payment Plan</th><th>Payment Actual</th><th>Payment Delay</th>
           <th>Dispatch Plan</th><th>Dispatch Actual</th><th>Dispatch Delay</th>
@@ -445,7 +462,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <th>Order Verify</th><th>Advance Check</th><th>Remarks</th><th>Customer No</th>
           <th>Action</th>
         </tr></thead>
-        <tbody id="crmTable"><tr><td colspan="29"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+        <tbody id="crmTable"><tr><td colspan="27"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -882,6 +899,27 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Final Status</label><input class="form-control" id="e-finalstatus" placeholder="Final status"></div>
         <div class="form-group form-full"><label class="form-label">Order Remarks</label><textarea class="form-control" id="e-remarks"></textarea></div>
       </div>
+
+      <!-- EDIT ITEMS -->
+      <div style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Order Items</div>
+          <button class="btn btn-sm btn-info" onclick="addEditItemRow()">+ Add Item</button>
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="items-table">
+          <thead><tr>
+            <th>Product Model</th><th>Battery Type</th><th>Qty</th>
+            <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
+          </tr></thead>
+          <tbody id="editItemsBody"></tbody>
+        </table>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text3);">
+          * Existing items save hain — naye items add karo ya existing delete karo
+        </div>
+      </div>
+
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('editOrderModal')">Cancel</button>
@@ -1295,7 +1333,7 @@ function resetOrderForm() {
 let allCRM = [];
 function loadCRM() {
   api({ action: 'getCRM' }, r => {
-    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="29"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
+    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="27"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
     allCRM = r.data || [];
     document.getElementById('crm-total').textContent = allCRM.length;
     document.getElementById('crm-prod').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('production')).length;
@@ -1306,7 +1344,7 @@ function loadCRM() {
 }
 
 function renderCRM(data) {
-  if (!data.length) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="29"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No records</div></div></td></tr>`; return; }
+  if (!data.length) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="27"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No records</div></div></td></tr>`; return; }
   document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
     <td>${c['Sr No']||''}</td>
     <td class="td-id">${c['Order ID']||''}</td>
@@ -1316,8 +1354,6 @@ function renderCRM(data) {
     <td>${c['Qty']||''}</td>
     <td>${c['Sales Person']||''}</td>
     <td><span class="badge b-processing">${c['Current Stage']||''}</span></td>
-    <td>${c['Next Stage']||''}</td>
-    <td>${c['Follow-up With']||''}</td>
     <td>${fmtDisplayDate(c['Production Start Plan']||'')}</td>
     <td>${fmtDisplayDate(c['Production Start Actual']||'')}</td>
     <td>${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
@@ -1553,6 +1589,67 @@ function logout() { sessionStorage.removeItem('erp_user'); window.location.href 
 
 // ========== EDIT ORDER ==========
 let currentEditOrder = null;
+let editItemRowCount = 0;
+
+function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='') {
+  editItemRowCount++;
+  const id = 'e' + editItemRowCount;
+  const crmVal = crm || document.getElementById('e-crm').value || '';
+  const tbody = document.getElementById('editItemsBody');
+  const tr = document.createElement('tr');
+  tr.id = `edit-item-row-${id}`;
+  tr.innerHTML = `
+    <td><input id="eim-model-${id}" value="${model}" placeholder="Product model"></td>
+    <td><select id="eim-btype-${id}">
+      <option value="">Battery Type</option>
+      <option ${btype==='2 Wheeler Battery'?'selected':''}>2 Wheeler Battery</option>
+      <option ${btype==='3 Wheeler Battery'?'selected':''}>3 Wheeler Battery</option>
+      <option ${btype==='Inverter Battery'?'selected':''}>Inverter Battery</option>
+      <option ${btype==='Solar Battery'?'selected':''}>Solar Battery</option>
+      <option ${btype==='E-Rikshaw Battery'?'selected':''}>E-Rikshaw Battery</option>
+      <option ${btype==='Charger'?'selected':''}>Charger</option>
+      <option ${btype==='BMS'?'selected':''}>BMS</option>
+    </select></td>
+    <td><input id="eim-qty-${id}" type="number" value="${qty}" placeholder="0" oninput="calcEditItemTotal('${id}')"></td>
+    <td><input id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemTotal('${id}')"></td>
+    <td><input id="eim-total-${id}" readonly value="${total}" placeholder="Auto"></td>
+    <td><input id="eim-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
+    <td><input id="eim-remarks-${id}" value="${remarks}" placeholder="Remarks"></td>
+    <td><button class="btn btn-sm btn-danger" onclick="removeEditItemRow('${id}')">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function removeEditItemRow(id) {
+  const row = document.getElementById(`edit-item-row-${id}`);
+  if (row) row.remove();
+}
+
+function calcEditItemTotal(id) {
+  const qty = parseFloat(document.getElementById(`eim-qty-${id}`)?.value) || 0;
+  const price = parseFloat(document.getElementById(`eim-price-${id}`)?.value) || 0;
+  const el = document.getElementById(`eim-total-${id}`);
+  if (el) el.value = qty && price ? (qty * price).toFixed(2) : '';
+}
+
+function getEditItemRows() {
+  const items = [];
+  document.querySelectorAll('[id^="edit-item-row-"]').forEach(row => {
+    const id = row.id.replace('edit-item-row-', '');
+    const model = document.getElementById(`eim-model-${id}`)?.value?.trim();
+    if (model) {
+      items.push({
+        'Product Model': model,
+        'Battery Type': document.getElementById(`eim-btype-${id}`)?.value || '',
+        'Qty': document.getElementById(`eim-qty-${id}`)?.value || 0,
+        'Price Unit (Excluding GST)': document.getElementById(`eim-price-${id}`)?.value || 0,
+        'Total': document.getElementById(`eim-total-${id}`)?.value || 0,
+        'Assigned CRM': document.getElementById(`eim-crm-${id}`)?.value || '',
+        'Remarks': document.getElementById(`eim-remarks-${id}`)?.value || ''
+      });
+    }
+  });
+  return items;
+}
 
 function openEditOrder() {
   if (!currentEditOrder) return;
@@ -1575,6 +1672,27 @@ function openEditOrder() {
   document.getElementById('e-remarks').value = o['Order Remarks'] || '';
   closeModal('orderDetailModal');
   openModal('editOrderModal');
+
+  // Load existing items
+  editItemRowCount = 0;
+  document.getElementById('editItemsBody').innerHTML = '';
+  api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
+    if (r.success && r.data.length) {
+      r.data.forEach(item => {
+        addEditItemRow(
+          item['Product Model'] || '',
+          item['Battery Type'] || '',
+          item['Qty'] || '',
+          item['Price Unit (Excluding GST)'] || '',
+          item['Total'] || '',
+          item['Assigned CRM'] || '',
+          item['Remarks'] || ''
+        );
+      });
+    } else {
+      addEditItemRow(); // empty row if no items
+    }
+  });
 }
 
 function submitEditOrder() {
@@ -1602,11 +1720,23 @@ function submitEditOrder() {
   };
 
   api(params, r => {
-    if (r.success) {
-      toast('Order updated!');
+    if (!r.success) { toast(r.message, 'e'); return; }
+    toast('Order updated!');
+
+    // Save new items added during edit
+    const newItems = getEditItemRows();
+    if (newItems.length > 0) {
+      let pending = newItems.length;
+      newItems.forEach(item => {
+        api({ action: 'addOrderItem', 'Order ID': orderID, ...item }, () => {
+          pending--;
+          if (pending === 0) { closeModal('editOrderModal'); loadOrders(); }
+        });
+      });
+    } else {
       closeModal('editOrderModal');
       loadOrders();
-    } else toast(r.message, 'e');
+    }
   });
 }
 
