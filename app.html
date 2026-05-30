@@ -687,7 +687,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzrxlPpR5WAjwkR5bcOOLGUCApInnvOT1Zshi0WfGtk0VR0qVGYD4myk5max4rSVg6FdQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzm8m3m6dPNvrqpeGT23lHLXOg0_sVkKdFHymDJvIUrO4k-ZgEF0ar8QXz86xM3JEks/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -996,11 +996,24 @@ function submitOrder() {
 
     // Submit items
     const items = getItemRows();
+    if (items.length === 0) { closeModal('orderModal'); resetOrderForm(); loadOrders(); return; }
+
     let pending = items.length;
-    if (pending === 0) { closeModal('orderModal'); resetOrderForm(); loadOrders(); return; }
+    let firstItem = true;
+
     items.forEach(item => {
       api({ action: 'addOrderItem', 'Order ID': orderID, ...item }, ir => {
         pending--;
+        // Update Production with first item's model & battery type
+        if (firstItem && ir.success) {
+          firstItem = false;
+          api({
+            action: 'updateProdItems',
+            'Order ID': orderID,
+            'Product Model': item['Product Model'] || '',
+            'Battery Type': item['Battery Type'] || ''
+          }, () => {});
+        }
         if (pending === 0) { closeModal('orderModal'); resetOrderForm(); loadOrders(); }
       });
     });
