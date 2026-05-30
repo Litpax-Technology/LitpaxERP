@@ -1121,30 +1121,46 @@ function openCRMUpdate(c) {
 }
 
 function submitCRMUpdate() {
-  api({
-    action: 'updateCRM',
-    'Order ID': document.getElementById('cu-orderid').value,
-    'Current Stage': document.getElementById('cu-stage').value,
-    'Next Stage': document.getElementById('cu-nextstage').value,
-    'Follow-up With': document.getElementById('cu-followup').value,
-    'Production Start Plan': document.getElementById('cu-ps-plan').value,
-    'Production Start Actual': document.getElementById('cu-ps-actual').value,
-    'Production Complete Plan': document.getElementById('cu-pc-plan').value,
-    'Production Complete Actual': document.getElementById('cu-pc-actual').value,
-    'Production Delay': document.getElementById('cu-prod-delay').value,
-    'Payment Received Plan': document.getElementById('cu-pay-plan').value,
-    'Payment Received Actual': document.getElementById('cu-pay-actual').value,
-    'Payment Delay': document.getElementById('cu-pay-delay').value,
-    'Ready to Dispatch Plan': document.getElementById('cu-disp-plan').value,
-    'Ready to Dispatch Actual': document.getElementById('cu-disp-actual').value,
-    'Dispatch Delay': document.getElementById('cu-disp-delay').value,
-    'Billing Docs Plan': document.getElementById('cu-bill-plan').value,
-    'Billing Docs Actual': document.getElementById('cu-bill-actual').value,
-    'Billing Delay': document.getElementById('cu-bill-delay').value,
-    'Order Verification': document.getElementById('cu-verify').value,
-    'Payment/Advance Check': document.getElementById('cu-advcheck').value,
-    'Remarks': document.getElementById('cu-remarks').value
-  }, r => {
+  var dateFields = ['cu-ps-plan','cu-ps-actual','cu-pc-plan','cu-pc-actual',
+                    'cu-pay-plan','cu-pay-actual','cu-disp-plan','cu-disp-actual',
+                    'cu-bill-plan','cu-bill-actual'];
+
+  var fieldMap = {
+    'Current Stage':             'cu-stage',
+    'Next Stage':                'cu-nextstage',
+    'Follow-up With':            'cu-followup',
+    'Production Start Plan':     'cu-ps-plan',
+    'Production Start Actual':   'cu-ps-actual',
+    'Production Complete Plan':  'cu-pc-plan',
+    'Production Complete Actual':'cu-pc-actual',
+    'Production Delay':          'cu-prod-delay',
+    'Payment Received Plan':     'cu-pay-plan',
+    'Payment Received Actual':   'cu-pay-actual',
+    'Payment Delay':             'cu-pay-delay',
+    'Ready to Dispatch Plan':    'cu-disp-plan',
+    'Ready to Dispatch Actual':  'cu-disp-actual',
+    'Dispatch Delay':            'cu-disp-delay',
+    'Billing Docs Plan':         'cu-bill-plan',
+    'Billing Docs Actual':       'cu-bill-actual',
+    'Billing Delay':             'cu-bill-delay',
+    'Order Verification':        'cu-verify',
+    'Payment/Advance Check':     'cu-advcheck',
+    'Remarks':                   'cu-remarks'
+  };
+
+  var params = { action: 'updateCRM', 'Order ID': document.getElementById('cu-orderid').value };
+
+  Object.entries(fieldMap).forEach(([key, id]) => {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var val = el.value;
+    if (!val) return; // skip blank — dont overwrite existing
+    // Format date fields
+    if (dateFields.includes(id)) val = fmtDate(val);
+    params[key] = val;
+  });
+
+  api(params, r => {
     if (r.success) { toast('CRM updated!'); closeModal('crmUpdateModal'); loadCRM(); }
     else toast(r.message, 'e');
   });
@@ -1197,20 +1213,47 @@ function openProdUpdate(p) {
   openModal('prodUpdateModal');
 }
 
+function fmtDate(val) {
+  if (!val) return '';
+  // If already dd/mm/yyyy format, return as is
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+  // Convert from yyyy-mm-dd or ISO format
+  var d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  return d.getDate().toString().padStart(2,'0') + '/' +
+         (d.getMonth()+1).toString().padStart(2,'0') + '/' +
+         d.getFullYear();
+}
+
 function submitProdUpdate() {
-  api({
-    action: 'updateProduction',
-    'Order ID': document.getElementById('pu-orderid').value,
-    'Product Model': document.getElementById('pu-model').value,
-    'Battery Type': document.getElementById('pu-btype').value,
-    'Status': document.getElementById('pu-status').value,
-    'Production Start Plan': document.getElementById('pu-sp').value,
-    'Production Start Actual': document.getElementById('pu-sa').value,
-    'Production Complete Plan': document.getElementById('pu-cp').value,
-    'Production Complete Actual': document.getElementById('pu-ca').value,
-    'Production Delay': document.getElementById('pu-delay').value,
-    'Remarks': document.getElementById('pu-remarks').value
-  }, r => {
+  // Only send fields that have values — dont overwrite existing with blank
+  var params = { action: 'updateProduction', 'Order ID': document.getElementById('pu-orderid').value };
+
+  var fields = [
+    ['Product Model',            'pu-model'],
+    ['Battery Type',             'pu-btype'],
+    ['Status',                   'pu-status'],
+    ['Production Start Plan',    'pu-sp'],
+    ['Production Start Actual',  'pu-sa'],
+    ['Production Complete Plan', 'pu-cp'],
+    ['Production Complete Actual','pu-ca'],
+    ['Production Delay',         'pu-delay'],
+    ['Remarks',                  'pu-remarks']
+  ];
+
+  fields.forEach(([key, id]) => {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var val = el.value;
+    if (!val) return; // skip blank — dont overwrite existing
+    // Format date fields
+    if (id.startsWith('pu-s') || id.startsWith('pu-c')) {
+      val = fmtDate(val);
+    }
+    params[key] = val;
+  });
+
+  api(params, r => {
     if (r.success) { toast('Production updated!'); closeModal('prodUpdateModal'); loadProduction(); }
     else toast(r.message, 'e');
   });
