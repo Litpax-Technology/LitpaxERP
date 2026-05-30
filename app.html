@@ -4,168 +4,175 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LitpaxERP — Enterprise Suite</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#060818;--surface:#0c0f1e;--surface2:#111528;--surface3:#161a2e;
-  --border:rgba(99,120,255,0.1);--border2:rgba(99,120,255,0.2);
-  --text:#eef0ff;--text2:#8892b0;--text3:rgba(136,146,176,0.5);
-  --accent:#6378ff;--accent2:#7c8fff;--accent-dim:rgba(99,120,255,0.08);
-  --success:#4ade80;--success-dim:rgba(74,222,128,0.1);
-  --warning:#fbbf24;--warning-dim:rgba(251,191,36,0.1);
-  --error:#f87171;--error-dim:rgba(248,113,113,0.1);
-  --info:#38bdf8;--info-dim:rgba(56,189,248,0.1);
+  --bg:#F5F6FA;--surface:#FFFFFF;--surface2:#F8F9FC;--surface3:#EEF0F7;
+  --border:#E2E5EF;--border2:#CDD1E0;
+  --text:#0F1523;--text2:#5A6282;--text3:#9BA3BF;
+  --accent:#4361EE;--accent2:#5A7AF5;--accent-dim:#EEF1FE;--accent-light:#F4F6FF;
+  --success:#22C55E;--success-dim:#ECFDF5;--success-border:#BBF7D0;
+  --warning:#F59E0B;--warning-dim:#FFFBEB;--warning-border:#FDE68A;
+  --error:#EF4444;--error-dim:#FEF2F2;--error-border:#FECACA;
+  --info:#3B82F6;--info-dim:#EFF6FF;--info-border:#BFDBFE;
+  --purple:#7C3AED;--purple-dim:#F5F3FF;
   --sidebar:220px;--topbar:56px;
+  --shadow:0 1px 3px rgba(15,21,35,0.06),0 1px 2px rgba(15,21,35,0.04);
+  --shadow-md:0 4px 12px rgba(15,21,35,0.08),0 2px 4px rgba(15,21,35,0.04);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
-body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:14px;}
 
 /* TOPBAR */
-.topbar{height:var(--topbar);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px 0 0;flex-shrink:0;z-index:100;}
-.topbar-left{display:flex;align-items:center;width:var(--sidebar);padding-left:20px;border-right:1px solid var(--border);}
-.logo{display:flex;align-items:center;gap:8px;}
-.logo-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#9b6bff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;box-shadow:0 0 14px rgba(99,120,255,0.35);}
-.logo-name{font-size:15px;font-weight:700;letter-spacing:-0.3px;}
+.topbar{height:var(--topbar);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px 0 0;flex-shrink:0;z-index:100;box-shadow:var(--shadow);}
+.topbar-left{display:flex;align-items:center;width:var(--sidebar);padding-left:18px;border-right:1px solid var(--border);height:100%;}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-mark{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;}
+.logo-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
 .logo-name span{color:var(--accent);}
 .topbar-mid{flex:1;padding:0 20px;}
 .page-title{font-size:15px;font-weight:600;color:var(--text);}
 .page-sub{font-size:12px;color:var(--text3);margin-top:1px;}
-.topbar-right{display:flex;align-items:center;gap:12px;}
-.user-chip{display:flex;align-items:center;gap:8px;background:var(--accent-dim);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;cursor:pointer;}
-.user-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#9b6bff);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;}
-.user-name{font-size:13px;font-weight:500;}
-.user-role{font-size:10px;color:var(--accent2);font-family:'JetBrains Mono',monospace;}
-.btn-logout{background:var(--error-dim);border:1px solid rgba(248,113,113,0.2);border-radius:8px;color:var(--error);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;}
-.btn-logout:hover{background:rgba(248,113,113,0.15);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.user-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:24px;padding:5px 12px 5px 5px;background:var(--surface2);}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;}
+.user-info .user-name{font-size:13px;font-weight:500;color:var(--text);line-height:1.2;}
+.user-info .user-role{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+.btn-logout{background:var(--error-dim);border:1px solid var(--error-border);border-radius:8px;color:var(--error);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;}
+.btn-logout:hover{background:#FEE2E2;}
 
 /* BODY */
 .app-body{display:flex;flex:1;overflow:hidden;}
 
 /* SIDEBAR */
-.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
-.nav-section{padding:16px 12px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-family:'JetBrains Mono',monospace;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;transition:all 0.15s;color:var(--text2);font-size:13px;font-weight:500;border:1px solid transparent;}
-.nav-item:hover{background:var(--accent-dim);color:var(--text);}
-.nav-item.active{background:var(--accent-dim);color:var(--accent);border-color:var(--border2);}
-.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
-.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;}
-.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border);}
-.sidebar-ver{font-size:10px;color:var(--text3);text-align:center;font-family:'JetBrains Mono',monospace;}
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;padding:8px 0;}
+.nav-section{padding:16px 16px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;transition:all 0.12s;color:var(--text2);font-size:13px;font-weight:500;}
+.nav-item:hover{background:var(--accent-light);color:var(--accent);}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.nav-item.active .nav-icon{color:var(--accent);}
+.nav-icon{font-size:16px;width:18px;text-align:center;flex-shrink:0;color:var(--text3);}
+.nav-item:hover .nav-icon{color:var(--accent);}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);}
+.sidebar-ver{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
 
 /* MAIN */
-.main{flex:1;overflow-y:auto;padding:24px;background:var(--bg);}
-
-/* PAGE */
+.main{flex:1;overflow-y:auto;padding:20px 24px;background:var(--bg);}
 .page{display:none;}
 .page.active{display:block;}
 
-/* STATS ROW */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
-.stat-card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;}
-.stat-card-val{font-size:24px;font-weight:700;letter-spacing:-0.5px;}
-.stat-card-sub{font-size:12px;color:var(--text3);margin-top:4px;}
-.stat-card.accent .stat-card-val{color:var(--accent);}
-.stat-card.success .stat-card-val{color:var(--success);}
-.stat-card.warning .stat-card-val{color:var(--warning);}
-.stat-card.error .stat-card-val{color:var(--error);}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);}
+.stat-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.stat-val{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.stat-card.c-accent .stat-val{color:var(--accent);}
+.stat-card.c-success .stat-val{color:var(--success);}
+.stat-card.c-warning .stat-val{color:var(--warning);}
+.stat-card.c-error .stat-val{color:var(--error);}
 
 /* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden;}
-.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
-.card-title{font-size:14px;font-weight:600;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);background:var(--surface);}
+.card-title{font-size:13px;font-weight:600;color:var(--text);}
 .card-actions{display:flex;gap:8px;}
-.card-body{padding:18px;}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--accent-dim);color:var(--accent);font-family:'Outfit',sans-serif;transition:all 0.15s;}
-.btn:hover{background:rgba(99,120,255,0.15);}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#8a6aff);color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(99,120,255,0.25);}
-.btn-primary:hover{opacity:0.9;box-shadow:0 4px 16px rgba(99,120,255,0.35);}
-.btn-sm{padding:5px 10px;font-size:12px;}
-.btn-success{background:var(--success-dim);color:var(--success);border-color:rgba(74,222,128,0.2);}
-.btn-danger{background:var(--error-dim);color:var(--error);border-color:rgba(248,113,113,0.2);}
-.btn-warning{background:var(--warning-dim);color:var(--warning);border-color:rgba(251,191,36,0.2);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-family:'Inter',sans-serif;transition:all 0.12s;white-space:nowrap;}
+.btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text);}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(67,97,238,0.25);}
+.btn-primary:hover{background:var(--accent2);border-color:var(--accent2);box-shadow:0 4px 12px rgba(67,97,238,0.3);}
+.btn-sm{padding:4px 10px;font-size:11px;}
+.btn-success{background:var(--success-dim);color:var(--success);border-color:var(--success-border);}
+.btn-success:hover{background:#D1FAE5;}
+.btn-warning{background:var(--warning-dim);color:var(--warning);border-color:var(--warning-border);}
+.btn-danger{background:var(--error-dim);color:var(--error);border-color:var(--error-border);}
 
 /* TABLE */
 .table-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--surface2);}
-td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:9px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--surface2);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:var(--accent-dim);color:var(--text);}
-.td-id{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);}
+tr:hover td{background:#F8F9FF;}
+.td-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);font-weight:500;}
 
 /* BADGES */
-.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
-.badge::before{content:'';width:5px;height:5px;border-radius:50%;}
-.badge-pending{background:var(--warning-dim);color:var(--warning);}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.badge-pending{background:var(--warning-dim);color:#B45309;border:1px solid var(--warning-border);}
 .badge-pending::before{background:var(--warning);}
-.badge-production{background:var(--info-dim);color:var(--info);}
+.badge-production{background:var(--info-dim);color:#1D4ED8;border:1px solid var(--info-border);}
 .badge-production::before{background:var(--info);}
-.badge-billed{background:rgba(139,92,246,0.1);color:#a78bfa;}
-.badge-billed::before{background:#a78bfa;}
-.badge-dispatched{background:var(--accent-dim);color:var(--accent2);}
+.badge-billed{background:var(--purple-dim);color:var(--purple);border:1px solid #DDD6FE;}
+.badge-billed::before{background:var(--purple);}
+.badge-dispatched{background:var(--accent-dim);color:var(--accent);border:1px solid #C7D2FE;}
 .badge-dispatched::before{background:var(--accent);}
-.badge-delivered{background:var(--success-dim);color:var(--success);}
+.badge-delivered{background:var(--success-dim);color:#15803D;border:1px solid var(--success-border);}
 .badge-delivered::before{background:var(--success);}
-.badge-paid{background:var(--success-dim);color:var(--success);}
+.badge-paid{background:var(--success-dim);color:#15803D;border:1px solid var(--success-border);}
 .badge-paid::before{background:var(--success);}
-.badge-partial{background:var(--warning-dim);color:var(--warning);}
+.badge-partial{background:var(--warning-dim);color:#B45309;border:1px solid var(--warning-border);}
 .badge-partial::before{background:var(--warning);}
+.badge-received{background:var(--success-dim);color:#15803D;border:1px solid var(--success-border);}
+.badge-received::before{background:var(--success);}
+.badge-inprogress{background:var(--info-dim);color:#1D4ED8;border:1px solid var(--info-border);}
+.badge-inprogress::before{background:var(--info);}
+.badge-complete{background:var(--success-dim);color:#15803D;border:1px solid var(--success-border);}
+.badge-complete::before{background:var(--success);}
+.badge-qcpending{background:var(--warning-dim);color:#B45309;border:1px solid var(--warning-border);}
+.badge-qcpending::before{background:var(--warning);}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:center;gap:0;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);overflow-x:auto;}
+.pipe-node{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:8px;cursor:pointer;transition:all 0.15s;min-width:90px;border:1px solid transparent;}
+.pipe-node:hover{background:var(--accent-light);border-color:#C7D2FE;}
+.pipe-node.active{background:var(--accent-dim);border-color:var(--accent);}
+.pipe-icon{font-size:18px;}
+.pipe-count{font-size:18px;font-weight:700;color:var(--text);line-height:1;}
+.pipe-node.active .pipe-count{color:var(--accent);}
+.pipe-label{font-size:10px;font-weight:500;color:var(--text3);}
+.pipe-node.active .pipe-label{color:var(--accent);}
+.pipe-arrow{color:var(--border2);font-size:14px;padding:0 2px;flex-shrink:0;}
 
 /* FORM */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .form-full{grid-column:1/-1;}
-.form-group{display:flex;flex-direction:column;gap:6px;}
-.form-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'JetBrains Mono',monospace;}
-.form-control{padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
-.form-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,120,255,0.1);}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;}
+.form-control{padding:8px 11px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.form-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(67,97,238,0.1);}
 .form-control::placeholder{color:var(--text3);}
-select.form-control option{background:var(--surface2);}
-.form-actions{display:flex;gap:10px;margin-top:6px;}
+select.form-control{cursor:pointer;}
 
 /* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,21,35,0.35);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
 .modal-overlay.show{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,0.5);animation:modalIn 0.25s cubic-bezier(0.16,1,0.3,1);}
-@keyframes modalIn{from{opacity:0;transform:scale(0.95)translateY(10px);}to{opacity:1;transform:scale(1)translateY(0);}}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);}
-.modal-title{font-size:15px;font-weight:600;}
-.modal-close{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 48px rgba(15,21,35,0.15),0 8px 16px rgba(15,21,35,0.08);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+.modal-title{font-size:14px;font-weight:600;color:var(--text);}
+.modal-close{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;transition:all 0.12s;}
 .modal-close:hover{background:var(--surface2);color:var(--text);}
-.modal-body{padding:20px;}
-.modal-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.modal-body{padding:18px 20px;}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface2);}
 
 /* TOAST */
-.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
-.toast{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:toastIn 0.3s cubic-bezier(0.16,1,0.3,1);}
-@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
-.toast.success{border-color:rgba(74,222,128,0.3);}
-.toast.error{border-color:rgba(248,113,113,0.3);}
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:9px;min-width:260px;box-shadow:var(--shadow-md);}
+.toast.success{border-left:3px solid var(--success);}
+.toast.error{border-left:3px solid var(--error);}
 
 /* LOADING */
-.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:13px;gap:10px;}
-.spin{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
+.loading{display:flex;align-items:center;justify-content:center;padding:36px;color:var(--text3);font-size:13px;gap:10px;}
+.spin{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* EMPTY STATE */
-.empty{text-align:center;padding:48px 20px;color:var(--text3);}
-.empty-icon{font-size:40px;margin-bottom:12px;}
-.empty-text{font-size:14px;}
-
-/* STATUS PIPELINE */
-.pipeline{display:flex;align-items:center;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:4px;}
-.pipe-step{display:flex;align-items:center;gap:0;flex-shrink:0;}
-.pipe-node{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all 0.15s;min-width:100px;}
-.pipe-node:hover{border-color:var(--border2);background:var(--accent-dim);}
-.pipe-node.active{border-color:var(--accent);background:var(--accent-dim);}
-.pipe-node-icon{font-size:18px;}
-.pipe-node-label{font-size:11px;font-weight:600;color:var(--text2);}
-.pipe-node-count{font-size:18px;font-weight:700;color:var(--accent);}
-.pipe-arrow{font-size:16px;color:var(--text3);padding:0 4px;}
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+.empty-text{font-size:13px;color:var(--text3);}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px;}
@@ -174,14 +181,12 @@ select.form-control option{background:var(--surface2);}
 
 @media(max-width:768px){
   .sidebar{display:none;}
-  .form-grid,.form-grid-3{grid-template-columns:1fr;}
-  .stats-row{grid-template-columns:1fr 1fr;}
+  .form-grid{grid-template-columns:1fr;}
 }
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-left">
     <div class="logo">
@@ -196,7 +201,7 @@ select.form-control option{background:var(--surface2);}
   <div class="topbar-right">
     <div class="user-chip">
       <div class="user-avatar" id="userAvatar">D</div>
-      <div>
+      <div class="user-info">
         <div class="user-name" id="userName">Darpan</div>
         <div class="user-role" id="userRole">Admin</div>
       </div>
@@ -205,100 +210,65 @@ select.form-control option{background:var(--surface2);}
   </div>
 </div>
 
-<!-- BODY -->
 <div class="app-body">
-
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="nav-section">Main</div>
-    <div class="nav-item active" onclick="showPage('sales',this)" id="nav-sales">
-      <span class="nav-icon">📋</span> Sales Orders
-    </div>
-    <div class="nav-item" onclick="showPage('production',this)" id="nav-production">
-      <span class="nav-icon">⚙️</span> Production
-    </div>
-    <div class="nav-item" onclick="showPage('billing',this)" id="nav-billing">
-      <span class="nav-icon">🧾</span> Billing
-    </div>
-    <div class="nav-item" onclick="showPage('dispatch',this)" id="nav-dispatch">
-      <span class="nav-icon">📦</span> Dispatch
-    </div>
+    <div class="nav-item active" onclick="showPage('sales',this)" id="nav-sales"><span class="nav-icon">📋</span> Sales Orders</div>
+    <div class="nav-item" onclick="showPage('production',this)" id="nav-production"><span class="nav-icon">⚙️</span> Production</div>
+    <div class="nav-item" onclick="showPage('billing',this)" id="nav-billing"><span class="nav-icon">🧾</span> Billing</div>
+    <div class="nav-item" onclick="showPage('dispatch',this)" id="nav-dispatch"><span class="nav-icon">📦</span> Dispatch</div>
     <div class="nav-section">Operations</div>
-    <div class="nav-item" onclick="showPage('purchase',this)" id="nav-purchase">
-      <span class="nav-icon">🛒</span> Purchase
-    </div>
+    <div class="nav-item" onclick="showPage('purchase',this)" id="nav-purchase"><span class="nav-icon">🛒</span> Purchase</div>
     <div class="nav-section">Master Data</div>
-    <div class="nav-item" onclick="showPage('customers',this)" id="nav-customers">
-      <span class="nav-icon">👥</span> Customers
-    </div>
-    <div class="nav-item" onclick="showPage('products',this)" id="nav-products">
-      <span class="nav-icon">⚡</span> Products
-    </div>
-    <div class="nav-item" onclick="showPage('suppliers',this)" id="nav-suppliers">
-      <span class="nav-icon">🏭</span> Suppliers
-    </div>
+    <div class="nav-item" onclick="showPage('customers',this)" id="nav-customers"><span class="nav-icon">👥</span> Customers</div>
+    <div class="nav-item" onclick="showPage('products',this)" id="nav-products"><span class="nav-icon">⚡</span> Products</div>
+    <div class="nav-item" onclick="showPage('suppliers',this)" id="nav-suppliers"><span class="nav-icon">🏭</span> Suppliers</div>
     <div class="nav-section">Admin</div>
-    <div class="nav-item" onclick="showPage('users',this)" id="nav-users">
-      <span class="nav-icon">🔐</span> Users
-    </div>
-    <div class="sidebar-footer">
-      <div class="sidebar-ver">LitpaxERP v2.0</div>
-    </div>
+    <div class="nav-item" onclick="showPage('users',this)" id="nav-users"><span class="nav-icon">🔐</span> Users</div>
+    <div class="sidebar-footer"><div class="sidebar-ver">LitpaxERP v2.0</div></div>
   </div>
 
-  <!-- MAIN CONTENT -->
   <div class="main" id="mainContent">
 
-    <!-- SALES ORDERS -->
+    <!-- SALES -->
     <div class="page active" id="page-sales">
       <div class="pipeline" id="salesPipeline">
-        <div class="pipe-step"><div class="pipe-node active" onclick="filterSO('all')"><div class="pipe-node-icon">📋</div><div class="pipe-node-count" id="cnt-all">0</div><div class="pipe-node-label">All Orders</div></div></div>
+        <div class="pipe-node active" onclick="filterSO('all')"><div class="pipe-icon">📋</div><div class="pipe-count" id="cnt-all">0</div><div class="pipe-label">All Orders</div></div>
         <div class="pipe-arrow">›</div>
-        <div class="pipe-step"><div class="pipe-node" onclick="filterSO('Pending')"><div class="pipe-node-icon">⏳</div><div class="pipe-node-count" id="cnt-pending">0</div><div class="pipe-node-label">Pending</div></div></div>
+        <div class="pipe-node" onclick="filterSO('Pending')"><div class="pipe-icon">⏳</div><div class="pipe-count" id="cnt-pending">0</div><div class="pipe-label">Pending</div></div>
         <div class="pipe-arrow">›</div>
-        <div class="pipe-step"><div class="pipe-node" onclick="filterSO('In Production')"><div class="pipe-node-icon">⚙️</div><div class="pipe-node-count" id="cnt-prod">0</div><div class="pipe-node-label">Production</div></div></div>
+        <div class="pipe-node" onclick="filterSO('In Production')"><div class="pipe-icon">⚙️</div><div class="pipe-count" id="cnt-prod">0</div><div class="pipe-label">Production</div></div>
         <div class="pipe-arrow">›</div>
-        <div class="pipe-step"><div class="pipe-node" onclick="filterSO('Billed')"><div class="pipe-node-icon">🧾</div><div class="pipe-node-count" id="cnt-billed">0</div><div class="pipe-node-label">Billed</div></div></div>
+        <div class="pipe-node" onclick="filterSO('Billed')"><div class="pipe-icon">🧾</div><div class="pipe-count" id="cnt-billed">0</div><div class="pipe-label">Billed</div></div>
         <div class="pipe-arrow">›</div>
-        <div class="pipe-step"><div class="pipe-node" onclick="filterSO('Dispatched')"><div class="pipe-node-icon">📦</div><div class="pipe-node-count" id="cnt-disp">0</div><div class="pipe-node-label">Dispatched</div></div></div>
+        <div class="pipe-node" onclick="filterSO('Dispatched')"><div class="pipe-icon">📦</div><div class="pipe-count" id="cnt-disp">0</div><div class="pipe-label">Dispatched</div></div>
         <div class="pipe-arrow">›</div>
-        <div class="pipe-step"><div class="pipe-node" onclick="filterSO('Delivered')"><div class="pipe-node-icon">✅</div><div class="pipe-node-count" id="cnt-del">0</div><div class="pipe-node-label">Delivered</div></div></div>
+        <div class="pipe-node" onclick="filterSO('Delivered')"><div class="pipe-icon">✅</div><div class="pipe-count" id="cnt-del">0</div><div class="pipe-label">Delivered</div></div>
       </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">Sales Orders</div>
-          <div class="card-actions">
-            <button class="btn btn-primary" onclick="openModal('soModal')">+ New Order</button>
-          </div>
+          <button class="btn btn-primary" onclick="openModal('soModal')">+ New Order</button>
         </div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>SO ID</th><th>Date</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Delivery</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="soTable"><tr><td colspan="9"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>SO ID</th><th>Date</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Delivery</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="soTable"><tr><td colspan="9"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
 
     <!-- PRODUCTION -->
     <div class="page" id="page-production">
-      <div class="stats-row" id="prodStats">
-        <div class="stat-card accent"><div class="stat-card-label">Active Work Orders</div><div class="stat-card-val" id="wo-active">0</div><div class="stat-card-sub">Currently running</div></div>
-        <div class="stat-card success"><div class="stat-card-label">Completed Today</div><div class="stat-card-val" id="wo-done">0</div><div class="stat-card-sub">Work orders</div></div>
-        <div class="stat-card warning"><div class="stat-card-label">Pending</div><div class="stat-card-val" id="wo-pending">0</div><div class="stat-card-sub">Not started</div></div>
+      <div class="stats-row">
+        <div class="stat-card c-accent"><div class="stat-label">Active Work Orders</div><div class="stat-val" id="wo-active">0</div></div>
+        <div class="stat-card c-success"><div class="stat-label">Completed</div><div class="stat-val" id="wo-done">0</div></div>
+        <div class="stat-card c-warning"><div class="stat-label">Pending</div><div class="stat-val" id="wo-pending">0</div></div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Work Orders</div>
-          <div class="card-actions">
-            <button class="btn btn-primary" onclick="openModal('woModal')">+ New Work Order</button>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Work Orders</div><button class="btn btn-primary" onclick="openModal('woModal')">+ New Work Order</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>WO ID</th><th>SO ID</th><th>Product</th><th>Target</th><th>Produced</th><th>Rejected</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="woTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>WO ID</th><th>SO ID</th><th>Product</th><th>Target</th><th>Produced</th><th>Rejected</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="woTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -306,23 +276,16 @@ select.form-control option{background:var(--surface2);}
     <!-- BILLING -->
     <div class="page" id="page-billing">
       <div class="stats-row">
-        <div class="stat-card accent"><div class="stat-card-label">Total Invoices</div><div class="stat-card-val" id="inv-total">0</div></div>
-        <div class="stat-card warning"><div class="stat-card-label">Pending Payment</div><div class="stat-card-val" id="inv-pending">0</div></div>
-        <div class="stat-card success"><div class="stat-card-label">Paid</div><div class="stat-card-val" id="inv-paid">0</div></div>
-        <div class="stat-card error"><div class="stat-card-label">Outstanding (₹)</div><div class="stat-card-val" id="inv-outstanding">0</div></div>
+        <div class="stat-card c-accent"><div class="stat-label">Total Invoices</div><div class="stat-val" id="inv-total">0</div></div>
+        <div class="stat-card c-warning"><div class="stat-label">Pending Payment</div><div class="stat-val" id="inv-pending">0</div></div>
+        <div class="stat-card c-success"><div class="stat-label">Paid</div><div class="stat-val" id="inv-paid">0</div></div>
+        <div class="stat-card c-error"><div class="stat-label">Outstanding (₹)</div><div class="stat-val" id="inv-outstanding">0</div></div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Invoices</div>
-          <div class="card-actions">
-            <button class="btn btn-primary" onclick="openModal('invModal')">+ New Invoice</button>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Invoices</div><button class="btn btn-primary" onclick="openModal('invModal')">+ New Invoice</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Invoice ID</th><th>SO ID</th><th>Customer</th><th>Date</th><th>Amount</th><th>Paid</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="invTable"><tr><td colspan="9"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>Invoice ID</th><th>SO ID</th><th>Customer</th><th>Date</th><th>Amount</th><th>Paid</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="invTable"><tr><td colspan="9"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -330,22 +293,15 @@ select.form-control option{background:var(--surface2);}
     <!-- DISPATCH -->
     <div class="page" id="page-dispatch">
       <div class="stats-row">
-        <div class="stat-card accent"><div class="stat-card-label">Total Challans</div><div class="stat-card-val" id="dc-total">0</div></div>
-        <div class="stat-card warning"><div class="stat-card-label">In Transit</div><div class="stat-card-val" id="dc-transit">0</div></div>
-        <div class="stat-card success"><div class="stat-card-label">Delivered</div><div class="stat-card-val" id="dc-delivered">0</div></div>
+        <div class="stat-card c-accent"><div class="stat-label">Total Challans</div><div class="stat-val" id="dc-total">0</div></div>
+        <div class="stat-card c-warning"><div class="stat-label">In Transit</div><div class="stat-val" id="dc-transit">0</div></div>
+        <div class="stat-card c-success"><div class="stat-label">Delivered</div><div class="stat-val" id="dc-delivered">0</div></div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Dispatch Challans</div>
-          <div class="card-actions">
-            <button class="btn btn-primary" onclick="openModal('dcModal')">+ New Challan</button>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Dispatch Challans</div><button class="btn btn-primary" onclick="openModal('dcModal')">+ New Challan</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Challan ID</th><th>SO ID</th><th>Invoice</th><th>Dispatch Date</th><th>Transporter</th><th>Vehicle</th><th>LR No.</th><th>E-Way Bill</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="dcTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>Challan ID</th><th>SO ID</th><th>Invoice</th><th>Dispatch Date</th><th>Transporter</th><th>Vehicle</th><th>LR No.</th><th>E-Way Bill</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="dcTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -353,22 +309,15 @@ select.form-control option{background:var(--surface2);}
     <!-- PURCHASE -->
     <div class="page" id="page-purchase">
       <div class="stats-row">
-        <div class="stat-card accent"><div class="stat-card-label">Total POs</div><div class="stat-card-val" id="po-total">0</div></div>
-        <div class="stat-card warning"><div class="stat-card-label">Pending</div><div class="stat-card-val" id="po-pending">0</div></div>
-        <div class="stat-card success"><div class="stat-card-label">Received</div><div class="stat-card-val" id="po-received">0</div></div>
+        <div class="stat-card c-accent"><div class="stat-label">Total POs</div><div class="stat-val" id="po-total">0</div></div>
+        <div class="stat-card c-warning"><div class="stat-label">Pending</div><div class="stat-val" id="po-pending">0</div></div>
+        <div class="stat-card c-success"><div class="stat-label">Received</div><div class="stat-val" id="po-received">0</div></div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Purchase Orders</div>
-          <div class="card-actions">
-            <button class="btn btn-primary" onclick="openModal('poModal')">+ New PO</button>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Purchase Orders</div><button class="btn btn-primary" onclick="openModal('poModal')">+ New PO</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>PO ID</th><th>Supplier</th><th>Item</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Total</th><th>Order Date</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="poTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>PO ID</th><th>Supplier</th><th>Item</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Total</th><th>Order Date</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="poTable"><tr><td colspan="10"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -376,15 +325,10 @@ select.form-control option{background:var(--surface2);}
     <!-- CUSTOMERS -->
     <div class="page" id="page-customers">
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Customers</div>
-          <div class="card-actions"><button class="btn btn-primary" onclick="openModal('custModal')">+ Add Customer</button></div>
-        </div>
+        <div class="card-header"><div class="card-title">Customers</div><button class="btn btn-primary" onclick="openModal('custModal')">+ Add Customer</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th></tr></thead>
-            <tbody id="custTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th></tr></thead>
+          <tbody id="custTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -392,15 +336,10 @@ select.form-control option{background:var(--surface2);}
     <!-- PRODUCTS -->
     <div class="page" id="page-products">
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Products</div>
-          <div class="card-actions"><button class="btn btn-primary" onclick="openModal('prodModal')">+ Add Product</button></div>
-        </div>
+        <div class="card-header"><div class="card-title">Products</div><button class="btn btn-primary" onclick="openModal('prodModal')">+ Add Product</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Product Name</th><th>Category</th><th>Sale Price</th><th>HSN Code</th><th>GST %</th><th>Unit</th></tr></thead>
-            <tbody id="prodTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>ID</th><th>Product Name</th><th>Category</th><th>Sale Price</th><th>HSN Code</th><th>GST %</th><th>Unit</th></tr></thead>
+          <tbody id="prodTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -408,15 +347,10 @@ select.form-control option{background:var(--surface2);}
     <!-- SUPPLIERS -->
     <div class="page" id="page-suppliers">
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Suppliers</div>
-          <div class="card-actions"><button class="btn btn-primary" onclick="openModal('suppModal')">+ Add Supplier</button></div>
-        </div>
+        <div class="card-header"><div class="card-title">Suppliers</div><button class="btn btn-primary" onclick="openModal('suppModal')">+ Add Supplier</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th></tr></thead>
-            <tbody id="suppTable"><tr><td colspan="6"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th></tr></thead>
+          <tbody id="suppTable"><tr><td colspan="6"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -424,28 +358,20 @@ select.form-control option{background:var(--surface2);}
     <!-- USERS -->
     <div class="page" id="page-users">
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">Users & Access</div>
-          <div class="card-actions"><button class="btn btn-primary" onclick="openModal('userModal')">+ Add User</button></div>
-        </div>
+        <div class="card-header"><div class="card-title">Users & Access</div><button class="btn btn-primary" onclick="openModal('userModal')">+ Add User</button></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Role</th><th>Active</th></tr></thead>
-            <tbody id="usersTable"><tr><td colspan="5"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
-          </table>
+          <table><thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Role</th><th>Active</th></tr></thead>
+          <tbody id="usersTable"><tr><td colspan="5"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody></table>
         </div>
       </div>
     </div>
 
-  </div><!-- end main -->
-</div><!-- end app-body -->
+  </div>
+</div>
 
-<!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ===== MODALS ===== -->
-
-<!-- NEW SALES ORDER -->
+<!-- MODALS -->
 <div class="modal-overlay" id="soModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">New Sales Order</div><button class="modal-close" onclick="closeModal('soModal')">✕</button></div>
@@ -456,62 +382,46 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Quantity</label><input class="form-control" type="number" id="so-qty" placeholder="0" oninput="calcSOTotal()"></div>
         <div class="form-group"><label class="form-label">Unit Price (₹)</label><input class="form-control" type="number" id="so-price" placeholder="0" oninput="calcSOTotal()"></div>
         <div class="form-group"><label class="form-label">GST %</label><input class="form-control" type="number" id="so-gst" placeholder="18" oninput="calcSOTotal()"></div>
-        <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-control" type="text" id="so-total" readonly placeholder="Auto calculated"></div>
+        <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-control" id="so-total" readonly placeholder="Auto calculated"></div>
         <div class="form-group"><label class="form-label">Delivery Date</label><input class="form-control" type="date" id="so-delivery"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('soModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitSO()">Create Order</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('soModal')">Cancel</button><button class="btn btn-primary" onclick="submitSO()">Create Order</button></div>
   </div>
 </div>
 
-<!-- NEW WORK ORDER -->
 <div class="modal-overlay" id="woModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">New Work Order</div><button class="modal-close" onclick="closeModal('woModal')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Sales Order ID</label><input class="form-control" id="wo-soid" placeholder="SO-0001 (optional)"></div>
+        <div class="form-group"><label class="form-label">Sales Order ID (optional)</label><input class="form-control" id="wo-soid" placeholder="SO-0001"></div>
         <div class="form-group"><label class="form-label">Product</label><select class="form-control" id="wo-product"></select></div>
         <div class="form-group"><label class="form-label">Target Qty</label><input class="form-control" type="number" id="wo-target" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Start Date</label><input class="form-control" type="date" id="wo-start"></div>
         <div class="form-group"><label class="form-label">End Date</label><input class="form-control" type="date" id="wo-end"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('woModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitWO()">Create Work Order</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('woModal')">Cancel</button><button class="btn btn-primary" onclick="submitWO()">Create Work Order</button></div>
   </div>
 </div>
 
-<!-- UPDATE WORK ORDER -->
 <div class="modal-overlay" id="woUpdateModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Update Work Order</div><button class="modal-close" onclick="closeModal('woUpdateModal')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label class="form-label">WO ID</label><input class="form-control" id="wou-id" readonly></div>
-        <div class="form-group"><label class="form-label">Status</label>
-          <select class="form-control" id="wou-status">
-            <option>Pending</option><option>In Progress</option><option>QC Pending</option><option>Complete</option>
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="wou-status"><option>Pending</option><option>In Progress</option><option>QC Pending</option><option>Complete</option></select></div>
         <div class="form-group"><label class="form-label">Produced Qty</label><input class="form-control" type="number" id="wou-produced" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Rejected Qty</label><input class="form-control" type="number" id="wou-rejected" placeholder="0"></div>
         <div class="form-group"><label class="form-label">End Date</label><input class="form-control" type="date" id="wou-end"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('woUpdateModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitWOUpdate()">Update</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('woUpdateModal')">Cancel</button><button class="btn btn-primary" onclick="submitWOUpdate()">Update</button></div>
   </div>
 </div>
 
-<!-- NEW INVOICE -->
 <div class="modal-overlay" id="invModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Create Invoice</div><button class="modal-close" onclick="closeModal('invModal')">✕</button></div>
@@ -523,32 +433,24 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Due Date</label><input class="form-control" type="date" id="inv-due"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('invModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitInv()">Create Invoice</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('invModal')">Cancel</button><button class="btn btn-primary" onclick="submitInv()">Create Invoice</button></div>
   </div>
 </div>
 
-<!-- UPDATE PAYMENT -->
 <div class="modal-overlay" id="payModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Update Payment</div><button class="modal-close" onclick="closeModal('payModal')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Invoice ID</label><input class="form-control" id="pay-id" readonly></div>
-        <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-control" id="pay-total" readonly></div>
+        <div class="form-group"><label class="form-label">Total Amount</label><input class="form-control" id="pay-total" readonly></div>
         <div class="form-group form-full"><label class="form-label">Paid Amount (₹)</label><input class="form-control" type="number" id="pay-amount" placeholder="0"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('payModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitPayment()">Update Payment</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('payModal')">Cancel</button><button class="btn btn-primary" onclick="submitPayment()">Update Payment</button></div>
   </div>
 </div>
 
-<!-- NEW DISPATCH -->
 <div class="modal-overlay" id="dcModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">New Dispatch Challan</div><button class="modal-close" onclick="closeModal('dcModal')">✕</button></div>
@@ -562,14 +464,10 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">E-Way Bill No.</label><input class="form-control" id="dc-eway" placeholder="E-way bill number"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('dcModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitDC()">Create Challan</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('dcModal')">Cancel</button><button class="btn btn-primary" onclick="submitDC()">Create Challan</button></div>
   </div>
 </div>
 
-<!-- NEW PO -->
 <div class="modal-overlay" id="poModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">New Purchase Order</div><button class="modal-close" onclick="closeModal('poModal')">✕</button></div>
@@ -578,21 +476,15 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Supplier</label><select class="form-control" id="po-supplier"></select></div>
         <div class="form-group"><label class="form-label">Item Name</label><input class="form-control" id="po-item" placeholder="Material name"></div>
         <div class="form-group"><label class="form-label">Quantity</label><input class="form-control" type="number" id="po-qty" placeholder="0" oninput="calcPOTotal()"></div>
-        <div class="form-group"><label class="form-label">Unit</label>
-          <select class="form-control" id="po-unit"><option>kg</option><option>pcs</option><option>L</option><option>m²</option><option>MT</option></select>
-        </div>
+        <div class="form-group"><label class="form-label">Unit</label><select class="form-control" id="po-unit"><option>kg</option><option>pcs</option><option>L</option><option>m²</option><option>MT</option></select></div>
         <div class="form-group"><label class="form-label">Unit Rate (₹)</label><input class="form-control" type="number" id="po-rate" placeholder="0" oninput="calcPOTotal()"></div>
         <div class="form-group"><label class="form-label">Total Value (₹)</label><input class="form-control" id="po-total" readonly placeholder="Auto calculated"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('poModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitPO()">Create PO</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('poModal')">Cancel</button><button class="btn btn-primary" onclick="submitPO()">Create PO</button></div>
   </div>
 </div>
 
-<!-- ADD CUSTOMER -->
 <div class="modal-overlay" id="custModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Add Customer</div><button class="modal-close" onclick="closeModal('custModal')">✕</button></div>
@@ -607,14 +499,10 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Credit Days</label><input class="form-control" type="number" id="c-credit" placeholder="30"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('custModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitCust()">Add Customer</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('custModal')">Cancel</button><button class="btn btn-primary" onclick="submitCust()">Add Customer</button></div>
   </div>
 </div>
 
-<!-- ADD PRODUCT -->
 <div class="modal-overlay" id="prodModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Add Product</div><button class="modal-close" onclick="closeModal('prodModal')">✕</button></div>
@@ -629,14 +517,10 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Unit</label><input class="form-control" id="p-unit" placeholder="pcs / kg"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('prodModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitProd()">Add Product</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('prodModal')">Cancel</button><button class="btn btn-primary" onclick="submitProd()">Add Product</button></div>
   </div>
 </div>
 
-<!-- ADD SUPPLIER -->
 <div class="modal-overlay" id="suppModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Add Supplier</div><button class="modal-close" onclick="closeModal('suppModal')">✕</button></div>
@@ -650,14 +534,10 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">City</label><input class="form-control" id="s-city" placeholder="City"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('suppModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitSupp()">Add Supplier</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('suppModal')">Cancel</button><button class="btn btn-primary" onclick="submitSupp()">Add Supplier</button></div>
   </div>
 </div>
 
-<!-- ADD USER -->
 <div class="modal-overlay" id="userModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">Add User</div><button class="modal-close" onclick="closeModal('userModal')">✕</button></div>
@@ -667,509 +547,71 @@ select.form-control option{background:var(--surface2);}
         <div class="form-group"><label class="form-label">Full Name</label><input class="form-control" id="u-name" placeholder="Full name"></div>
         <div class="form-group"><label class="form-label">Username</label><input class="form-control" id="u-uname" placeholder="username"></div>
         <div class="form-group"><label class="form-label">Password</label><input class="form-control" type="password" id="u-pass" placeholder="Password"></div>
-        <div class="form-group"><label class="form-label">Role</label>
-          <select class="form-control" id="u-role">
-            <option>Admin</option><option>Sales</option><option>Production</option><option>Accounts</option><option>Dispatch</option><option>Store</option>
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Role</label><select class="form-control" id="u-role"><option>Admin</option><option>Sales</option><option>Production</option><option>Accounts</option><option>Dispatch</option><option>Store</option></select></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('userModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitUser()">Add User</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="submitUser()">Add User</button></div>
   </div>
 </div>
 
 <script>
 const API='https://script.google.com/macros/s/AKfycbzGJB1DCZNv37urxSyTj9cqq5kpE_fnXm3ZpRbxor_06OLObcxJzyCPH5blP059vM-p3Q/exec';
 let customers=[],products=[],suppliers=[],allSO=[];
-
-// AUTH CHECK
 const userStr=sessionStorage.getItem('erp_user');
 if(!userStr){window.location.href='index.html';}
 const user=JSON.parse(userStr||'{}');
 document.getElementById('userName').textContent=user.name||'User';
 document.getElementById('userRole').textContent=user.role||'';
 document.getElementById('userAvatar').textContent=(user.name||'U')[0].toUpperCase();
-
-// ROLE ACCESS
-const roleAccess={
-  Admin:['sales','production','billing','dispatch','purchase','customers','products','suppliers','users'],
-  Sales:['sales','customers','products'],
-  Production:['production','products'],
-  Accounts:['billing','customers'],
-  Dispatch:['dispatch','sales'],
-  Store:['purchase','suppliers']
-};
-function applyRoleAccess(){
-  const allowed=roleAccess[user.role]||roleAccess['Admin'];
-  document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
-    const mod=el.id.replace('nav-','');
-    el.style.display=allowed.includes(mod)?'flex':'none';
-  });
-}
+const roleAccess={Admin:['sales','production','billing','dispatch','purchase','customers','products','suppliers','users'],Sales:['sales','customers','products'],Production:['production','products'],Accounts:['billing','customers'],Dispatch:['dispatch','sales'],Store:['purchase','suppliers']};
+function applyRoleAccess(){const allowed=roleAccess[user.role]||roleAccess['Admin'];document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{const mod=el.id.replace('nav-','');el.style.display=allowed.includes(mod)?'flex':'none';});}
 applyRoleAccess();
-
-// PAGE NAVIGATION
-const pageMeta={
-  sales:{title:'Sales Orders',sub:'Manage customer orders'},
-  production:{title:'Production',sub:'Work orders & manufacturing'},
-  billing:{title:'Billing & Invoices',sub:'Invoice & payment tracking'},
-  dispatch:{title:'Dispatch & Delivery',sub:'Challans & delivery status'},
-  purchase:{title:'Purchase Orders',sub:'Supplier & PO management'},
-  customers:{title:'Customers',sub:'Customer master data'},
-  products:{title:'Products',sub:'Product master data'},
-  suppliers:{title:'Suppliers',sub:'Supplier master data'},
-  users:{title:'Users & Access',sub:'Role-based user management'}
-};
-function showPage(id,el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  if(el)el.classList.add('active');
-  const m=pageMeta[id]||{};
-  document.getElementById('pageTitle').textContent=m.title||id;
-  document.getElementById('pageSub').textContent=m.sub||'';
-  loadPage(id);
-}
-function loadPage(id){
-  if(id==='sales')loadSO();
-  else if(id==='production')loadWO();
-  else if(id==='billing')loadInv();
-  else if(id==='dispatch')loadDC();
-  else if(id==='purchase')loadPO();
-  else if(id==='customers')loadCustomers();
-  else if(id==='products')loadProducts();
-  else if(id==='suppliers')loadSuppliers();
-  else if(id==='users')loadUsers();
-}
-
-// API CALL
-function api(params,cb){
-  const key='cb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-  window[key]=function(res){cb(res);delete window[key];};
-  const qs=Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
-  const s=document.createElement('script');
-  s.src=`${API}?${qs}&callback=${key}`;
-  s.onerror=()=>{cb({success:false,message:'Network error'});};
-  document.body.appendChild(s);
-}
-
-// TOAST
-function toast(msg,type='success'){
-  const t=document.getElementById('toastContainer');
-  const d=document.createElement('div');
-  d.className=`toast ${type}`;
-  d.innerHTML=`<span>${type==='success'?'✅':'❌'}</span><span>${msg}</span>`;
-  t.appendChild(d);
-  setTimeout(()=>d.remove(),3500);
-}
-
-// MODAL
-function openModal(id){
-  document.getElementById(id).classList.add('show');
-  if(id==='soModal')populateSOForm();
-  if(id==='woModal')populateWOForm();
-  if(id==='invModal')populateInvForm();
-  if(id==='poModal')populatePOForm();
-  if(id==='custModal'){}
-}
+const pageMeta={sales:{title:'Sales Orders',sub:'Manage customer orders'},production:{title:'Production',sub:'Work orders & manufacturing'},billing:{title:'Billing & Invoices',sub:'Invoice & payment tracking'},dispatch:{title:'Dispatch & Delivery',sub:'Challans & delivery status'},purchase:{title:'Purchase Orders',sub:'Supplier & PO management'},customers:{title:'Customers',sub:'Customer master data'},products:{title:'Products',sub:'Product master data'},suppliers:{title:'Suppliers',sub:'Supplier master data'},users:{title:'Users & Access',sub:'Role-based user management'}};
+function showPage(id,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');if(el)el.classList.add('active');const m=pageMeta[id]||{};document.getElementById('pageTitle').textContent=m.title||id;document.getElementById('pageSub').textContent=m.sub||'';loadPage(id);}
+function loadPage(id){if(id==='sales')loadSO();else if(id==='production')loadWO();else if(id==='billing')loadInv();else if(id==='dispatch')loadDC();else if(id==='purchase')loadPO();else if(id==='customers')loadCustomers();else if(id==='products')loadProducts();else if(id==='suppliers')loadSuppliers();else if(id==='users')loadUsers();}
+function api(params,cb){const key='cb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);window[key]=function(res){cb(res);delete window[key];};const qs=Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');const s=document.createElement('script');s.src=`${API}?${qs}&callback=${key}`;s.onerror=()=>{cb({success:false,message:'Network error'});};document.body.appendChild(s);}
+function toast(msg,type='success'){const t=document.getElementById('toastContainer');const d=document.createElement('div');d.className=`toast ${type}`;d.innerHTML=`<span>${type==='success'?'✅':'❌'}</span><span>${msg}</span>`;t.appendChild(d);setTimeout(()=>d.remove(),3500);}
+function openModal(id){document.getElementById(id).classList.add('show');if(id==='soModal')populateSOForm();if(id==='woModal')populateWOForm();if(id==='invModal')populateInvForm();if(id==='poModal')populatePOForm();}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
-document.querySelectorAll('.modal-overlay').forEach(m=>{
-  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');});
-});
-
-// BADGE
-function badge(status){
-  const map={
-    'Pending':'badge-pending','In Production':'badge-production',
-    'Billed':'badge-billed','Dispatched':'badge-dispatched','Delivered':'badge-delivered',
-    'Paid':'badge-paid','Partial':'badge-partial','In Progress':'badge-production',
-    'Complete':'badge-delivered','QC Pending':'badge-partial'
-  };
-  return `<span class="badge ${map[status]||'badge-pending'}">${status}</span>`;
-}
-
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');});});
+function badge(status){const map={'Pending':'badge-pending','In Production':'badge-production','Billed':'badge-billed','Dispatched':'badge-dispatched','Delivered':'badge-delivered','Paid':'badge-paid','Partial':'badge-partial','Received':'badge-received','In Progress':'badge-inprogress','Complete':'badge-complete','QC Pending':'badge-qcpending'};return `<span class="badge ${map[status]||'badge-pending'}">${status}</span>`;}
 function fmt(n){return Number(n||0).toLocaleString('en-IN');}
-
-// ========== SALES ORDERS ==========
 let soFilter='all';
-function loadSO(){
-  api({action:'getCustomers'},r=>{if(r.success)customers=r.data;});
-  api({action:'getProducts'},r=>{if(r.success)products=r.data;});
-  api({action:'getSalesOrders'},r=>{
-    if(!r.success){document.getElementById('soTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No orders found</div></div></td></tr>`;return;}
-    allSO=r.data;renderSO();
-  });
-}
-function renderSO(){
-  const data=soFilter==='all'?allSO:allSO.filter(r=>r.Status===soFilter);
-  const counts={all:allSO.length,Pending:0,'In Production':0,Billed:0,Dispatched:0,Delivered:0};
-  allSO.forEach(r=>{if(counts[r.Status]!==undefined)counts[r.Status]++;});
-  document.getElementById('cnt-all').textContent=counts.all;
-  document.getElementById('cnt-pending').textContent=counts['Pending'];
-  document.getElementById('cnt-prod').textContent=counts['In Production'];
-  document.getElementById('cnt-billed').textContent=counts['Billed'];
-  document.getElementById('cnt-disp').textContent=counts['Dispatched'];
-  document.getElementById('cnt-del').textContent=counts['Delivered'];
-  if(!data.length){document.getElementById('soTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No orders in this stage</div></div></td></tr>`;return;}
-  document.getElementById('soTable').innerHTML=data.map(r=>`
-    <tr>
-      <td class="td-id">${r.SOID}</td>
-      <td>${r.OrderDate}</td>
-      <td>${r.CustomerID}</td>
-      <td>${r.ProductID}</td>
-      <td>${fmt(r.Quantity)}</td>
-      <td>₹${fmt(r.TotalAmount)}</td>
-      <td>${r.DeliveryDate||'—'}</td>
-      <td>${badge(r.Status)}</td>
-      <td><button class="btn btn-sm" onclick="quickWO('${r.SOID}')">→ WO</button></td>
-    </tr>`).join('');
-}
-function filterSO(f){
-  soFilter=f;
-  document.querySelectorAll('.pipe-node').forEach(n=>n.classList.remove('active'));
-  renderSO();
-}
-function quickWO(soid){
-  document.getElementById('wo-soid').value=soid;
-  showPage('production',document.getElementById('nav-production'));
-  setTimeout(()=>openModal('woModal'),300);
-}
-function populateSOForm(){
-  api({action:'getCustomers'},r=>{
-    customers=r.data||[];
-    document.getElementById('so-customer').innerHTML=customers.map(c=>`<option value="${c.CustomerID}">${c.CompanyName}</option>`).join('');
-  });
-  api({action:'getProducts'},r=>{
-    products=r.data||[];
-    document.getElementById('so-product').innerHTML=products.map(p=>`<option value="${p.ProductID}" data-price="${p.SalePrice}" data-gst="${p.GSTPercent}">${p.ProductName}</option>`).join('');
-    fillSOProduct();
-  });
-}
-function fillSOProduct(){
-  const sel=document.getElementById('so-product');
-  const opt=sel.options[sel.selectedIndex];
-  if(opt){document.getElementById('so-price').value=opt.dataset.price||'';document.getElementById('so-gst').value=opt.dataset.gst||18;calcSOTotal();}
-}
-function calcSOTotal(){
-  const qty=parseFloat(document.getElementById('so-qty').value)||0;
-  const price=parseFloat(document.getElementById('so-price').value)||0;
-  const gst=parseFloat(document.getElementById('so-gst').value)||0;
-  const sub=qty*price;
-  const total=sub+(sub*gst/100);
-  document.getElementById('so-total').value=total?'₹'+fmt(total.toFixed(2)):'';
-}
-function submitSO(){
-  const qty=parseFloat(document.getElementById('so-qty').value)||0;
-  const price=parseFloat(document.getElementById('so-price').value)||0;
-  const gst=parseFloat(document.getElementById('so-gst').value)||0;
-  const sub=qty*price;const total=sub+(sub*gst/100);
-  api({
-    action:'addSalesOrder',
-    CustomerID:document.getElementById('so-customer').value,
-    ProductID:document.getElementById('so-product').value,
-    Quantity:qty,UnitPrice:price,GSTPercent:gst,TotalAmount:total.toFixed(2),
-    DeliveryDate:document.getElementById('so-delivery').value
-  },r=>{
-    if(r.success){toast('Sales Order created: '+r.SOID);closeModal('soModal');loadSO();}
-    else toast(r.message,'error');
-  });
-}
-
-// ========== PRODUCTION ==========
-function loadWO(){
-  api({action:'getProducts'},r=>{if(r.success)products=r.data;});
-  api({action:'getProduction'},r=>{
-    if(!r.success){document.getElementById('woTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">⚙️</div><div class="empty-text">No work orders found</div></div></td></tr>`;return;}
-    const data=r.data;
-    let active=0,done=0,pending=0;
-    data.forEach(w=>{if(w.Status==='In Progress')active++;else if(w.Status==='Complete')done++;else if(w.Status==='Pending')pending++;});
-    document.getElementById('wo-active').textContent=active;
-    document.getElementById('wo-done').textContent=done;
-    document.getElementById('wo-pending').textContent=pending;
-    if(!data.length){document.getElementById('woTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">⚙️</div><div class="empty-text">No work orders yet</div></div></td></tr>`;return;}
-    document.getElementById('woTable').innerHTML=data.map(w=>`
-      <tr>
-        <td class="td-id">${w.WOID}</td>
-        <td class="td-id">${w.SOID||'—'}</td>
-        <td>${w.ProductID}</td>
-        <td>${fmt(w.TargetQty)}</td>
-        <td>${fmt(w.ProducedQty)}</td>
-        <td>${fmt(w.RejectedQty)}</td>
-        <td>${w.StartDate}</td>
-        <td>${w.EndDate||'—'}</td>
-        <td>${badge(w.Status)}</td>
-        <td><button class="btn btn-sm btn-warning" onclick="openWOUpdate('${w.WOID}','${w.Status}','${w.ProducedQty}','${w.RejectedQty}','${w.EndDate||''}')">Update</button></td>
-      </tr>`).join('');
-  });
-}
-function populateWOForm(){
-  api({action:'getProducts'},r=>{
-    products=r.data||[];
-    document.getElementById('wo-product').innerHTML=products.map(p=>`<option value="${p.ProductID}">${p.ProductName}</option>`).join('');
-  });
-}
-function submitWO(){
-  api({
-    action:'addWorkOrder',
-    SOID:document.getElementById('wo-soid').value,
-    ProductID:document.getElementById('wo-product').value,
-    TargetQty:document.getElementById('wo-target').value,
-    StartDate:document.getElementById('wo-start').value,
-    EndDate:document.getElementById('wo-end').value
-  },r=>{
-    if(r.success){toast('Work Order created: '+r.WOID);closeModal('woModal');loadWO();}
-    else toast(r.message,'error');
-  });
-}
-function openWOUpdate(id,status,produced,rejected,end){
-  document.getElementById('wou-id').value=id;
-  document.getElementById('wou-status').value=status;
-  document.getElementById('wou-produced').value=produced;
-  document.getElementById('wou-rejected').value=rejected;
-  document.getElementById('wou-end').value=end;
-  openModal('woUpdateModal');
-}
-function submitWOUpdate(){
-  api({
-    action:'updateWO',
-    WOID:document.getElementById('wou-id').value,
-    Status:document.getElementById('wou-status').value,
-    ProducedQty:document.getElementById('wou-produced').value,
-    RejectedQty:document.getElementById('wou-rejected').value,
-    EndDate:document.getElementById('wou-end').value
-  },r=>{
-    if(r.success){toast('Work Order updated');closeModal('woUpdateModal');loadWO();}
-    else toast(r.message,'error');
-  });
-}
-
-// ========== BILLING ==========
-function loadInv(){
-  api({action:'getBilling'},r=>{
-    if(!r.success){document.getElementById('invTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No invoices found</div></div></td></tr>`;return;}
-    const data=r.data;
-    let pending=0,paid=0,outstanding=0;
-    data.forEach(i=>{
-      if(i.PaymentStatus==='Paid')paid++;else pending++;
-      outstanding+=parseFloat(i.TotalAmount||0)-parseFloat(i.PaidAmount||0);
-    });
-    document.getElementById('inv-total').textContent=data.length;
-    document.getElementById('inv-pending').textContent=pending;
-    document.getElementById('inv-paid').textContent=paid;
-    document.getElementById('inv-outstanding').textContent='₹'+fmt(Math.max(0,outstanding).toFixed(0));
-    if(!data.length){document.getElementById('invTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No invoices yet</div></div></td></tr>`;return;}
-    document.getElementById('invTable').innerHTML=data.map(i=>`
-      <tr>
-        <td class="td-id">${i.InvoiceID}</td>
-        <td class="td-id">${i.SOID}</td>
-        <td>${i.CustomerID}</td>
-        <td>${i.InvoiceDate}</td>
-        <td>₹${fmt(i.TotalAmount)}</td>
-        <td>₹${fmt(i.PaidAmount)}</td>
-        <td>${i.DueDate||'—'}</td>
-        <td>${badge(i.PaymentStatus)}</td>
-        <td><button class="btn btn-sm btn-success" onclick="openPayModal('${i.InvoiceID}','${i.TotalAmount}')">💰 Pay</button></td>
-      </tr>`).join('');
-  });
-}
-function populateInvForm(){
-  api({action:'getCustomers'},r=>{
-    customers=r.data||[];
-    document.getElementById('inv-customer').innerHTML=customers.map(c=>`<option value="${c.CustomerID}">${c.CompanyName}</option>`).join('');
-  });
-}
-function submitInv(){
-  api({
-    action:'addInvoice',
-    SOID:document.getElementById('inv-soid').value,
-    CustomerID:document.getElementById('inv-customer').value,
-    TotalAmount:document.getElementById('inv-amount').value,
-    DueDate:document.getElementById('inv-due').value
-  },r=>{
-    if(r.success){toast('Invoice created: '+r.InvoiceID);closeModal('invModal');loadInv();}
-    else toast(r.message,'error');
-  });
-}
-function openPayModal(id,total){
-  document.getElementById('pay-id').value=id;
-  document.getElementById('pay-total').value='₹'+fmt(total);
-  document.getElementById('pay-amount').value='';
-  openModal('payModal');
-}
-function submitPayment(){
-  api({action:'updatePayment',InvoiceID:document.getElementById('pay-id').value,PaidAmount:document.getElementById('pay-amount').value},r=>{
-    if(r.success){toast('Payment updated — '+r.PaymentStatus);closeModal('payModal');loadInv();}
-    else toast(r.message,'error');
-  });
-}
-
-// ========== DISPATCH ==========
-function loadDC(){
-  api({action:'getDispatch'},r=>{
-    if(!r.success){document.getElementById('dcTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No challans found</div></div></td></tr>`;return;}
-    const data=r.data;
-    let transit=0,delivered=0;
-    data.forEach(d=>{if(d.DeliveryStatus==='Delivered')delivered++;else transit++;});
-    document.getElementById('dc-total').textContent=data.length;
-    document.getElementById('dc-transit').textContent=transit;
-    document.getElementById('dc-delivered').textContent=delivered;
-    if(!data.length){document.getElementById('dcTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No challans yet</div></div></td></tr>`;return;}
-    document.getElementById('dcTable').innerHTML=data.map(d=>`
-      <tr>
-        <td class="td-id">${d.ChallanID}</td>
-        <td class="td-id">${d.SOID}</td>
-        <td class="td-id">${d.InvoiceID}</td>
-        <td>${d.DispatchDate}</td>
-        <td>${d.TransporterName}</td>
-        <td>${d.VehicleNo}</td>
-        <td>${d.LRNumber||'—'}</td>
-        <td>${d.EWayBill||'—'}</td>
-        <td>${badge(d.DeliveryStatus)}</td>
-        <td>${d.DeliveryStatus!=='Delivered'?`<button class="btn btn-sm btn-success" onclick="confirmDelivery('${d.ChallanID}')">✅ Delivered</button>`:'<span style="color:var(--success);font-size:12px;">Done</span>'}</td>
-      </tr>`).join('');
-  });
-}
-function submitDC(){
-  api({
-    action:'addDispatch',
-    SOID:document.getElementById('dc-soid').value,
-    InvoiceID:document.getElementById('dc-invid').value,
-    TransporterName:document.getElementById('dc-transporter').value,
-    VehicleNo:document.getElementById('dc-vehicle').value,
-    LRNumber:document.getElementById('dc-lr').value,
-    EWayBill:document.getElementById('dc-eway').value
-  },r=>{
-    if(r.success){toast('Challan created: '+r.ChallanID);closeModal('dcModal');loadDC();}
-    else toast(r.message,'error');
-  });
-}
-function confirmDelivery(id){
-  if(!confirm('Mark as Delivered?'))return;
-  api({action:'updateDelivery',ChallanID:id},r=>{
-    if(r.success){toast('Delivery confirmed!');loadDC();}
-    else toast(r.message,'error');
-  });
-}
-
-// ========== PURCHASE ==========
-function loadPO(){
-  api({action:'getSuppliers'},r=>{if(r.success)suppliers=r.data;});
-  api({action:'getPurchase'},r=>{
-    if(!r.success){document.getElementById('poTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">No POs found</div></div></td></tr>`;return;}
-    const data=r.data;
-    let pending=0,received=0;
-    data.forEach(p=>{if(p.Status==='Received')received++;else pending++;});
-    document.getElementById('po-total').textContent=data.length;
-    document.getElementById('po-pending').textContent=pending;
-    document.getElementById('po-received').textContent=received;
-    if(!data.length){document.getElementById('poTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">No POs yet</div></div></td></tr>`;return;}
-    document.getElementById('poTable').innerHTML=data.map(p=>`
-      <tr>
-        <td class="td-id">${p.POID}</td>
-        <td>${p.SupplierID}</td>
-        <td>${p.ItemName}</td>
-        <td>${fmt(p.Quantity)}</td>
-        <td>${p.Unit}</td>
-        <td>₹${fmt(p.UnitRate)}</td>
-        <td>₹${fmt(p.TotalValue)}</td>
-        <td>${p.OrderDate}</td>
-        <td>${badge(p.Status)}</td>
-        <td>${p.Status!=='Received'?`<button class="btn btn-sm btn-success" onclick="markPOReceived('${p.POID}')">✅ Received</button>`:'<span style="color:var(--success);font-size:12px;">Done</span>'}</td>
-      </tr>`).join('');
-  });
-}
-function populatePOForm(){
-  api({action:'getSuppliers'},r=>{
-    suppliers=r.data||[];
-    document.getElementById('po-supplier').innerHTML=suppliers.map(s=>`<option value="${s.SupplierID}">${s.CompanyName}</option>`).join('');
-  });
-}
-function calcPOTotal(){
-  const qty=parseFloat(document.getElementById('po-qty').value)||0;
-  const rate=parseFloat(document.getElementById('po-rate').value)||0;
-  document.getElementById('po-total').value=qty&&rate?'₹'+fmt((qty*rate).toFixed(2)):'';
-}
-function submitPO(){
-  const qty=parseFloat(document.getElementById('po-qty').value)||0;
-  const rate=parseFloat(document.getElementById('po-rate').value)||0;
-  api({
-    action:'addPurchase',
-    POID:'',SupplierID:document.getElementById('po-supplier').value,
-    ItemName:document.getElementById('po-item').value,
-    Quantity:qty,Unit:document.getElementById('po-unit').value,
-    UnitRate:rate,TotalValue:(qty*rate).toFixed(2),
-    OrderDate:new Date().toLocaleDateString('en-IN'),Status:'Pending'
-  },r=>{
-    if(r.success){toast('Purchase Order created');closeModal('poModal');loadPO();}
-    else toast(r.message,'error');
-  });
-}
-function markPOReceived(id){
-  if(!confirm('Mark PO as Received?'))return;
-  api({action:'updatePurchase',POID:id,Status:'Received'},r=>{
-    if(r.success){toast('PO marked as Received');loadPO();}
-    else toast(r.message,'error');
-  });
-}
-
-// ========== MASTER DATA ==========
-function loadCustomers(){
-  api({action:'getCustomers'},r=>{
-    if(!r.success||!r.data.length){document.getElementById('custTable').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No customers yet</div></div></td></tr>`;return;}
-    document.getElementById('custTable').innerHTML=r.data.map(c=>`<tr><td class="td-id">${c.CustomerID}</td><td>${c.CompanyName}</td><td>${c.ContactPerson}</td><td>${c.Phone}</td><td style="font-family:monospace;font-size:12px;">${c.GSTIN}</td><td>${c.City}</td><td>${c.CreditDays} days</td></tr>`).join('');
-  });
-}
-function submitCust(){
-  api({action:'addCustomer',CustomerID:document.getElementById('c-id').value,CompanyName:document.getElementById('c-name').value,ContactPerson:document.getElementById('c-contact').value,Phone:document.getElementById('c-phone').value,GSTIN:document.getElementById('c-gst').value,City:document.getElementById('c-city').value,CreditDays:document.getElementById('c-credit').value},r=>{
-    if(r.success){toast('Customer added');closeModal('custModal');loadCustomers();}else toast(r.message,'error');
-  });
-}
-
-function loadProducts(){
-  api({action:'getProducts'},r=>{
-    if(!r.success||!r.data.length){document.getElementById('prodTable').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">⚡</div><div class="empty-text">No products yet</div></div></td></tr>`;return;}
-    document.getElementById('prodTable').innerHTML=r.data.map(p=>`<tr><td class="td-id">${p.ProductID}</td><td>${p.ProductName}</td><td>${p.Category}</td><td>₹${fmt(p.SalePrice)}</td><td style="font-family:monospace;font-size:12px;">${p.HSNCode}</td><td>${p.GSTPercent}%</td><td>${p.Unit}</td></tr>`).join('');
-  });
-}
-function submitProd(){
-  api({action:'addProduct',ProductID:document.getElementById('p-id').value,ProductName:document.getElementById('p-name').value,Category:document.getElementById('p-cat').value,SalePrice:document.getElementById('p-price').value,HSNCode:document.getElementById('p-hsn').value,GSTPercent:document.getElementById('p-gst').value,Unit:document.getElementById('p-unit').value},r=>{
-    if(r.success){toast('Product added');closeModal('prodModal');loadProducts();}else toast(r.message,'error');
-  });
-}
-
-function loadSuppliers(){
-  api({action:'getSuppliers'},r=>{
-    if(!r.success||!r.data.length){document.getElementById('suppTable').innerHTML=`<tr><td colspan="6"><div class="empty"><div class="empty-icon">🏭</div><div class="empty-text">No suppliers yet</div></div></td></tr>`;return;}
-    document.getElementById('suppTable').innerHTML=r.data.map(s=>`<tr><td class="td-id">${s.SupplierID}</td><td>${s.CompanyName}</td><td>${s.ContactPerson}</td><td>${s.Phone}</td><td style="font-family:monospace;font-size:12px;">${s.GSTIN}</td><td>${s.City}</td></tr>`).join('');
-  });
-}
-function submitSupp(){
-  api({action:'addSupplier',SupplierID:document.getElementById('s-id').value,CompanyName:document.getElementById('s-name').value,ContactPerson:document.getElementById('s-contact').value,Phone:document.getElementById('s-phone').value,GSTIN:document.getElementById('s-gst').value,City:document.getElementById('s-city').value},r=>{
-    if(r.success){toast('Supplier added');closeModal('suppModal');loadSuppliers();}else toast(r.message,'error');
-  });
-}
-
-function loadUsers(){
-  api({action:'getUsers'},r=>{
-    if(!r.success||!r.data.length){document.getElementById('usersTable').innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔐</div><div class="empty-text">No users found</div></div></td></tr>`;return;}
-    document.getElementById('usersTable').innerHTML=r.data.map(u=>`<tr><td class="td-id">${u.UserID}</td><td>${u.Name}</td><td>${u.Username}</td><td>${badge(u.Role)}</td><td><span style="color:${u.IsActive===true||u.IsActive==='TRUE'?'var(--success)':'var(--error)'};">${u.IsActive===true||u.IsActive==='TRUE'?'✅ Active':'❌ Inactive'}</span></td></tr>`).join('');
-  });
-}
-function submitUser(){
-  api({action:'addUser',UserID:document.getElementById('u-id').value,Name:document.getElementById('u-name').value,Username:document.getElementById('u-uname').value,Password:document.getElementById('u-pass').value,Role:document.getElementById('u-role').value,IsActive:true},r=>{
-    if(r.success){toast('User added');closeModal('userModal');loadUsers();}else toast(r.message,'error');
-  });
-}
-
-function logout(){
-  sessionStorage.removeItem('erp_user');
-  window.location.href='index.html';
-}
-
-// INIT
+function loadSO(){api({action:'getCustomers'},r=>{if(r.success)customers=r.data;});api({action:'getProducts'},r=>{if(r.success)products=r.data;});api({action:'getSalesOrders'},r=>{if(!r.success){document.getElementById('soTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No orders found</div></div></td></tr>`;return;}allSO=r.data;renderSO();});}
+function renderSO(){const data=soFilter==='all'?allSO:allSO.filter(r=>r.Status===soFilter);const counts={all:allSO.length,Pending:0,'In Production':0,Billed:0,Dispatched:0,Delivered:0};allSO.forEach(r=>{if(counts[r.Status]!==undefined)counts[r.Status]++;});document.getElementById('cnt-all').textContent=counts.all;document.getElementById('cnt-pending').textContent=counts['Pending'];document.getElementById('cnt-prod').textContent=counts['In Production'];document.getElementById('cnt-billed').textContent=counts['Billed'];document.getElementById('cnt-disp').textContent=counts['Dispatched'];document.getElementById('cnt-del').textContent=counts['Delivered'];if(!data.length){document.getElementById('soTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No orders in this stage</div></div></td></tr>`;return;}document.getElementById('soTable').innerHTML=data.map(r=>`<tr><td class="td-id">${r.SOID}</td><td>${r.OrderDate}</td><td>${r.CustomerID}</td><td>${r.ProductID}</td><td>${fmt(r.Quantity)}</td><td>₹${fmt(r.TotalAmount)}</td><td>${r.DeliveryDate||'—'}</td><td>${badge(r.Status)}</td><td><button class="btn btn-sm" onclick="quickWO('${r.SOID}')">→ WO</button></td></tr>`).join('');}
+function filterSO(f){soFilter=f;document.querySelectorAll('.pipe-node').forEach(n=>n.classList.remove('active'));event.currentTarget.classList.add('active');renderSO();}
+function quickWO(soid){document.getElementById('wo-soid').value=soid;showPage('production',document.getElementById('nav-production'));setTimeout(()=>openModal('woModal'),300);}
+function populateSOForm(){api({action:'getCustomers'},r=>{customers=r.data||[];document.getElementById('so-customer').innerHTML=customers.map(c=>`<option value="${c.CustomerID}">${c.CompanyName}</option>`).join('');});api({action:'getProducts'},r=>{products=r.data||[];document.getElementById('so-product').innerHTML=products.map(p=>`<option value="${p.ProductID}" data-price="${p.SalePrice}" data-gst="${p.GSTPercent}">${p.ProductName}</option>`).join('');fillSOProduct();});}
+function fillSOProduct(){const sel=document.getElementById('so-product');const opt=sel.options[sel.selectedIndex];if(opt){document.getElementById('so-price').value=opt.dataset.price||'';document.getElementById('so-gst').value=opt.dataset.gst||18;calcSOTotal();}}
+function calcSOTotal(){const qty=parseFloat(document.getElementById('so-qty').value)||0;const price=parseFloat(document.getElementById('so-price').value)||0;const gst=parseFloat(document.getElementById('so-gst').value)||0;const sub=qty*price;const total=sub+(sub*gst/100);document.getElementById('so-total').value=total?'₹'+fmt(total.toFixed(2)):'';}
+function submitSO(){const qty=parseFloat(document.getElementById('so-qty').value)||0;const price=parseFloat(document.getElementById('so-price').value)||0;const gst=parseFloat(document.getElementById('so-gst').value)||0;const sub=qty*price;const total=sub+(sub*gst/100);api({action:'addSalesOrder',CustomerID:document.getElementById('so-customer').value,ProductID:document.getElementById('so-product').value,Quantity:qty,UnitPrice:price,GSTPercent:gst,TotalAmount:total.toFixed(2),DeliveryDate:document.getElementById('so-delivery').value},r=>{if(r.success){toast('Sales Order created: '+r.SOID);closeModal('soModal');loadSO();}else toast(r.message,'error');});}
+function loadWO(){api({action:'getProducts'},r=>{if(r.success)products=r.data;});api({action:'getProduction'},r=>{if(!r.success){document.getElementById('woTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">⚙️</div><div class="empty-text">No work orders found</div></div></td></tr>`;return;}const data=r.data;let active=0,done=0,pending=0;data.forEach(w=>{if(w.Status==='In Progress')active++;else if(w.Status==='Complete')done++;else if(w.Status==='Pending')pending++;});document.getElementById('wo-active').textContent=active;document.getElementById('wo-done').textContent=done;document.getElementById('wo-pending').textContent=pending;if(!data.length){document.getElementById('woTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">⚙️</div><div class="empty-text">No work orders yet</div></div></td></tr>`;return;}document.getElementById('woTable').innerHTML=data.map(w=>`<tr><td class="td-id">${w.WOID}</td><td class="td-id">${w.SOID||'—'}</td><td>${w.ProductID}</td><td>${fmt(w.TargetQty)}</td><td>${fmt(w.ProducedQty)}</td><td>${fmt(w.RejectedQty)}</td><td>${w.StartDate}</td><td>${w.EndDate||'—'}</td><td>${badge(w.Status)}</td><td><button class="btn btn-sm btn-warning" onclick="openWOUpdate('${w.WOID}','${w.Status}','${w.ProducedQty}','${w.RejectedQty}','${w.EndDate||''}')">Update</button></td></tr>`).join('');});}
+function populateWOForm(){api({action:'getProducts'},r=>{products=r.data||[];document.getElementById('wo-product').innerHTML=products.map(p=>`<option value="${p.ProductID}">${p.ProductName}</option>`).join('');});}
+function submitWO(){api({action:'addWorkOrder',SOID:document.getElementById('wo-soid').value,ProductID:document.getElementById('wo-product').value,TargetQty:document.getElementById('wo-target').value,StartDate:document.getElementById('wo-start').value,EndDate:document.getElementById('wo-end').value},r=>{if(r.success){toast('Work Order created: '+r.WOID);closeModal('woModal');loadWO();}else toast(r.message,'error');});}
+function openWOUpdate(id,status,produced,rejected,end){document.getElementById('wou-id').value=id;document.getElementById('wou-status').value=status;document.getElementById('wou-produced').value=produced;document.getElementById('wou-rejected').value=rejected;document.getElementById('wou-end').value=end;openModal('woUpdateModal');}
+function submitWOUpdate(){api({action:'updateWO',WOID:document.getElementById('wou-id').value,Status:document.getElementById('wou-status').value,ProducedQty:document.getElementById('wou-produced').value,RejectedQty:document.getElementById('wou-rejected').value,EndDate:document.getElementById('wou-end').value},r=>{if(r.success){toast('Work Order updated');closeModal('woUpdateModal');loadWO();}else toast(r.message,'error');});}
+function loadInv(){api({action:'getBilling'},r=>{if(!r.success){document.getElementById('invTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No invoices found</div></div></td></tr>`;return;}const data=r.data;let pending=0,paid=0,outstanding=0;data.forEach(i=>{if(i.PaymentStatus==='Paid')paid++;else pending++;outstanding+=parseFloat(i.TotalAmount||0)-parseFloat(i.PaidAmount||0);});document.getElementById('inv-total').textContent=data.length;document.getElementById('inv-pending').textContent=pending;document.getElementById('inv-paid').textContent=paid;document.getElementById('inv-outstanding').textContent='₹'+fmt(Math.max(0,outstanding).toFixed(0));if(!data.length){document.getElementById('invTable').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No invoices yet</div></div></td></tr>`;return;}document.getElementById('invTable').innerHTML=data.map(i=>`<tr><td class="td-id">${i.InvoiceID}</td><td class="td-id">${i.SOID}</td><td>${i.CustomerID}</td><td>${i.InvoiceDate}</td><td>₹${fmt(i.TotalAmount)}</td><td>₹${fmt(i.PaidAmount)}</td><td>${i.DueDate||'—'}</td><td>${badge(i.PaymentStatus)}</td><td><button class="btn btn-sm btn-success" onclick="openPayModal('${i.InvoiceID}','${i.TotalAmount}')">💰 Pay</button></td></tr>`).join('');});}
+function populateInvForm(){api({action:'getCustomers'},r=>{customers=r.data||[];document.getElementById('inv-customer').innerHTML=customers.map(c=>`<option value="${c.CustomerID}">${c.CompanyName}</option>`).join('');});}
+function submitInv(){api({action:'addInvoice',SOID:document.getElementById('inv-soid').value,CustomerID:document.getElementById('inv-customer').value,TotalAmount:document.getElementById('inv-amount').value,DueDate:document.getElementById('inv-due').value},r=>{if(r.success){toast('Invoice created: '+r.InvoiceID);closeModal('invModal');loadInv();}else toast(r.message,'error');});}
+function openPayModal(id,total){document.getElementById('pay-id').value=id;document.getElementById('pay-total').value='₹'+fmt(total);document.getElementById('pay-amount').value='';openModal('payModal');}
+function submitPayment(){api({action:'updatePayment',InvoiceID:document.getElementById('pay-id').value,PaidAmount:document.getElementById('pay-amount').value},r=>{if(r.success){toast('Payment updated — '+r.PaymentStatus);closeModal('payModal');loadInv();}else toast(r.message,'error');});}
+function loadDC(){api({action:'getDispatch'},r=>{if(!r.success){document.getElementById('dcTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No challans found</div></div></td></tr>`;return;}const data=r.data;let transit=0,delivered=0;data.forEach(d=>{if(d.DeliveryStatus==='Delivered')delivered++;else transit++;});document.getElementById('dc-total').textContent=data.length;document.getElementById('dc-transit').textContent=transit;document.getElementById('dc-delivered').textContent=delivered;if(!data.length){document.getElementById('dcTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No challans yet</div></div></td></tr>`;return;}document.getElementById('dcTable').innerHTML=data.map(d=>`<tr><td class="td-id">${d.ChallanID}</td><td class="td-id">${d.SOID}</td><td class="td-id">${d.InvoiceID}</td><td>${d.DispatchDate}</td><td>${d.TransporterName}</td><td>${d.VehicleNo}</td><td>${d.LRNumber||'—'}</td><td>${d.EWayBill||'—'}</td><td>${badge(d.DeliveryStatus)}</td><td>${d.DeliveryStatus!=='Delivered'?`<button class="btn btn-sm btn-success" onclick="confirmDelivery('${d.ChallanID}')">✅ Delivered</button>`:'<span style="color:var(--success);font-size:11px;font-weight:500;">Done</span>'}</td></tr>`).join('');});}
+function submitDC(){api({action:'addDispatch',SOID:document.getElementById('dc-soid').value,InvoiceID:document.getElementById('dc-invid').value,TransporterName:document.getElementById('dc-transporter').value,VehicleNo:document.getElementById('dc-vehicle').value,LRNumber:document.getElementById('dc-lr').value,EWayBill:document.getElementById('dc-eway').value},r=>{if(r.success){toast('Challan created: '+r.ChallanID);closeModal('dcModal');loadDC();}else toast(r.message,'error');});}
+function confirmDelivery(id){if(!confirm('Mark as Delivered?'))return;api({action:'updateDelivery',ChallanID:id},r=>{if(r.success){toast('Delivery confirmed!');loadDC();}else toast(r.message,'error');});}
+function loadPO(){api({action:'getSuppliers'},r=>{if(r.success)suppliers=r.data;});api({action:'getPurchase'},r=>{if(!r.success){document.getElementById('poTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">No POs found</div></div></td></tr>`;return;}const data=r.data;let pending=0,received=0;data.forEach(p=>{if(p.Status==='Received')received++;else pending++;});document.getElementById('po-total').textContent=data.length;document.getElementById('po-pending').textContent=pending;document.getElementById('po-received').textContent=received;if(!data.length){document.getElementById('poTable').innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">No POs yet</div></div></td></tr>`;return;}document.getElementById('poTable').innerHTML=data.map(p=>`<tr><td class="td-id">${p.POID}</td><td>${p.SupplierID}</td><td>${p.ItemName}</td><td>${fmt(p.Quantity)}</td><td>${p.Unit}</td><td>₹${fmt(p.UnitRate)}</td><td>₹${fmt(p.TotalValue)}</td><td>${p.OrderDate}</td><td>${badge(p.Status)}</td><td>${p.Status!=='Received'?`<button class="btn btn-sm btn-success" onclick="markPOReceived('${p.POID}')">✅ Received</button>`:'<span style="color:var(--success);font-size:11px;font-weight:500;">Done</span>'}</td></tr>`).join('');});}
+function populatePOForm(){api({action:'getSuppliers'},r=>{suppliers=r.data||[];document.getElementById('po-supplier').innerHTML=suppliers.map(s=>`<option value="${s.SupplierID}">${s.CompanyName}</option>`).join('');});}
+function calcPOTotal(){const qty=parseFloat(document.getElementById('po-qty').value)||0;const rate=parseFloat(document.getElementById('po-rate').value)||0;document.getElementById('po-total').value=qty&&rate?'₹'+fmt((qty*rate).toFixed(2)):'';}
+function submitPO(){const qty=parseFloat(document.getElementById('po-qty').value)||0;const rate=parseFloat(document.getElementById('po-rate').value)||0;api({action:'addPurchase',POID:'',SupplierID:document.getElementById('po-supplier').value,ItemName:document.getElementById('po-item').value,Quantity:qty,Unit:document.getElementById('po-unit').value,UnitRate:rate,TotalValue:(qty*rate).toFixed(2),OrderDate:new Date().toLocaleDateString('en-IN'),Status:'Pending'},r=>{if(r.success){toast('Purchase Order created');closeModal('poModal');loadPO();}else toast(r.message,'error');});}
+function markPOReceived(id){if(!confirm('Mark PO as Received?'))return;api({action:'updatePurchase',POID:id,Status:'Received'},r=>{if(r.success){toast('PO marked as Received');loadPO();}else toast(r.message,'error');});}
+function loadCustomers(){api({action:'getCustomers'},r=>{if(!r.success||!r.data.length){document.getElementById('custTable').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No customers yet</div></div></td></tr>`;return;}document.getElementById('custTable').innerHTML=r.data.map(c=>`<tr><td class="td-id">${c.CustomerID}</td><td>${c.CompanyName}</td><td>${c.ContactPerson}</td><td>${c.Phone}</td><td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td><td>${c.City}</td><td>${c.CreditDays} days</td></tr>`).join('');});}
+function submitCust(){api({action:'addCustomer',CustomerID:document.getElementById('c-id').value,CompanyName:document.getElementById('c-name').value,ContactPerson:document.getElementById('c-contact').value,Phone:document.getElementById('c-phone').value,GSTIN:document.getElementById('c-gst').value,City:document.getElementById('c-city').value,CreditDays:document.getElementById('c-credit').value},r=>{if(r.success){toast('Customer added');closeModal('custModal');loadCustomers();}else toast(r.message,'error');});}
+function loadProducts(){api({action:'getProducts'},r=>{if(!r.success||!r.data.length){document.getElementById('prodTable').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">⚡</div><div class="empty-text">No products yet</div></div></td></tr>`;return;}document.getElementById('prodTable').innerHTML=r.data.map(p=>`<tr><td class="td-id">${p.ProductID}</td><td>${p.ProductName}</td><td>${p.Category}</td><td>₹${fmt(p.SalePrice)}</td><td style="font-family:monospace;font-size:11px;">${p.HSNCode}</td><td>${p.GSTPercent}%</td><td>${p.Unit}</td></tr>`).join('');});}
+function submitProd(){api({action:'addProduct',ProductID:document.getElementById('p-id').value,ProductName:document.getElementById('p-name').value,Category:document.getElementById('p-cat').value,SalePrice:document.getElementById('p-price').value,HSNCode:document.getElementById('p-hsn').value,GSTPercent:document.getElementById('p-gst').value,Unit:document.getElementById('p-unit').value},r=>{if(r.success){toast('Product added');closeModal('prodModal');loadProducts();}else toast(r.message,'error');});}
+function loadSuppliers(){api({action:'getSuppliers'},r=>{if(!r.success||!r.data.length){document.getElementById('suppTable').innerHTML=`<tr><td colspan="6"><div class="empty"><div class="empty-icon">🏭</div><div class="empty-text">No suppliers yet</div></div></td></tr>`;return;}document.getElementById('suppTable').innerHTML=r.data.map(s=>`<tr><td class="td-id">${s.SupplierID}</td><td>${s.CompanyName}</td><td>${s.ContactPerson}</td><td>${s.Phone}</td><td style="font-family:monospace;font-size:11px;">${s.GSTIN}</td><td>${s.City}</td></tr>`).join('');});}
+function submitSupp(){api({action:'addSupplier',SupplierID:document.getElementById('s-id').value,CompanyName:document.getElementById('s-name').value,ContactPerson:document.getElementById('s-contact').value,Phone:document.getElementById('s-phone').value,GSTIN:document.getElementById('s-gst').value,City:document.getElementById('s-city').value},r=>{if(r.success){toast('Supplier added');closeModal('suppModal');loadSuppliers();}else toast(r.message,'error');});}
+function loadUsers(){api({action:'getUsers'},r=>{if(!r.success||!r.data.length){document.getElementById('usersTable').innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔐</div><div class="empty-text">No users found</div></div></td></tr>`;return;}document.getElementById('usersTable').innerHTML=r.data.map(u=>`<tr><td class="td-id">${u.UserID}</td><td>${u.Name}</td><td>${u.Username}</td><td>${badge(u.Role)}</td><td><span style="color:${u.IsActive===true||u.IsActive==='TRUE'?'var(--success)':'var(--error)'};">${u.IsActive===true||u.IsActive==='TRUE'?'✅ Active':'❌ Inactive'}</span></td></tr>`).join('');});}
+function submitUser(){api({action:'addUser',UserID:document.getElementById('u-id').value,Name:document.getElementById('u-name').value,Username:document.getElementById('u-uname').value,Password:document.getElementById('u-pass').value,Role:document.getElementById('u-role').value,IsActive:true},r=>{if(r.success){toast('User added');closeModal('userModal');loadUsers();}else toast(r.message,'error');});}
+function logout(){sessionStorage.removeItem('erp_user');window.location.href='index.html';}
 loadSO();
 </script>
 </body>
