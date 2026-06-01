@@ -1000,22 +1000,9 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
-  // Non-admin — hide section headers and master/admin sections
+  // Non-admin — hide entire sidebar
   if (user.role !== 'Admin') {
-    ['sec-master','sec-admin'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
-    // Hide tracking section header if no tracking modules visible
-    if (!allowed.includes('crm') && !allowed.includes('production')) {
-      const el = document.getElementById('sec-tracking');
-      if (el) el.style.display = 'none';
-    }
-    // Hide sales section header if orders not visible
-    if (!allowed.includes('orders')) {
-      const el = document.getElementById('sec-sales');
-      if (el) el.style.display = 'none';
-    }
+    document.querySelector('.sidebar').style.display = 'none';
   }
 
   // Auto redirect based on role
@@ -1247,17 +1234,20 @@ let itemRowCount = 1;
 // ========== PRICE TYPE LOGIC ==========
 function onPriceTypeChange() {
   const pt = document.getElementById('o-pricetype').value;
-  const isPerWatt = pt === 'Per Watt';
+  const isPerWatt  = pt === 'Per Watt';
+  const isAbsolute = pt === 'Absolute' || pt === 'Last Price';
+  const useVA      = isPerWatt || isAbsolute; // both use Voltage + Ampere
 
   // Show/hide per watt price field
   document.getElementById('perWattField').style.display = isPerWatt ? 'block' : 'none';
 
   // Update items table header
   const head = document.getElementById('itemsTableHead');
-  if (isPerWatt) {
+  if (useVA) {
+    const priceHeader = isPerWatt ? '' : '<th>Rate/Unit (Ex GST)</th>';
     head.innerHTML = `<tr>
       <th>Product Model (Auto)</th><th>Battery Type</th><th>Voltage (V)</th><th>Ampere (Ah)</th>
-      <th>Qty</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
+      <th>Qty</th>${priceHeader}<th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -1280,6 +1270,11 @@ function isPerWattMode() {
   return document.getElementById('o-pricetype').value === 'Per Watt';
 }
 
+function isVAMode() {
+  const pt = document.getElementById('o-pricetype').value;
+  return pt === 'Per Watt' || pt === 'Absolute' || pt === 'Last Price';
+}
+
 function autoFillCRM() {
   const crmVal = document.getElementById('o-crm').value;
   document.querySelectorAll('[id^="im-crm-"]').forEach(el => {
@@ -1295,13 +1290,18 @@ function addItemRow() {
   const tr = document.createElement('tr');
   tr.id = `item-row-${id}`;
 
-  if (isPerWattMode()) {
+  if (isVAMode()) {
+    const isAbsoluteMode = !isPerWattMode();
+    const priceField = isAbsoluteMode
+      ? `<td><input id="im-price-${id}" type="number" placeholder="Rate/unit" oninput="calcAbsoluteItem(${id})"></td>`
+      : '';
     tr.innerHTML = `
       <td><input id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--surface2);color:var(--text3)"></td>
       <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-      <td><input id="im-volt-${id}" type="number" placeholder="e.g. 48" oninput="calcPerWattItem(${id})"></td>
-      <td><input id="im-amp-${id}" type="number" placeholder="e.g. 20" oninput="calcPerWattItem(${id})"></td>
-      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcPerWattItem(${id})"></td>
+      <td><input id="im-volt-${id}" type="number" placeholder="e.g. 48" oninput="calcVAItem(${id})"></td>
+      <td><input id="im-amp-${id}" type="number" placeholder="e.g. 20" oninput="calcVAItem(${id})"></td>
+      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcVAItem(${id})"></td>
+      ${priceField}
       <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
       <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
       <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
@@ -1330,6 +1330,36 @@ function calcItemTotal(id) {
   const qty = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
   const price = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
   const total = qty * price;
+  const totalEl = document.getElementById(`im-total-${id}`);
+  if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+  updateOrderTotals();
+}
+
+function calcVAItem(id) {
+  const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+  const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  const qty     = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
+
+  // Auto-fill product model
+  const modelEl = document.getElementById(`im-model-${id}`);
+  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+
+  if (isPerWattMode()) {
+    const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
+    const total   = volt * amp * qty * pwPrice;
+    const totalEl = document.getElementById(`im-total-${id}`);
+    if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+  } else {
+    // Absolute — wait for rate input
+    calcAbsoluteItem(id);
+  }
+  updateOrderTotals();
+}
+
+function calcAbsoluteItem(id) {
+  const qty   = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
+  const rate  = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+  const total = qty * rate;
   const totalEl = document.getElementById(`im-total-${id}`);
   if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
   updateOrderTotals();
@@ -1380,6 +1410,7 @@ function updateOrderTotals() {
 function getItemRows() {
   const items = [];
   const perWatt = isPerWattMode();
+  const vaMode  = isVAMode();
   const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
 
   document.querySelectorAll('[id^="item-row-"]').forEach(row => {
@@ -1387,23 +1418,25 @@ function getItemRows() {
     const model = document.getElementById(`im-model-${id}`)?.value?.trim();
     if (model) {
       let pricePerUnit = 0;
+      const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+      const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+
       if (perWatt) {
-        const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
-        const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
-        pricePerUnit = volt * amp * pwPrice; // price per unit battery
+        pricePerUnit = volt * amp * pwPrice;
       } else {
         pricePerUnit = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
       }
+
       items.push({
         'Product Model': model,
         'Battery Type': document.getElementById(`im-btype-${id}`)?.value || '',
         'Qty': document.getElementById(`im-qty-${id}`)?.value || 0,
-        'Price Unit (Excluding GST)': pricePerUnit.toFixed(2),
+        'Price Unit (Excluding GST)': pricePerUnit.toFixed ? pricePerUnit.toFixed(2) : pricePerUnit,
         'Total': document.getElementById(`im-total-${id}`)?.value || 0,
         'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || '',
         'Remarks': document.getElementById(`im-remarks-${id}`)?.value || '',
-        'Voltage': perWatt ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
-        'Ampere': perWatt ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
+        'Voltage': vaMode ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
+        'Ampere': vaMode ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
       });
     }
   });
