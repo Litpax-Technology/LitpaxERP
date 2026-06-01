@@ -154,12 +154,23 @@ textarea.form-control{resize:vertical;min-height:70px;}
 .form-section:first-child{border-top:none;margin-top:0;padding-top:0;}
 
 /* ITEMS TABLE IN MODAL */
-.items-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
-.items-table th{padding:7px 10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;}
-.items-table td{padding:6px 8px;border:1px solid var(--border);}
-.items-table input,.items-table select{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none;}
+.items-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;table-layout:fixed;}
+.items-table th{padding:7px 8px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;white-space:nowrap;overflow:hidden;}
+.items-table td{padding:5px 6px;border:1px solid var(--border);}
+.items-table input,.items-table select{width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:0;}
 .items-table input:focus,.items-table select:focus{border-color:var(--accent);}
 .add-item-row{display:flex;justify-content:flex-start;margin-top:8px;}
+
+/* Per Watt mode column widths */
+#itemsTable th:nth-child(1){ width:18%; } /* Product Model */
+#itemsTable th:nth-child(2){ width:15%; } /* Battery Type */
+#itemsTable th:nth-child(3){ width:9%; }  /* Voltage / Qty */
+#itemsTable th:nth-child(4){ width:9%; }  /* Ampere / Price */
+#itemsTable th:nth-child(5){ width:8%; }  /* Qty / Total */
+#itemsTable th:nth-child(6){ width:10%; } /* Total / CRM */
+#itemsTable th:nth-child(7){ width:12%; } /* CRM / Remarks */
+#itemsTable th:nth-child(8){ width:12%; } /* Remarks */
+#itemsTable th:nth-child(9){ width:4%; }  /* Delete */
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:1000;align-items:flex-start;justify-content:center;backdrop-filter:blur(3px);padding:20px;overflow-y:auto;}
@@ -651,6 +662,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Order Items</div>
           <button class="btn btn-sm btn-info" onclick="addItemRow()">+ Add Item</button>
         </div>
+        <div style="overflow-x:auto;">
         <table class="items-table" id="itemsTable">
           <thead id="itemsTableHead"><tr>
             <th>Product Model</th><th>Battery Type</th><th>Qty</th>
@@ -669,6 +681,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
             </tr>
           </tbody>
         </table>
+        </div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:12px;">
           <span style="font-size:12px;color:var(--text3);">Total Qty: <strong id="totalQtyDisplay" style="color:var(--text);">0</strong></span>
           <span style="font-size:12px;color:var(--text3);">Total Amount: <strong id="totalAmtDisplay" style="color:var(--accent);">₹0</strong></span>
