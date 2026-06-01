@@ -689,6 +689,33 @@ textarea.form-control{resize:vertical;min-height:70px;}
           </button>
         </div>
 
+        <!-- CHARGER SECTION -->
+        <div style="margin-top:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">⚡ Charger (Optional)</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2);">
+              <input type="checkbox" id="chargerCheck" onchange="toggleCharger()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+              Add Charger
+            </label>
+          </div>
+          <div id="chargerFields" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Qty</label>
+                <input class="form-control" id="charger-qty" type="number" placeholder="0" oninput="calcCharger()" style="font-size:13px;">
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Per Unit Price (₹)</label>
+                <input class="form-control" id="charger-price" type="number" placeholder="0" oninput="calcCharger()" style="font-size:13px;">
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Total + 5% GST (₹)</label>
+                <input class="form-control" id="charger-total" readonly placeholder="Auto" style="background:var(--warning-dim);color:var(--warning);font-weight:600;font-size:13px;">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style="margin-top:12px;display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--accent-dim);border-radius:10px;border:1px solid #C7D2FE;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Qty</span>
@@ -988,7 +1015,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbxKcbSX7VtaioyrqjFFz7exay0DtMp26TLVV6d6AyC8J1xeLJrlLJUc9vsQ1hjKd_VQhg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwacbD05NcmUIxiaI62Mmxu8o4J5egrTY0bWRiAW3QrCii-SJ9DdIn8G_Eee7-FTgrvMA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1233,8 +1260,10 @@ function viewOrder(o) {
   const fields = [
     ['Order ID', o['Order ID']], ['Date', o['Date']], ['Sales Person', o['Sales Person Name']],
     ['Customer Name', o['Customer Name']], ['Customer Phone', o['Customer Phone']], ['City', o['City']],
-    ['Total Qty', o['Total Qty']], ['Price Type', o['Price Type']], ['Payment Mode', o['Payment Mode']],
-    ['Order Status', o['Order Status']], ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
+    ['Total Qty', o['Total Qty']], ['Charger Qty', o['Charger Qty']||'—'], ['Price Type', o['Price Type']],
+    ['Total Order Value', o['Total Order Value'] ? '₹'+Number(o['Total Order Value']).toLocaleString('en-IN') : '—'],
+    ['Payment Mode', o['Payment Mode']], ['Order Status', o['Order Status']],
+    ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
     ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', o['Plan Dispatch Date']],
     ['Transport Charges', o['Transportation Charges']], ['Warranty', o['Warranty']],
     ['Assigned CRM', o['Assigned CRM']], ['Final Status', o['Final Status']], ['Remarks', o['Order Remarks']]
@@ -1469,7 +1498,7 @@ function addItemRow() {
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>${lbl('Product Model')}${modelField}</div>
-      <div>${lbl('Battery Type')}<select class="form-control" id="im-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
+      <div>${lbl('Battery Type')}<select class="form-control" id="im-btype-${id}" style="font-size:13px;" onchange="autoGST(${id})"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
 
     <div style="display:grid;grid-template-columns:${vaMode ? 'repeat(4,1fr)' : '1fr 1fr'};gap:10px;margin-bottom:10px;">
@@ -1503,6 +1532,44 @@ function calcItemTotal(id) {
   updateOrderTotals();
 }
 
+// ========== CHARGER ==========
+function toggleCharger() {
+  const checked = document.getElementById('chargerCheck').checked;
+  document.getElementById('chargerFields').style.display = checked ? 'block' : 'none';
+  if (!checked) {
+    document.getElementById('charger-qty').value = '';
+    document.getElementById('charger-price').value = '';
+    document.getElementById('charger-total').value = '';
+  }
+}
+
+function calcCharger() {
+  const qty   = parseFloat(document.getElementById('charger-qty')?.value) || 0;
+  const price = parseFloat(document.getElementById('charger-price')?.value) || 0;
+  const total = qty * price * 1.05; // 5% GST
+  const el    = document.getElementById('charger-total');
+  if (el) el.value = total ? total.toFixed(2) : '';
+}
+
+function getChargerData() {
+  if (!document.getElementById('chargerCheck')?.checked) return null;
+  const qty   = parseFloat(document.getElementById('charger-qty')?.value) || 0;
+  const price = parseFloat(document.getElementById('charger-price')?.value) || 0;
+  if (!qty || !price) return null;
+  return {
+    qty:   qty,
+    price: price,
+    total: parseFloat((qty * price * 1.05).toFixed(2))
+  };
+}
+
+function autoGST(id) {
+  const btype = document.getElementById(`im-btype-${id}`)?.value || '';
+  const gstEl = document.getElementById(`im-gst-${id}`);
+  if (gstEl) gstEl.value = btype === 'Charger' ? '5' : '18';
+  calcVAItem(id);
+}
+
 function calcVAItem(id) {
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
@@ -1518,7 +1585,6 @@ function calcVAItem(id) {
     const totalEl = document.getElementById(`im-total-${id}`);
     if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
   } else {
-    // Absolute — wait for rate input
     calcAbsoluteItem(id);
   }
   updateOrderTotals();
@@ -1616,12 +1682,31 @@ function submitOrder() {
   const btn = document.getElementById('submitOrderBtn');
   if (btn && btn.disabled) return;
 
-  // If order already created via saveAndAddItem
+  // If order already created via saveAndAddMore
   if (currentOrderID) {
-    // Update Total Qty
-    let totalQty = 0;
-    document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
-    api({ action: 'updateOrder', 'Order ID': currentOrderID, 'Total Qty': String(totalQty) }, () => {});
+    const charger = getChargerData();
+    if (charger) {
+      // Save charger as separate OrderItem
+      api({
+        action: 'addOrderItem',
+        'Order ID': currentOrderID,
+        'Product Model': 'Charger',
+        'Battery Type': 'Charger',
+        'Qty': charger.qty,
+        'Price Unit (Excluding GST)': charger.price,
+        'Total': charger.total,
+        'Assigned CRM': document.getElementById('o-crm').value || '',
+        'Remarks': 'Charger - 5% GST',
+        'Voltage': '', 'Ampere': ''
+      }, () => {});
+
+      // Update Charger Qty in Orders sheet
+      api({
+        action: 'updateOrder',
+        'Order ID': currentOrderID,
+        'Charger Qty': charger.qty
+      }, () => {});
+    }
     toast('Order complete: ' + currentOrderID);
     currentOrderID = null;
     closeModal('orderModal');
@@ -1716,6 +1801,13 @@ function resetOrderForm() {
   // Reset per watt field
   document.getElementById('perWattField').style.display = 'none';
   document.getElementById('o-perwatt').value = '';
+  // Reset charger
+  const chargerCheck = document.getElementById('chargerCheck');
+  if (chargerCheck) { chargerCheck.checked = false; }
+  document.getElementById('chargerFields').style.display = 'none';
+  document.getElementById('charger-qty').value = '';
+  document.getElementById('charger-price').value = '';
+  document.getElementById('charger-total').value = '';
 
   ['o-date','o-sales','o-cust','o-phone','o-city','o-pricetype','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg','o-warranty',
