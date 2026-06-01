@@ -391,16 +391,16 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <div class="nav-sec">Sales</div>
+  <div class="nav-sec" id="sec-sales">Sales</div>
   <div class="nav-item active" onclick="nav('orders',this)" id="nav-orders"><span class="nav-icon">📋</span>Orders</div>
-  <div class="nav-sec">Tracking</div>
+  <div class="nav-sec" id="sec-tracking">Tracking</div>
   <div class="nav-item" onclick="nav('crm',this)" id="nav-crm"><span class="nav-icon">🎯</span>CRM Tracker</div>
   <div class="nav-item" onclick="nav('production',this)" id="nav-production"><span class="nav-icon">⚙️</span>Production</div>
-  <div class="nav-sec">Master Data</div>
+  <div class="nav-sec" id="sec-master">Master Data</div>
   <div class="nav-item" onclick="nav('customers',this)" id="nav-customers"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="nav('products',this)" id="nav-products"><span class="nav-icon">⚡</span>Products</div>
   <div class="nav-item" onclick="nav('suppliers',this)" id="nav-suppliers"><span class="nav-icon">🏭</span>Suppliers</div>
-  <div class="nav-sec">Admin</div>
+  <div class="nav-sec" id="sec-admin">Admin</div>
   <div class="nav-item" onclick="nav('users',this)" id="nav-users"><span class="nav-icon">🔐</span>Users</div>
   <div class="sidebar-foot"><div class="sidebar-ver">LitpaxERP v3.0</div></div>
 </div>
@@ -993,10 +993,31 @@ const roleAccess = {
 };
 (function applyRole(){
   const allowed = roleAccess[user.role] || roleAccess['Admin'];
+
+  // Show/hide nav items
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el => {
     const mod = el.id.replace('nav-','');
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
+
+  // Non-admin — hide section headers and master/admin sections
+  if (user.role !== 'Admin') {
+    ['sec-master','sec-admin'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    // Hide tracking section header if no tracking modules visible
+    if (!allowed.includes('crm') && !allowed.includes('production')) {
+      const el = document.getElementById('sec-tracking');
+      if (el) el.style.display = 'none';
+    }
+    // Hide sales section header if orders not visible
+    if (!allowed.includes('orders')) {
+      const el = document.getElementById('sec-sales');
+      if (el) el.style.display = 'none';
+    }
+  }
+
   // Auto redirect based on role
   if (user.role === 'Production') {
     setTimeout(() => nav('production', document.getElementById('nav-production')), 100);
@@ -1168,7 +1189,7 @@ function renderOrders() {
   document.getElementById('ordersTable').innerHTML = data.map(o => `
     <tr>
       <td class="td-id">${o['Order ID']||''}</td>
-      <td>${o['Date']||''}</td>
+      <td>${fmtDisplayDate(o['Date']||'')}</td>
       <td class="td-bold">${o['Sales Person Name']||''}</td>
       <td class="td-bold">${o['Customer Name']||''}</td>
       <td>${o['City']||''}</td>
@@ -1515,7 +1536,7 @@ function renderCRM(data) {
   document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
     <td>${c['Sr No']||''}</td>
     <td class="td-id">${c['Order ID']||''}</td>
-    <td>${c['Order Date']||''}</td>
+    <td>${fmtDisplayDate(c['Order Date']||'')}</td>
     <td class="td-bold">${c['Customer Name']||''}</td>
     <td>${c['Product Model']||''}</td>
     <td>${c['Qty']||''}</td>
@@ -1633,7 +1654,7 @@ function loadProduction() {
     document.getElementById('prodTable').innerHTML = allProd.map(p => `<tr>
       <td>${p['Sr No']||''}</td>
       <td class="td-id">${p['Order ID']||''}</td>
-      <td>${p['Order Date']||''}</td>
+      <td>${fmtDisplayDate(p['Order Date']||'')}</td>
       <td class="td-bold">${p['Customer Name']||''}</td>
       <td>${p['Product Model']||''}</td>
       <td>${p['Battery Type']||''}</td>
@@ -1698,7 +1719,24 @@ function submitProdUpdate() {
   if (actualComplete) params['Status'] = 'Completed';
 
   api(params, r => {
-    if (r.success) { toast('Production updated!'); closeModal('prodUpdateModal'); loadProduction(); }
+    if (r.success) {
+      // Also update CRM with same dates
+      const crmParams = { action: 'updateCRM', 'Order ID': params['Order ID'] };
+      if (params['Production Start Plan'])     crmParams['Production Start Plan']     = params['Production Start Plan'];
+      if (params['Production Start Actual'])   crmParams['Production Start Actual']   = params['Production Start Actual'];
+      if (params['Production Complete Plan'])  crmParams['Production Complete Plan']  = params['Production Complete Plan'];
+      if (params['Production Complete Actual'])crmParams['Production Complete Actual']= params['Production Complete Actual'];
+      if (params['Production Delay'])          crmParams['Production Delay']          = params['Production Delay'];
+      if (params['Status'] === 'Completed')    crmParams['Current Stage']             = 'Production Complete';
+
+      if (Object.keys(crmParams).length > 2) {
+        api(crmParams, () => {});
+      }
+
+      toast('Production updated!');
+      closeModal('prodUpdateModal');
+      loadProduction();
+    }
     else toast(r.message, 'e');
   });
 }
