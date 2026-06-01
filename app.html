@@ -866,7 +866,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="modal-head"><div class="modal-title">Add Customer</div><button class="modal-close" onclick="closeModal('custModal')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Customer ID</label><input class="form-control" id="c-id" placeholder="C-001"></div>
+        <!-- Customer ID auto-generated -->
         <div class="form-group"><label class="form-label">Company Name</label><input class="form-control" id="c-name" placeholder="Company name"></div>
         <div class="form-group"><label class="form-label">Contact Person</label><input class="form-control" id="c-contact" placeholder="Name"></div>
         <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="c-phone" placeholder="Phone"></div>
@@ -1064,7 +1064,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwyOoqUcBD1pqNAeyQ8O42ZPv9pz7epOPD4cusmnLric6finA9LB83eU8G8x9AdVFY/exec';
+const API = 'https://script.google.com/macros/s/AKfycby8EZDljnwU4G7V1i1x8hdZ_DA5XRNWYpJKu3FAblb31r4v9Sbjux1t1oqQB0ATbfKEqA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2142,7 +2142,7 @@ function loadCustomers() {
   }
 }
 function submitCust() {
-  api({ action:'addCustomer', CustomerID:document.getElementById('c-id').value, CompanyName:document.getElementById('c-name').value, ContactPerson:document.getElementById('c-contact').value, Phone:document.getElementById('c-phone').value, GSTIN:document.getElementById('c-gst').value, City:document.getElementById('c-city').value, CreditDays:document.getElementById('c-credit').value }, r => {
+  api({ action:'addCustomer', CompanyName:document.getElementById('c-name').value, ContactPerson:document.getElementById('c-contact').value, Phone:document.getElementById('c-phone').value, GSTIN:document.getElementById('c-gst').value, City:document.getElementById('c-city').value, CreditDays:document.getElementById('c-credit').value }, r => {
     if (r.success) { toast('Customer added'); closeModal('custModal'); loadCustomers(); } else toast(r.message,'e');
   });
 }
