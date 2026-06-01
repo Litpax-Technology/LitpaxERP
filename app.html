@@ -576,10 +576,14 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
         <div class="form-section">Payment & Pricing</div>
         <div class="form-group"><label class="form-label">Price Type</label>
-          <select class="form-control" id="o-pricetype" onchange="updateOrderStatus()">
+          <select class="form-control" id="o-pricetype" onchange="onPriceTypeChange()">
             <option value="">Select Price Type</option>
             <option>Absolute</option><option>Per Watt</option><option>Last Price</option>
           </select>
+        </div>
+        <div class="form-group" id="perWattField" style="display:none;">
+          <label class="form-label">Per Watt Price (₹)</label>
+          <input class="form-control" type="number" id="o-perwatt" placeholder="e.g. 12" oninput="recalcAllItems()">
         </div>
         <div class="form-group"><label class="form-label">Payment Mode</label>
           <select class="form-control" id="o-paymode">
@@ -647,8 +651,8 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Order Items</div>
           <button class="btn btn-sm btn-info" onclick="addItemRow()">+ Add Item</button>
         </div>
-        <table class="items-table">
-          <thead><tr>
+        <table class="items-table" id="itemsTable">
+          <thead id="itemsTableHead"><tr>
             <th>Product Model</th><th>Battery Type</th><th>Qty</th>
             <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
           </tr></thead>
@@ -657,7 +661,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
               <td><input id="im-model-1" placeholder="Product model"></td>
               <td><select id="im-btype-1"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
               <td><input id="im-qty-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
-              <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
+              <td class="im-price-col-1"><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
               <td><input id="im-total-1" readonly placeholder="Auto"></td>
               <td><input id="im-crm-1" placeholder="CRM name"></td>
               <td><input id="im-remarks-1" placeholder="Remarks"></td>
@@ -1179,6 +1183,42 @@ function viewOrder(o) {
 // ========== ORDER ITEMS LOGIC ==========
 let itemRowCount = 1;
 
+// ========== PRICE TYPE LOGIC ==========
+function onPriceTypeChange() {
+  const pt = document.getElementById('o-pricetype').value;
+  const isPerWatt = pt === 'Per Watt';
+
+  // Show/hide per watt price field
+  document.getElementById('perWattField').style.display = isPerWatt ? 'block' : 'none';
+
+  // Update items table header
+  const head = document.getElementById('itemsTableHead');
+  if (isPerWatt) {
+    head.innerHTML = `<tr>
+      <th>Product Model (Auto)</th><th>Battery Type</th><th>Voltage (V)</th><th>Ampere (Ah)</th>
+      <th>Qty</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
+    </tr>`;
+  } else {
+    head.innerHTML = `<tr>
+      <th>Product Model</th><th>Battery Type</th><th>Qty</th>
+      <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
+    </tr>`;
+  }
+
+  // Rebuild all item rows
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  itemRowCount = 0;
+  addItemRow();
+
+  updateOrderTotals();
+  updateOrderStatus();
+}
+
+function isPerWattMode() {
+  return document.getElementById('o-pricetype').value === 'Per Watt';
+}
+
 function autoFillCRM() {
   const crmVal = document.getElementById('o-crm').value;
   document.querySelectorAll('[id^="im-crm-"]').forEach(el => {
@@ -1193,15 +1233,29 @@ function addItemRow() {
   const tbody = document.getElementById('itemsBody');
   const tr = document.createElement('tr');
   tr.id = `item-row-${id}`;
-  tr.innerHTML = `
-    <td><input id="im-model-${id}" placeholder="Product model"></td>
-    <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-    <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
-    <td><input id="im-price-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
-    <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
-    <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
-    <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
-    <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
+
+  if (isPerWattMode()) {
+    tr.innerHTML = `
+      <td><input id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--surface2);color:var(--text3)"></td>
+      <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
+      <td><input id="im-volt-${id}" type="number" placeholder="e.g. 48" oninput="calcPerWattItem(${id})"></td>
+      <td><input id="im-amp-${id}" type="number" placeholder="e.g. 20" oninput="calcPerWattItem(${id})"></td>
+      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcPerWattItem(${id})"></td>
+      <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
+      <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
+      <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
+      <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
+  } else {
+    tr.innerHTML = `
+      <td><input id="im-model-${id}" placeholder="Product model"></td>
+      <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
+      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
+      <td><input id="im-price-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
+      <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
+      <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
+      <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
+      <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
+  }
   tbody.appendChild(tr);
 }
 
@@ -1220,6 +1274,37 @@ function calcItemTotal(id) {
   updateOrderTotals();
 }
 
+function calcPerWattItem(id) {
+  const volt   = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+  const amp    = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  const qty    = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
+  const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
+
+  // Auto-fill product model
+  const modelEl = document.getElementById(`im-model-${id}`);
+  if (modelEl && volt && amp) {
+    modelEl.value = `${volt}V ${amp}Ah`;
+  }
+
+  // Total = Volt x Amp x Qty x PerWattPrice
+  const wattage = volt * amp; // Wh
+  const total = (wattage / 1000) * qty * pwPrice; // convert to kWh then multiply — or direct Wh
+  // Actually: Volt * Amp = Watts, Total = V * A * Qty * PricePerWatt
+  const totalVal = volt * amp * qty * pwPrice;
+  const totalEl = document.getElementById(`im-total-${id}`);
+  if (totalEl) totalEl.value = totalVal ? totalVal.toFixed(2) : '';
+
+  updateOrderTotals();
+}
+
+function recalcAllItems() {
+  // Recalc all per watt items when per watt price changes
+  document.querySelectorAll('[id^="item-row-"]').forEach(row => {
+    const id = parseInt(row.id.replace('item-row-', ''));
+    if (!isNaN(id)) calcPerWattItem(id);
+  });
+}
+
 function updateOrderTotals() {
   let totalQty = 0, totalAmt = 0;
   document.querySelectorAll('[id^="im-qty-"]').forEach(el => {
@@ -1233,18 +1318,31 @@ function updateOrderTotals() {
 
 function getItemRows() {
   const items = [];
+  const perWatt = isPerWattMode();
+  const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
+
   document.querySelectorAll('[id^="item-row-"]').forEach(row => {
     const id = row.id.replace('item-row-', '');
     const model = document.getElementById(`im-model-${id}`)?.value?.trim();
     if (model) {
+      let pricePerUnit = 0;
+      if (perWatt) {
+        const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+        const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+        pricePerUnit = volt * amp * pwPrice; // price per unit battery
+      } else {
+        pricePerUnit = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+      }
       items.push({
         'Product Model': model,
         'Battery Type': document.getElementById(`im-btype-${id}`)?.value || '',
         'Qty': document.getElementById(`im-qty-${id}`)?.value || 0,
-        'Price Unit (Excluding GST)': document.getElementById(`im-price-${id}`)?.value || 0,
+        'Price Unit (Excluding GST)': pricePerUnit.toFixed(2),
         'Total': document.getElementById(`im-total-${id}`)?.value || 0,
         'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || '',
-        'Remarks': document.getElementById(`im-remarks-${id}`)?.value || ''
+        'Remarks': document.getElementById(`im-remarks-${id}`)?.value || '',
+        'Voltage': perWatt ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
+        'Ampere': perWatt ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
       });
     }
   });
@@ -1288,7 +1386,8 @@ function submitOrder() {
     'Transportation Charges': document.getElementById('o-transchg').value,
     'Priority': document.getElementById('o-priority').value,
     'Assigned CRM': document.getElementById('o-crm').value,
-    'Final Status': document.getElementById('o-finalstatus').value
+    'Final Status': document.getElementById('o-finalstatus').value,
+    'Per Watt Price': document.getElementById('o-perwatt')?.value || ''
   };
 
   api(orderData, r => {
@@ -1325,6 +1424,16 @@ function resetOrderForm() {
   // Re-enable submit button
   const btn = document.getElementById('submitOrderBtn');
   if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; }
+
+  // Reset per watt field
+  document.getElementById('perWattField').style.display = 'none';
+  document.getElementById('o-perwatt').value = '';
+
+  // Reset table header to default
+  document.getElementById('itemsTableHead').innerHTML = `<tr>
+    <th>Product Model</th><th>Battery Type</th><th>Qty</th>
+    <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
+  </tr>`;
 
   ['o-date','o-sales','o-cust','o-phone','o-city','o-pricetype','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg','o-warranty',
