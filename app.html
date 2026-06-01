@@ -454,7 +454,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <table>
         <thead><tr>
           <th>Order ID</th><th>Date</th><th>Sales Person</th><th>Customer</th><th>City</th>
-          <th>Total Qty</th><th>Price Type</th><th>Payment Mode</th><th>Order Status</th>
+          <th>Total Qty</th><th>Price Type</th><th>Total Value (GST)</th><th>Payment Mode</th><th>Order Status</th>
           <th>Payment Status</th><th>Priority</th><th>Assigned CRM</th><th>Action</th>
         </tr></thead>
         <tbody id="ordersTable"><tr><td colspan="13"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
@@ -988,7 +988,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyL1IVf-H4xJojnLi2knd6btFazNa5_a5_n407i6ES_F7ikWlWd_odHKo-tSVWGgr0m/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyv6g-KjGXoNXwGMXWOop-fZj6kgGNsszlW7mO0dC_3yWnqsgjUzBtZ9m5kElV4rjsrQQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1206,6 +1206,7 @@ function renderOrders() {
       <td>${o['City']||''}</td>
       <td style="text-align:right;">${fmt(o['Total Qty'])}</td>
       <td>${o['Price Type']||''}</td>
+      <td style="font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</td>
       <td>${o['Payment Mode']||''}</td>
       <td>${orderStatusBadge(o['Order Status'])}</td>
       <td>${payStatusBadge(o['Payment Status'])}</td>
