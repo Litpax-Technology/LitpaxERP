@@ -150,27 +150,40 @@ tr:hover td{background:#F8FAFF;color:var(--text);}
 .form-control::placeholder{color:var(--text3);}
 select.form-control{cursor:pointer;}
 textarea.form-control{resize:vertical;min-height:70px;}
-.form-section{font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:8px;grid-column:1/-1;}
-.form-section:first-child{border-top:none;margin-top:0;padding-top:0;}
+.form-section{
+  font-size:11px;font-weight:700;color:var(--accent);
+  text-transform:uppercase;letter-spacing:0.6px;
+  padding:14px 12px 8px;
+  border-top:1px solid var(--border);
+  margin-top:10px;margin-bottom:4px;
+  grid-column:1/-1;
+  background:var(--accent-dim);
+  border-radius:8px;
+  border-top:2px solid #C7D2FE;
+}
+.form-section:first-child{border-top:2px solid #C7D2FE;margin-top:0;padding-top:10px;}
 
 /* ITEMS TABLE IN MODAL */
-.items-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;table-layout:fixed;}
-.items-table th{padding:7px 8px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;white-space:nowrap;overflow:hidden;}
-.items-table td{padding:5px 6px;border:1px solid var(--border);}
-.items-table input,.items-table select{width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:0;}
-.items-table input:focus,.items-table select:focus{border-color:var(--accent);}
+.items-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+.items-table th{padding:8px 10px;background:var(--accent-dim);border-bottom:2px solid #C7D2FE;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap;}
+.items-table td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.items-table tr:last-child td{border-bottom:none;}
+.items-table tr:hover td{background:var(--accent-light);}
+.items-table input,.items-table select{
+  width:100%;padding:7px 10px;
+  border:1.5px solid var(--border);
+  border-radius:7px;font-size:12px;
+  font-family:'Inter',sans-serif;
+  background:var(--surface);color:var(--text);
+  outline:none;transition:border-color 0.15s,box-shadow 0.15s;
+  min-width:0;
+}
+.items-table input:focus,.items-table select:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(59,91,219,0.08);
+}
+.items-table input[readonly]{background:var(--surface2);color:var(--accent);font-weight:500;}
 .add-item-row{display:flex;justify-content:flex-start;margin-top:8px;}
-
-/* Per Watt mode column widths */
-#itemsTable th:nth-child(1){ width:18%; } /* Product Model */
-#itemsTable th:nth-child(2){ width:15%; } /* Battery Type */
-#itemsTable th:nth-child(3){ width:9%; }  /* Voltage / Qty */
-#itemsTable th:nth-child(4){ width:9%; }  /* Ampere / Price */
-#itemsTable th:nth-child(5){ width:8%; }  /* Qty / Total */
-#itemsTable th:nth-child(6){ width:10%; } /* Total / CRM */
-#itemsTable th:nth-child(7){ width:12%; } /* CRM / Remarks */
-#itemsTable th:nth-child(8){ width:12%; } /* Remarks */
-#itemsTable th:nth-child(9){ width:4%; }  /* Delete */
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:1000;align-items:flex-start;justify-content:center;backdrop-filter:blur(3px);padding:20px;overflow-y:auto;}
@@ -657,12 +670,15 @@ textarea.form-control{resize:vertical;min-height:70px;}
       </div>
 
       <!-- ORDER ITEMS -->
-      <div style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Order Items</div>
-          <button class="btn btn-sm btn-info" onclick="addItemRow()">+ Add Item</button>
+      <div style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:10px 14px;background:var(--accent-dim);border-radius:10px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">📦 Order Items</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Products jo is order mein hain</div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="addItemRow()" style="gap:4px;">+ Add Item</button>
         </div>
-        <div style="overflow-x:auto;">
+        <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);overflow:hidden;">
         <table class="items-table" id="itemsTable">
           <thead id="itemsTableHead"><tr>
             <th>Product Model</th><th>Battery Type</th><th>Qty</th>
@@ -682,9 +698,16 @@ textarea.form-control{resize:vertical;min-height:70px;}
           </tbody>
         </table>
         </div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:12px;">
-          <span style="font-size:12px;color:var(--text3);">Total Qty: <strong id="totalQtyDisplay" style="color:var(--text);">0</strong></span>
-          <span style="font-size:12px;color:var(--text3);">Total Amount: <strong id="totalAmtDisplay" style="color:var(--accent);">₹0</strong></span>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:16px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Qty</span>
+            <span style="font-size:16px;font-weight:700;color:var(--text);" id="totalQtyDisplay">0</span>
+          </div>
+          <div style="width:1px;height:24px;background:var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Amount</span>
+            <span style="font-size:16px;font-weight:700;color:var(--accent);" id="totalAmtDisplay">₹0</span>
+          </div>
         </div>
       </div>
 
