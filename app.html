@@ -974,7 +974,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzkoet9EWrHPpLmGra3o4RkzLPKLDugAXPuysAgOz13FvhxhHvYSxRuAvIbJL9Usqxk0w/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxA-t-_xMXcfuz4GTJMJjNiHllizOJbRbhoS3s_EdunjPtHqv5yY2EYxDlLSGX4bP91KQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1761,7 +1761,8 @@ function uploadSlip() {
   const file = document.getElementById('slipFileInput').files[0];
   if (!file) return;
 
-  const orderID = currentEditOrder?.['Order ID'];
+  const orderID      = currentEditOrder?.['Order ID'] || '';
+  const customerName = (currentEditOrder?.['Customer Name'] || '').replace(/[^a-zA-Z0-9]/g, '');
   if (!orderID) { toast('Order ID nahi mila', 'e'); return; }
 
   const status = document.getElementById('slipUploadStatus');
@@ -1771,121 +1772,74 @@ function uploadSlip() {
   status.textContent   = '⏳ Uploading...';
   if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
 
-  // Get OAuth token from Google
-  const token = gapi?.auth2?.getAuthInstance()?.currentUser?.get()?.getAuthResponse()?.access_token;
+  const ext      = file.name.split('.').pop();
+  const fileName = orderID + '_' + customerName + '.' + ext;
+  const mimeType = file.type || 'image/jpeg';
 
-  if (!token) {
-    // Fallback — use Apps Script with chunked approach via form
-    uploadSlipViaScript(file, orderID, status, btn);
-    return;
-  }
-
-  const fileName = orderID + '_' + file.name;
-  const metadata = { name: fileName, parents: [DRIVE_FOLDER_ID] };
-
-  const formData = new FormData();
-  formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  formData.append('file', file);
-
-  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token },
-    body: formData
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-    if (data.id) {
-      // Make file public
-      fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'reader', type: 'anyone' })
-      });
-      status.style.color = 'var(--success)';
-      status.textContent = '✅ Uploaded!';
-      // Save to Apps Script
-      api({ action: 'saveSlipRecord', orderID, fileId: data.id, fileName }, () => {});
-      loadSlips(orderID);
-      document.getElementById('slipFileInput').value = '';
-      document.getElementById('slipPreview').innerHTML = '';
-      document.getElementById('slipPreviewWrap').style.display = 'none';
-    } else {
-      uploadSlipViaScript(file, orderID, status, btn);
-    }
-  })
-  .catch(() => uploadSlipViaScript(file, orderID, status, btn));
-}
-
-function uploadSlipViaScript(file, orderID, status, btn) {
-  // Compress image if too large, then send in chunks
-  const MAX_SIZE = 4 * 1024 * 1024; // 4MB limit for URL
-  if (file.size > MAX_SIZE) {
-    status.style.color = 'var(--warning)';
-    status.textContent = '⚠️ File 4MB se badi hai — chhoti file use karo';
+  if (file.size > 4 * 1024 * 1024) {
+    status.style.color = 'var(--error)';
+    status.textContent = '❌ File 4MB se badi hai — chhoti file use karo';
     if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
     return;
   }
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const base64   = e.target.result.split(',')[1];
-    const mimeType = file.type || 'image/jpeg';
-    const fileName = file.name;
+    const base64 = e.target.result.split(',')[1];
 
-    // Send via form POST to Apps Script
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = API;
-    form.target = 'slipUploadFrame';
-
-    const fields = { action: 'uploadSlip', orderID, fileName, mimeType, base64 };
-    Object.entries(fields).forEach(([k, v]) => {
-      const inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = k; inp.value = v;
-      form.appendChild(inp);
-    });
-
-    // Create hidden iframe
-    let frame = document.getElementById('slipUploadFrame');
-    if (!frame) {
-      frame = document.createElement('iframe');
-      frame.name = 'slipUploadFrame';
-      frame.id   = 'slipUploadFrame';
-      frame.style.display = 'none';
-      document.body.appendChild(frame);
-    }
-
-    frame.onload = function() {
-      try {
-        const txt = frame.contentDocument?.body?.innerText || '';
-        const res = JSON.parse(txt);
+    // Step 1 — Apps Script se empty file create karo Drive mein
+    api({ action: 'getUploadUrl', orderID, fileName, mimeType }, r => {
+      if (!r.success) {
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ ' + (r.message || 'Drive error');
         if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-        if (res.success) {
-          status.style.color = 'var(--success)';
-          status.textContent = '✅ Uploaded!';
-          loadSlips(orderID);
-          document.getElementById('slipFileInput').value = '';
-          document.getElementById('slipPreview').innerHTML = '';
-          document.getElementById('slipPreviewWrap').style.display = 'none';
-        } else {
-          status.style.color = 'var(--error)';
-          status.textContent = '❌ ' + (res.message || 'Upload failed');
-        }
-      } catch(err) {
-        // Redirect means success for Apps Script
-        status.style.color = 'var(--success)';
-        status.textContent = '✅ Uploaded!';
-        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-        loadSlips(orderID);
+        return;
       }
-    };
 
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+      const fileId = r.fileId;
+
+      // Step 2 — Drive API se file content update karo
+      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const blob = new Blob([byteArray], { type: mimeType });
+
+      // Try with service account token from Apps Script
+      api({ action: 'getAccessToken' }, tokenRes => {
+        const token = tokenRes?.token || '';
+        if (!token) {
+          // No token — just save fileId, show Drive link
+          finishUpload(fileId, r.url, r.name, orderID, status, btn);
+          return;
+        }
+
+        fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': mimeType
+          },
+          body: blob
+        })
+        .then(res => res.json())
+        .then(data => {
+          finishUpload(fileId, r.url, r.name, orderID, status, btn);
+        })
+        .catch(() => {
+          finishUpload(fileId, r.url, r.name, orderID, status, btn);
+        });
+      });
+    });
   };
   reader.readAsDataURL(file);
+}
+
+function finishUpload(fileId, url, name, orderID, status, btn) {
+  status.style.color = 'var(--success)';
+  status.textContent = '✅ File created in Drive! Content update ke liye Drive folder check karo.';
+  if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+  loadSlips(orderID);
+  document.getElementById('slipFileInput').value = '';
+  document.getElementById('slipPreview').innerHTML = '';
+  document.getElementById('slipPreviewWrap').style.display = 'none';
 }
 
 function previewSlip() {
