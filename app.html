@@ -605,10 +605,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
             <option>Absolute</option><option>Per Watt</option><option>Last Price</option>
           </select>
         </div>
-        <div class="form-group" id="perWattField" style="display:none;">
-          <label class="form-label">Per Watt Price (₹)</label>
-          <input class="form-control" type="number" id="o-perwatt" placeholder="e.g. 12" oninput="recalcAllItems()">
-        </div>
+        <div class="form-group" id="perWattField" style="display:none;"></div>
         <div class="form-group"><label class="form-label">Payment Mode</label>
           <select class="form-control" id="o-paymode">
             <option value="">Select Payment Mode</option>
@@ -1292,8 +1289,7 @@ function onPriceTypeChange() {
   const isAbsolute = pt === 'Absolute' || pt === 'Last Price';
   const useVA      = isPerWatt || isAbsolute; // both use Voltage + Ampere
 
-  // Show/hide per watt price field
-  document.getElementById('perWattField').style.display = isPerWatt ? 'block' : 'none';
+  // Per Watt Price is now per-item — no order-level field needed
 
   // Rebuild all item rows
   const tbody = document.getElementById('itemsBody');
@@ -1330,9 +1326,9 @@ function saveAndAddMore() {
 
   const perWatt = isPerWattMode();
   const vaMode  = isVAMode();
-  const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  const pwPrice = perWatt ? (parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0) : 0;
   let pricePerUnit = 0;
   if (perWatt) pricePerUnit = volt * amp * pwPrice;
   else pricePerUnit = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
@@ -1346,7 +1342,8 @@ function saveAndAddMore() {
     'Assigned CRM':  document.getElementById(`im-crm-${id}`)?.value || '',
     'Remarks':       document.getElementById(`im-remarks-${id}`)?.value || '',
     'Voltage':       vaMode ? (volt || '') : '',
-    'Ampere':        vaMode ? (amp || '') : ''
+    'Ampere':        vaMode ? (amp || '') : '',
+    'Per Watt Price': isPerWattMode() ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : ''
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -1394,7 +1391,7 @@ function saveAndAddMore() {
       'City': document.getElementById('o-city').value,
       'Total Qty': totalQty,
       'Price Type': document.getElementById('o-pricetype').value,
-      'Per Watt Price': document.getElementById('o-perwatt')?.value || '',
+
       'Payment Mode': document.getElementById('o-paymode').value,
       'Plan Payment Date': document.getElementById('o-planpay').value,
       'Order Status': document.getElementById('o-status').value,
@@ -1504,8 +1501,8 @@ function addItemRow() {
     <div style="display:grid;grid-template-columns:${vaMode ? 'repeat(4,1fr)' : '1fr 1fr'};gap:10px;margin-bottom:10px;">
       ${vaMode ? `<div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
       <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcVAItem(${id})" style="font-size:13px;"></div>` : ''}
-      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcVAItem' : 'calcItemTotal'}(${id})" style="font-size:13px;"></div>
-      ${!pwMode ? `<div>${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcAbsoluteItem' : 'calcItemTotal'}(${id})" style="font-size:13px;"></div>` : ''}
+      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
+      ${pwMode ? `<div>${lbl('Per Watt Price (₹)')}<input class="form-control" id="im-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcVAItem(${id})" style="font-size:13px;"></div>` : `<div>${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcAbsoluteItem(${id})" style="font-size:13px;"></div>`}
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
@@ -1580,7 +1577,8 @@ function calcVAItem(id) {
   if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
 
   if (isPerWattMode()) {
-    const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
+    // Each item has its own per watt price
+    const pwPrice = parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0;
     const total   = volt * amp * qty * pwPrice;
     const totalEl = document.getElementById(`im-total-${id}`);
     if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
@@ -1623,10 +1621,9 @@ function calcPerWattItem(id) {
 }
 
 function recalcAllItems() {
-  // Recalc all per watt items when per watt price changes
   document.querySelectorAll('[id^="item-row-"]').forEach(row => {
-    const id = parseInt(row.id.replace('item-row-', ''));
-    if (!isNaN(id)) calcPerWattItem(id);
+    const id = row.id.replace('item-row-', '');
+    calcVAItem(id);
   });
 }
 
@@ -1671,7 +1668,8 @@ function getItemRows() {
         'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || '',
         'Remarks': document.getElementById(`im-remarks-${id}`)?.value || '',
         'Voltage': vaMode ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
-        'Ampere': vaMode ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
+        'Ampere': vaMode ? (document.getElementById(`im-amp-${id}`)?.value || '') : '',
+        'Per Watt Price': perWatt ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : ''
       });
     }
   });
@@ -1789,7 +1787,6 @@ function resetOrderForm() {
 
   // Reset per watt field
   document.getElementById('perWattField').style.display = 'none';
-  document.getElementById('o-perwatt').value = '';
   // Reset charger
   const chargerCheck = document.getElementById('chargerCheck');
   if (chargerCheck) { chargerCheck.checked = false; }
