@@ -673,9 +673,22 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div style="margin-top:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div style="font-size:13px;font-weight:700;color:var(--text);">📦 Order Items</div>
-          <button class="btn btn-sm btn-primary" onclick="addItemRow()">+ Add Item</button>
+          <span id="currentOrderBadge" style="display:none;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:10px;border:1px solid #C7D2FE;"></span>
         </div>
+        <!-- Saved items list -->
+        <div id="savedItemsList" style="display:none;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:8px 14px;background:var(--success-dim);border-bottom:1px solid var(--success-b);font-size:11px;font-weight:600;color:var(--success);text-transform:uppercase;letter-spacing:0.4px;">✓ Saved Items</div>
+          <div id="savedItemsTable" style="padding:8px 0;"></div>
+        </div>
+        <!-- Current item form -->
         <div id="itemsBody" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <!-- Save + Add More button -->
+        <div style="margin-top:10px;">
+          <button id="saveAddMoreBtn" onclick="saveAndAddMore()" style="width:100%;padding:11px;background:var(--success-dim);border:1.5px solid var(--success-b);border-radius:10px;color:var(--success);font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;" onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='var(--success-dim)'">
+            ✓ Save + Add More Item
+          </button>
+        </div>
+
         <div style="margin-top:12px;display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--accent-dim);border-radius:10px;border:1px solid #C7D2FE;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Qty</span>
@@ -1276,13 +1289,18 @@ function isVAMode() {
   return pt === 'Per Watt' || pt === 'Absolute' || pt === 'Last Price';
 }
 
-// ========== SAVE + ADD ITEM ==========
-let currentOrderID = null; // order ID after first save
+// ========== SAVE + ADD MORE ==========
+let currentOrderID = null;
+let savedItemsData = [];
 
-function saveAndAddItem(id) {
-  const btn = document.getElementById(`save-item-btn-${id}`);
+function saveAndAddMore() {
+  const btn = document.getElementById('saveAddMoreBtn');
+  // Get current item card
+  const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
+  if (!cards.length) { toast('Koi item nahi hai', 'e'); return; }
+  const card = cards[cards.length - 1];
+  const id   = card.id.replace('item-row-', '');
 
-  // Get item data
   const model = document.getElementById(`im-model-${id}`)?.value?.trim();
   if (!model) { toast('Product Model bharo pehle', 'e'); return; }
 
@@ -1303,46 +1321,45 @@ function saveAndAddItem(id) {
     'Total':         document.getElementById(`im-total-${id}`)?.value || 0,
     'Assigned CRM':  document.getElementById(`im-crm-${id}`)?.value || '',
     'Remarks':       document.getElementById(`im-remarks-${id}`)?.value || '',
-    'Voltage':       vaMode ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
-    'Ampere':        vaMode ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
+    'Voltage':       vaMode ? (volt || '') : '',
+    'Ampere':        vaMode ? (amp || '') : ''
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  const doSaveItem = (orderID) => {
+  const doSave = (orderID) => {
     api({ action: 'addOrderItem', 'Order ID': orderID, ...itemData }, r => {
       if (r.success) {
-        // Mark card as saved
-        const card = document.getElementById(`item-row-${id}`);
-        if (card) {
-          card.style.borderColor = 'var(--success-b)';
-          card.style.background = 'var(--success-dim)';
-          // Disable all inputs in this card
-          card.querySelectorAll('input,select').forEach(el => el.disabled = true);
-          if (btn) { btn.disabled = true; btn.textContent = '✓ Saved'; btn.style.opacity = '0.6'; }
-        }
-        toast('Item saved! ✓');
-        // Add new blank item card
+        savedItemsData.push({ ...itemData, itemID: r.itemID });
+        renderSavedItems();
+
+        // Remove current card
+        card.remove();
+        itemRowCount = 0;
+
+        // Add fresh card
         addItemRow();
-        // Scroll to new card
+
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
+        toast('Item saved!');
+
         setTimeout(() => {
-          const body = document.getElementById('itemsBody');
-          body.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          document.getElementById('itemsBody')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 100);
       } else {
         toast(r.message || 'Save failed', 'e');
-        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
       }
     });
   };
 
-  // If order not created yet — create order first
   if (!currentOrderID) {
     const cust = document.getElementById('o-cust').value.trim();
-    if (!cust) { toast('Customer Name zaroori hai', 'e'); if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; } return; }
+    if (!cust) { toast('Customer Name zaroori hai', 'e'); if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
 
     let totalQty = 0;
-    document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
+    savedItemsData.forEach(i => { totalQty += parseFloat(i['Qty']) || 0; });
+    totalQty += parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
 
     const orderData = {
       action: 'addOrder',
@@ -1371,21 +1388,39 @@ function saveAndAddItem(id) {
     api(orderData, r => {
       if (!r.success) {
         toast(r.message || 'Order create failed', 'e');
-        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
         return;
       }
       currentOrderID = r.orderID;
-      toast('Order created: ' + currentOrderID);
 
-      // Disable order fields after creation
-      document.getElementById('o-cust').disabled = true;
-      document.getElementById('o-sales').disabled = true;
+      // Show order ID badge
+      const badge = document.getElementById('currentOrderBadge');
+      if (badge) { badge.style.display = 'inline-flex'; badge.textContent = '📋 ' + currentOrderID; }
 
-      doSaveItem(currentOrderID);
+      doSave(currentOrderID);
     });
   } else {
-    doSaveItem(currentOrderID);
+    doSave(currentOrderID);
   }
+}
+
+function renderSavedItems() {
+  const list = document.getElementById('savedItemsList');
+  const table = document.getElementById('savedItemsTable');
+  if (!list || !table) return;
+  if (!savedItemsData.length) { list.style.display = 'none'; return; }
+  list.style.display = 'block';
+  table.innerHTML = savedItemsData.map((item, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;font-weight:700;color:var(--success);background:var(--success-dim);padding:2px 7px;border-radius:10px;">#${i+1}</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${item['Product Model']}</div>
+          <div style="font-size:11px;color:var(--text3);">${item['Battery Type']||''} | Qty: ${item['Qty']} | ₹${Number(item['Total']||0).toLocaleString('en-IN')}</div>
+        </div>
+      </div>
+      <span style="font-size:11px;color:var(--success);">✓ Saved</span>
+    </div>`).join('') + `<div style="padding:6px 14px;font-size:11px;color:var(--text3);">Total ${savedItemsData.length} item(s) saved</div>`;
 }
 
 function autoFillCRM() {
@@ -1433,11 +1468,8 @@ function addItemRow() {
 
   div.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <span style="font-size:11px;font-weight:600;color:var(--accent);">Item #${id}</span>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button id="save-item-btn-${id}" onclick="saveAndAddItem(${id})" style="background:var(--success-dim);border:1px solid var(--success-b);color:var(--success);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0;">✓ Save + Add Item</button>
-        <button onclick="removeItemRow(${id})" style="background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:500;flex-shrink:0;">✕</button>
-      </div>
+      <span style="font-size:11px;font-weight:600;color:var(--accent);">New Item</span>
+      <button onclick="removeItemRow(${id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;">✕</button>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1673,6 +1705,11 @@ function submitOrder() {
 function resetOrderForm() {
   // Reset state
   currentOrderID = null;
+  savedItemsData = [];
+  const badge = document.getElementById('currentOrderBadge');
+  if (badge) badge.style.display = 'none';
+  const savedList = document.getElementById('savedItemsList');
+  if (savedList) savedList.style.display = 'none';
   const btn = document.getElementById('submitOrderBtn');
   if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; }
   // Re-enable fields
