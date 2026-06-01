@@ -549,8 +549,8 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="card-head"><div class="card-title">Customers</div><button class="btn btn-primary" onclick="openModal('custModal')">+ Add Customer</button></div>
     <div class="table-wrap">
       <table id="custTableEl">
-        <thead id="custTableHead"><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th></tr></thead>
-        <tbody id="custTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
+        <thead id="custTableHead"><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th><th>Docs</th></tr></thead>
+        <tbody id="custTable"><tr><td colspan="8"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -937,6 +937,36 @@ textarea.form-control{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<!-- CUSTOMER DOCS MODAL -->
+<div class="modal-overlay" id="custDocsModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title" id="custDocsTitle">Customer Documents</div>
+      <button class="modal-close" onclick="closeModal('custDocsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Upload area -->
+      <div style="background:var(--surface2);border:2px dashed var(--border2);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">GST Certificate, PAN Card, ya koi bhi document</div>
+        <label class="btn btn-sm" style="cursor:pointer;background:var(--accent-dim);color:var(--accent);border-color:#C7D2FE;">
+          📎 File Choose karo
+          <input type="file" id="custDocFileInput" accept=".pdf,image/*" style="display:none;" onchange="previewCustDoc()">
+        </label>
+        <div id="custDocPreviewWrap" style="display:none;margin-top:10px;">
+          <div id="custDocPreview"></div>
+          <button class="btn btn-sm btn-success" id="custDocUploadBtn" onclick="uploadCustDoc()" style="margin-top:8px;display:none;">⬆ Upload</button>
+        </div>
+        <div id="custDocStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
+      </div>
+      <!-- Docs list -->
+      <div id="custDocsList"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('custDocsModal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT ORDER MODAL -->
 <div class="modal-overlay" id="editOrderModal">
   <div class="modal">
@@ -1034,7 +1064,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyHRGEkgdklIAayR53n3j4NpuN1EWIucyf6q9HNgjI7616GM4DsLmQmzdB9HDw8ydO9_w/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwyOoqUcBD1pqNAeyQ8O42ZPv9pz7epOPD4cusmnLric6finA9LB83eU8G8x9AdVFY/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2098,7 +2128,16 @@ function loadCustomers() {
     // Admin — sab customers
     api({ action: 'getCustomers' }, r => {
       if (!r.success || !r.data.length) { document.getElementById('custTable').innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">No customers</div></div></td></tr>`; return; }
-      document.getElementById('custTable').innerHTML = r.data.map(c => `<tr><td class="td-id">${c.CustomerID}</td><td class="td-bold">${c.CompanyName}</td><td>${c.ContactPerson}</td><td>${c.Phone}</td><td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td><td>${c.City}</td><td>${c.CreditDays} days</td></tr>`).join('');
+      document.getElementById('custTable').innerHTML = r.data.map(c => `<tr>
+        <td class="td-id">${c.CustomerID}</td>
+        <td class="td-bold">${c.CompanyName}</td>
+        <td>${c.ContactPerson}</td>
+        <td>${c.Phone}</td>
+        <td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td>
+        <td>${c.City}</td>
+        <td>${c.CreditDays} days</td>
+        <td><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎 Docs</button></td>
+      </tr>`).join('');
     });
   }
 }
@@ -2237,6 +2276,94 @@ function loadSlips(orderID) {
         <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
       </div>`).join('');
   });
+}
+
+// ========== CUSTOMER DOCS ==========
+let currentCustName = '';
+
+function openCustDocs(custName) {
+  currentCustName = custName;
+  document.getElementById('custDocsTitle').textContent = '📎 ' + custName + ' — Documents';
+  document.getElementById('custDocStatus').style.display = 'none';
+  document.getElementById('custDocPreviewWrap').style.display = 'none';
+  document.getElementById('custDocFileInput').value = '';
+  openModal('custDocsModal');
+  loadCustDocs(custName);
+}
+
+function loadCustDocs(custName) {
+  const el = document.getElementById('custDocsList');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  api({ action: 'getCustomerDocs', customerName: custName }, r => {
+    if (!r.success || !r.data.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px;">Koi document upload nahi hua abhi</div>';
+      return;
+    }
+    el.innerHTML = r.data.map(d => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text);">📄 ${d.name}</div>
+          <div style="font-size:11px;color:var(--text3);">Uploaded: ${d.date}</div>
+        </div>
+        <a href="${d.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
+      </div>`).join('');
+  });
+}
+
+function previewCustDoc() {
+  const file = document.getElementById('custDocFileInput').files[0];
+  if (!file) return;
+  const wrap = document.getElementById('custDocPreviewWrap');
+  const prev = document.getElementById('custDocPreview');
+  wrap.style.display = 'block';
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => { prev.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:120px;border-radius:8px;">`; };
+    reader.readAsDataURL(file);
+  } else {
+    prev.innerHTML = `<div style="padding:10px;background:var(--surface2);border-radius:8px;font-size:12px;">📄 ${file.name}</div>`;
+  }
+  document.getElementById('custDocUploadBtn').style.display = 'inline-flex';
+}
+
+function uploadCustDoc() {
+  const file = document.getElementById('custDocFileInput').files[0];
+  if (!file || !currentCustName) return;
+
+  const status = document.getElementById('custDocStatus');
+  const btn    = document.getElementById('custDocUploadBtn');
+  status.style.display = 'block';
+  status.style.color   = 'var(--warning)';
+  status.textContent   = '⏳ Uploading...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
+
+  if (file.size > 4 * 1024 * 1024) {
+    status.style.color = 'var(--error)';
+    status.textContent = '❌ File 4MB se badi hai';
+    if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64   = e.target.result.split(',')[1];
+    const mimeType = file.type || 'application/pdf';
+
+    api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: file.name, mimeType, base64 }, r => {
+      if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+      if (r.success) {
+        status.style.color = 'var(--success)';
+        status.textContent = '✅ Uploaded!';
+        loadCustDocs(currentCustName);
+        document.getElementById('custDocFileInput').value = '';
+        document.getElementById('custDocPreviewWrap').style.display = 'none';
+      } else {
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ ' + (r.message || 'Upload failed');
+      }
+    });
+  };
+  reader.readAsDataURL(file);
 }
 
 // ========== MY DASHBOARD ==========
