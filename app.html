@@ -671,42 +671,20 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
       <!-- ORDER ITEMS -->
       <div style="margin-top:20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:10px 14px;background:var(--accent-dim);border-radius:10px;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">📦 Order Items</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Products jo is order mein hain</div>
-          </div>
-          <button class="btn btn-sm btn-primary" onclick="addItemRow()" style="gap:4px;">+ Add Item</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">📦 Order Items</div>
+          <button class="btn btn-sm btn-primary" onclick="addItemRow()">+ Add Item</button>
         </div>
-        <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);overflow:hidden;">
-        <table class="items-table" id="itemsTable">
-          <thead id="itemsTableHead"><tr>
-            <th>Product Model</th><th>Battery Type</th><th>Qty</th>
-            <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
-          </tr></thead>
-          <tbody id="itemsBody">
-            <tr id="item-row-1">
-              <td><input id="im-model-1" placeholder="Product model"></td>
-              <td><select id="im-btype-1"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-              <td><input id="im-qty-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
-              <td class="im-price-col-1"><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
-              <td><input id="im-total-1" readonly placeholder="Auto"></td>
-              <td><input id="im-crm-1" placeholder="CRM name"></td>
-              <td><input id="im-remarks-1" placeholder="Remarks"></td>
-              <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(1)">✕</button></td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:16px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Qty</span>
-            <span style="font-size:16px;font-weight:700;color:var(--text);" id="totalQtyDisplay">0</span>
+        <div id="itemsBody" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--accent-dim);border-radius:10px;border:1px solid #C7D2FE;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Qty</span>
+            <span style="font-size:18px;font-weight:700;color:var(--text);" id="totalQtyDisplay">0</span>
           </div>
-          <div style="width:1px;height:24px;background:var(--border);"></div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Amount</span>
-            <span style="font-size:16px;font-weight:700;color:var(--accent);" id="totalAmtDisplay">₹0</span>
+          <div style="width:1px;height:28px;background:#C7D2FE;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;">Total Amount</span>
+            <span style="font-size:18px;font-weight:700;color:var(--accent);" id="totalAmtDisplay">₹0</span>
           </div>
         </div>
       </div>
@@ -1307,40 +1285,77 @@ function autoFillCRM() {
 
 function addItemRow() {
   itemRowCount++;
-  const id = itemRowCount;
+  const id     = itemRowCount;
   const crmVal = document.getElementById('o-crm').value;
-  const tbody = document.getElementById('itemsBody');
-  const tr = document.createElement('tr');
-  tr.id = `item-row-${id}`;
+  const body   = document.getElementById('itemsBody');
+  const vaMode = isVAMode();
+  const pwMode = isPerWattMode();
+  const div    = document.createElement('div');
+  div.id = `item-row-${id}`;
+  div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;transition:border-color 0.15s;';
 
-  if (isVAMode()) {
-    const isAbsoluteMode = !isPerWattMode();
-    const priceField = isAbsoluteMode
-      ? `<td><input id="im-price-${id}" type="number" placeholder="Rate/unit" oninput="calcAbsoluteItem(${id})"></td>`
-      : '';
-    tr.innerHTML = `
-      <td><input id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--surface2);color:var(--text3)"></td>
-      <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-      <td><input id="im-volt-${id}" type="number" placeholder="e.g. 48" oninput="calcVAItem(${id})"></td>
-      <td><input id="im-amp-${id}" type="number" placeholder="e.g. 20" oninput="calcVAItem(${id})"></td>
-      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcVAItem(${id})"></td>
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','Charger','BMS']
+    .map(o => `<option>${o}</option>`).join('');
+
+  const vaFields = vaMode ? `
+    <div>
+      <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Voltage (V)</label>
+      <input class="form-control" id="im-volt-${id}" type="number" placeholder="e.g. 48" oninput="calcVAItem(${id})" style="font-size:13px;">
+    </div>
+    <div>
+      <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Ampere (Ah)</label>
+      <input class="form-control" id="im-amp-${id}" type="number" placeholder="e.g. 20" oninput="calcVAItem(${id})" style="font-size:13px;">
+    </div>` : '';
+
+  const priceField = (!pwMode) ? `
+    <div>
+      <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Rate/Unit (₹)</label>
+      <input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcAbsoluteItem' : 'calcItemTotal'}(${id})" style="font-size:13px;">
+    </div>` : '';
+
+  const modelField = vaMode
+    ? `<input class="form-control" id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;">`
+    : `<input class="form-control" id="im-model-${id}" placeholder="Product model" style="font-size:13px;">`;
+
+  div.innerHTML = `
+    <button onclick="removeItemRow(${id})" style="position:absolute;top:10px;right:10px;background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Product Model</label>
+        ${modelField}
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Battery Type</label>
+        <select class="form-control" id="im-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:10px;">
+      ${vaFields}
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Qty</label>
+        <input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcVAItem' : 'calcItemTotal'}(${id})" style="font-size:13px;">
+      </div>
       ${priceField}
-      <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
-      <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
-      <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
-      <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
-  } else {
-    tr.innerHTML = `
-      <td><input id="im-model-${id}" placeholder="Product model"></td>
-      <td><select id="im-btype-${id}"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-      <td><input id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
-      <td><input id="im-price-${id}" type="number" placeholder="0" oninput="calcItemTotal(${id})"></td>
-      <td><input id="im-total-${id}" readonly placeholder="Auto"></td>
-      <td><input id="im-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
-      <td><input id="im-remarks-${id}" placeholder="Remarks"></td>
-      <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(${id})">✕</button></td>`;
-  }
-  tbody.appendChild(tr);
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Total (₹)</label>
+        <input class="form-control" id="im-total-${id}" readonly placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Assigned CRM</label>
+        <input class="form-control" id="im-crm-${id}" value="${crmVal}" placeholder="CRM name" style="font-size:13px;">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Remarks</label>
+        <input class="form-control" id="im-remarks-${id}" placeholder="Any remarks..." style="font-size:13px;">
+      </div>
+    </div>`;
+
+  body.appendChild(div);
 }
 
 function removeItemRow(id) {
@@ -1437,6 +1452,7 @@ function getItemRows() {
   const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
 
   document.querySelectorAll('[id^="item-row-"]').forEach(row => {
+    if (!row.id.startsWith('item-row-')) return;
     const id = row.id.replace('item-row-', '');
     const model = document.getElementById(`im-model-${id}`)?.value?.trim();
     if (model) {
@@ -1546,29 +1562,15 @@ function resetOrderForm() {
   document.getElementById('perWattField').style.display = 'none';
   document.getElementById('o-perwatt').value = '';
 
-  // Reset table header to default
-  document.getElementById('itemsTableHead').innerHTML = `<tr>
-    <th>Product Model</th><th>Battery Type</th><th>Qty</th>
-    <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
-  </tr>`;
-
   ['o-date','o-sales','o-cust','o-phone','o-city','o-pricetype','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg','o-warranty',
    'o-crm','o-finalstatus','o-remarks','o-priority'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('itemsBody').innerHTML = `<tr id="item-row-1">
-    <td><input id="im-model-1" placeholder="Product model"></td>
-    <td><select id="im-btype-1"><option value="">Battery Type</option><option>2 Wheeler Battery</option><option>3 Wheeler Battery</option><option>Inverter Battery</option><option>Solar Battery</option><option>E-Rikshaw Battery</option><option>Charger</option><option>BMS</option></select></td>
-    <td><input id="im-qty-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
-    <td><input id="im-price-1" type="number" placeholder="0" oninput="calcItemTotal(1)"></td>
-    <td><input id="im-total-1" readonly placeholder="Auto"></td>
-    <td><input id="im-crm-1" placeholder="CRM name"></td>
-    <td><input id="im-remarks-1" placeholder="Remarks"></td>
-    <td><button class="btn btn-sm btn-danger" onclick="removeItemRow(1)">✕</button></td>
-  </tr>`;
-  itemRowCount = 1;
+  document.getElementById('itemsBody').innerHTML = '';
+  itemRowCount = 0;
+  addItemRow();
   document.getElementById('totalQtyDisplay').textContent = '0';
   document.getElementById('totalAmtDisplay').textContent = '₹0';
 }
