@@ -1082,7 +1082,17 @@ function toast(msg, type='s') {
 }
 
 // MODAL
-function openModal(id) { document.getElementById(id).classList.add('show'); }
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+  // Auto add first item row when order modal opens
+  if (id === 'orderModal') {
+    const body = document.getElementById('itemsBody');
+    if (body && body.children.length === 0) {
+      itemRowCount = 0;
+      addItemRow();
+    }
+  }
+}
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
