@@ -406,6 +406,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 <div class="sidebar">
   <div class="nav-sec" id="sec-sales">Sales</div>
   <div class="nav-item active" onclick="nav('orders',this)" id="nav-orders"><span class="nav-icon">📋</span>Orders</div>
+  <div class="nav-item" onclick="nav('mydashboard',this)" id="nav-mydashboard"><span class="nav-icon">📊</span>My Dashboard</div>
   <div class="nav-sec" id="sec-tracking">Tracking</div>
   <div class="nav-item" onclick="nav('crm',this)" id="nav-crm"><span class="nav-icon">🎯</span>CRM Tracker</div>
   <div class="nav-item" onclick="nav('production',this)" id="nav-production"><span class="nav-icon">⚙️</span>Production</div>
@@ -519,6 +520,25 @@ textarea.form-control{resize:vertical;min-height:70px;}
         </tr></thead>
         <tbody id="prodTable"><tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MY DASHBOARD PAGE ===== -->
+<div class="page" id="page-mydashboard">
+  <div class="stats-row" id="myStatsRow">
+    <div class="stat c-blue"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="my-total">0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">In Production</div><div class="stat-val" id="my-prod">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Dispatched</div><div class="stat-val" id="my-dispatched">0</div></div>
+    <div class="stat c-red"><div class="stat-lbl">Delayed</div><div class="stat-val" id="my-delayed">0</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📊 My Orders — Production Status</div>
+    </div>
+    <div id="myDashboardContent" style="padding:16px;">
+      <div class="loading"><div class="spin"></div> Loading...</div>
     </div>
   </div>
 </div>
@@ -1025,7 +1045,7 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 // Role access
 const roleAccess = {
   Admin:      ['orders','crm','production','customers','products','suppliers','users'],
-  Sales:      ['orders','customers','products'],
+  Sales:      ['orders','customers','mydashboard'],
   Production: ['production'],
   CRM:        ['crm','orders']
 };
@@ -1038,8 +1058,17 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
-  // Non-admin — hide entire sidebar
-  if (user.role !== 'Admin') {
+  // Role based sidebar
+  if (user.role === 'Sales') {
+    // Show sidebar with limited modules
+    document.querySelector('.sidebar').style.display = 'flex';
+    // Hide section headers not needed
+    ['sec-tracking', 'sec-admin'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  } else if (user.role !== 'Admin') {
+    // Production, CRM — hide sidebar
     document.querySelector('.sidebar').style.display = 'none';
   }
 
@@ -1056,6 +1085,7 @@ const pageMeta = {
   orders:{title:'Sales Orders',sub:'Manage all customer orders'},
   crm:{title:'CRM Tracker',sub:'Order lifecycle tracking'},
   production:{title:'Production',sub:'Production status & updates'},
+  mydashboard:{title:'My Dashboard',sub:'Your orders & production updates'},
   customers:{title:'Customers',sub:'Customer master data'},
   products:{title:'Products',sub:'Product master data'},
   suppliers:{title:'Suppliers',sub:'Supplier master data'},
@@ -1077,6 +1107,7 @@ function loadPage(id) {
   if (id === 'orders') loadOrders();
   else if (id === 'crm') loadCRM();
   else if (id === 'production') loadProduction();
+  else if (id === 'mydashboard') loadMyDashboard();
   else if (id === 'customers') loadCustomers();
   else if (id === 'products') loadProducts();
   else if (id === 'suppliers') loadSuppliers();
@@ -2173,6 +2204,66 @@ function loadSlips(orderID) {
         </div>
         <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
       </div>`).join('');
+  });
+}
+
+// ========== MY DASHBOARD ==========
+function loadMyDashboard() {
+  const el = document.getElementById('myDashboardContent');
+  el.innerHTML = '<div class="loading"><div class="spin"></div> Loading...</div>';
+
+  // Load my orders
+  api({ action: 'getOrders' }, r => {
+    let orders = r.data || [];
+    if (user.role === 'Sales' && user.salesName) {
+      orders = orders.filter(o => (o['Sales Person Name']||'') === user.salesName);
+    }
+
+    // Update stats
+    document.getElementById('my-total').textContent      = orders.length;
+    document.getElementById('my-dispatched').textContent = orders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
+    document.getElementById('my-delayed').textContent    = orders.filter(o => (o['Order Status']||'').includes('Delay')).length;
+
+    if (!orders.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Koi orders nahi hain abhi</div></div>';
+      return;
+    }
+
+    const myOrderIDs = new Set(orders.map(o => o['Order ID']));
+
+    // Load production data
+    api({ action: 'getProduction' }, pr => {
+      const myProd = (pr.data || []).filter(p => myOrderIDs.has(p['Order ID']));
+      document.getElementById('my-prod').textContent = myProd.filter(p => p['Status'] === 'In Progress').length;
+
+      if (!myProd.length) {
+        el.innerHTML = '<div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">Production mein koi order nahi abhi</div></div>';
+        return;
+      }
+
+      el.innerHTML = myProd.map(p => {
+        let color = 'var(--border2)', icon = '📋', statusText = p['Status'] || 'Pending';
+        if (p['Status'] === 'Completed')  { color = 'var(--success)'; icon = '✅'; }
+        else if (p['Status'] === 'In Progress') { color = 'var(--info)'; icon = '⚙️'; }
+        else if (p['Status'] === 'Delayed')     { color = 'var(--error)'; icon = '⚠️'; }
+        else if (p['Production Start Plan'])     { color = 'var(--warning)'; icon = '📅'; }
+
+        const orderInfo = orders.find(o => o['Order ID'] === p['Order ID']);
+        const custName  = orderInfo?.['Customer Name'] || '';
+        const planStart = p['Production Start Plan'] ? `Start: ${fmtDisplayDate(p['Production Start Plan'])}` : '';
+        const planEnd   = p['Production Complete Plan'] ? `Complete: ${fmtDisplayDate(p['Production Complete Plan'])}` : '';
+        const dates     = [planStart, planEnd].filter(Boolean).join(' | ');
+
+        return `<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);border-left:3px solid ${color};">
+          <span style="font-size:20px;">${icon}</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${p['Order ID']} — ${p['Product Model']||''} ${p['Battery Type'] ? '('+p['Battery Type']+')' : ''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">👤 ${custName} | Qty: ${p['Qty']||''} ${dates ? '| '+dates : ''}</div>
+          </div>
+          <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${color}20;color:${color};white-space:nowrap;">${statusText}</span>
+        </div>`;
+      }).join('');
+    });
   });
 }
 
