@@ -548,8 +548,10 @@ textarea.form-control{resize:vertical;min-height:70px;}
   <div class="card">
     <div class="card-head"><div class="card-title">Customers</div><button class="btn btn-primary" onclick="openModal('custModal')">+ Add Customer</button></div>
     <div class="table-wrap">
-      <table><thead><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th></tr></thead>
-      <tbody id="custTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div></div></td></tr></tbody></table>
+      <table id="custTableEl">
+        <thead id="custTableHead"><tr><th>ID</th><th>Company</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Credit Days</th></tr></thead>
+        <tbody id="custTable"><tr><td colspan="7"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2065,10 +2067,40 @@ function submitProdUpdate() {
 
 // ========== MASTER DATA ==========
 function loadCustomers() {
-  api({ action: 'getCustomers' }, r => {
-    if (!r.success || !r.data.length) { document.getElementById('custTable').innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">No customers</div></div></td></tr>`; return; }
-    document.getElementById('custTable').innerHTML = r.data.map(c => `<tr><td class="td-id">${c.CustomerID}</td><td class="td-bold">${c.CompanyName}</td><td>${c.ContactPerson}</td><td>${c.Phone}</td><td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td><td>${c.City}</td><td>${c.CreditDays} days</td></tr>`).join('');
-  });
+  if (user.role === 'Sales' && user.salesName) {
+    // Update table header for Sales
+    const head = document.getElementById('custTableHead');
+    if (head) head.innerHTML = '<tr><th>Customer Name</th><th>Phone</th><th>City</th><th>Orders</th></tr>';
+
+    api({ action: 'getOrders' }, r => {
+      let orders = (r.data || []).filter(o => (o['Sales Person Name']||'') === user.salesName);
+      // Unique customer names
+      const myCustomers = [...new Map(orders.map(o => [o['Customer Name'], {
+        name: o['Customer Name'],
+        phone: o['Customer Phone'],
+        city: o['City'],
+        orders: orders.filter(x => x['Customer Name'] === o['Customer Name']).length
+      }])).values()];
+
+      if (!myCustomers.length) {
+        document.getElementById('custTable').innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">Koi customer nahi abhi</div></div></td></tr>`;
+        return;
+      }
+      document.getElementById('custTable').innerHTML = myCustomers.map(c => `
+        <tr>
+          <td class="td-bold">${c.name}</td>
+          <td>${c.phone||'—'}</td>
+          <td>${c.city||'—'}</td>
+          <td><span class="badge b-processing">${c.orders} order${c.orders>1?'s':''}</span></td>
+        </tr>`).join('');
+    });
+  } else {
+    // Admin — sab customers
+    api({ action: 'getCustomers' }, r => {
+      if (!r.success || !r.data.length) { document.getElementById('custTable').innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">No customers</div></div></td></tr>`; return; }
+      document.getElementById('custTable').innerHTML = r.data.map(c => `<tr><td class="td-id">${c.CustomerID}</td><td class="td-bold">${c.CompanyName}</td><td>${c.ContactPerson}</td><td>${c.Phone}</td><td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td><td>${c.City}</td><td>${c.CreditDays} days</td></tr>`).join('');
+    });
+  }
 }
 function submitCust() {
   api({ action:'addCustomer', CustomerID:document.getElementById('c-id').value, CompanyName:document.getElementById('c-name').value, ContactPerson:document.getElementById('c-contact').value, Phone:document.getElementById('c-phone').value, GSTIN:document.getElementById('c-gst').value, City:document.getElementById('c-city').value, CreditDays:document.getElementById('c-credit').value }, r => {
