@@ -2211,25 +2211,71 @@ function uploadSlip() {
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const base64   = e.target.result.split(',')[1];
+    const arrayBuffer = e.target.result;
 
-    // Send directly to uploadSlip — REST API handles it
-    api({ action: 'uploadSlip', orderID, fileName, mimeType, base64 }, r => {
-      if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-      if (r.success) {
-        status.style.color = 'var(--success)';
-        status.textContent = '✅ Uploaded!';
-        loadSlips(orderID);
-        document.getElementById('slipFileInput').value = '';
-        document.getElementById('slipPreview').innerHTML = '';
-        document.getElementById('slipPreviewWrap').style.display = 'none';
-      } else {
+    // Step 1 — get OAuth token from Apps Script
+    api({ action: 'getAccessToken' }, tokenRes => {
+      const token = tokenRes?.token || '';
+      if (!token) {
         status.style.color = 'var(--error)';
-        status.textContent = '❌ ' + (r.message || 'Upload failed');
+        status.textContent = '❌ Token nahi mila';
+        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+        return;
       }
+
+      // Step 2 — get folder ID
+      api({ action: 'getUploadUrl', orderID, fileName, mimeType }, folderRes => {
+        if (!folderRes.success) {
+          status.style.color = 'var(--error)';
+          status.textContent = '❌ ' + (folderRes.message || 'Folder error');
+          if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+          return;
+        }
+
+        const folderId = folderRes.folderId;
+        const meta = JSON.stringify({ name: fileName, parents: [folderId] });
+        const fileBlob = new Blob([file], { type: mimeType });
+
+        const form = new FormData();
+        form.append('metadata', new Blob([meta], { type: 'application/json' }));
+        form.append('file', fileBlob);
+
+        // Step 3 — upload directly to Drive API
+        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: form
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+          if (data.id) {
+            // Make public
+            fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ role: 'reader', type: 'anyone' })
+            });
+            status.style.color = 'var(--success)';
+            status.textContent = '✅ Uploaded!';
+            loadSlips(orderID);
+            document.getElementById('slipFileInput').value = '';
+            document.getElementById('slipPreview').innerHTML = '';
+            document.getElementById('slipPreviewWrap').style.display = 'none';
+          } else {
+            status.style.color = 'var(--error)';
+            status.textContent = '❌ Upload failed: ' + JSON.stringify(data);
+          }
+        })
+        .catch(err => {
+          if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+          status.style.color = 'var(--error)';
+          status.textContent = '❌ ' + err.message;
+        });
+      });
     });
   };
-  reader.readAsDataURL(file);
+  reader.readAsArrayBuffer(file);
 }
 
 function previewSlip() {
@@ -2339,26 +2385,94 @@ function uploadCustDoc() {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const base64   = e.target.result.split(',')[1];
-    const mimeType = file.type || 'application/pdf';
+  const mimeType = file.type || 'application/pdf';
+  const custFileName = currentCustName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + file.name;
 
-    api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: file.name, mimeType, base64 }, r => {
+  // Get token then upload directly
+  api({ action: 'getAccessToken' }, tokenRes => {
+    const token = tokenRes?.token || '';
+    if (!token) {
+      status.style.color = 'var(--error)';
+      status.textContent = '❌ Token nahi mila';
       if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-      if (r.success) {
-        status.style.color = 'var(--success)';
-        status.textContent = '✅ Uploaded!';
-        loadCustDocs(currentCustName);
-        document.getElementById('custDocFileInput').value = '';
-        document.getElementById('custDocPreviewWrap').style.display = 'none';
-      } else {
-        status.style.color = 'var(--error)';
-        status.textContent = '❌ ' + (r.message || 'Upload failed');
-      }
+      return;
+    }
+
+    api({ action: 'getCustomerDocs', customerName: '' }, folderRes => {
+      // Get cust folder ID via separate call
+      api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: custFileName, mimeType, base64: 'CHECK_FOLDER' }, fr => {
+        // Use a simpler approach — get folder ID from Apps Script
+      });
     });
-  };
-  reader.readAsDataURL(file);
+
+    // Direct approach — use Apps Script to get folder ID then upload
+    const getCustFolderScript = `${API}?action=uploadCustomerDoc&customerName=${encodeURIComponent(currentCustName)}&fileName=_folder_check&mimeType=text/plain&base64=ZQ%3D%3D&callback=_getFolderCb`;
+    
+    const s = document.createElement('script');
+    window._getFolderCb = function(r) {
+      delete window._getFolderCb;
+      if (!r.success && !r.folderId) {
+        // Upload via Apps Script base64 method as fallback
+        const reader2 = new FileReader();
+        reader2.onload = function(e2) {
+          const base64 = e2.target.result.split(',')[1];
+          api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: custFileName, mimeType, base64 }, r2 => {
+            if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+            if (r2.success) {
+              status.style.color = 'var(--success)';
+              status.textContent = '✅ Uploaded!';
+              loadCustDocs(currentCustName);
+              document.getElementById('custDocFileInput').value = '';
+              document.getElementById('custDocPreviewWrap').style.display = 'none';
+            } else {
+              status.style.color = 'var(--error)';
+              status.textContent = '❌ ' + (r2.message || 'Failed');
+            }
+          });
+        };
+        reader2.readAsDataURL(file);
+        return;
+      }
+
+      const folderId = r.folderId || r.fileId;
+      const meta = JSON.stringify({ name: custFileName, parents: [folderId] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', new Blob([file], { type: mimeType }));
+
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+        if (data.id) {
+          fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          });
+          status.style.color = 'var(--success)';
+          status.textContent = '✅ Uploaded!';
+          loadCustDocs(currentCustName);
+          document.getElementById('custDocFileInput').value = '';
+          document.getElementById('custDocPreviewWrap').style.display = 'none';
+        } else {
+          status.style.color = 'var(--error)';
+          status.textContent = '❌ Failed';
+        }
+      })
+      .catch(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ Network error';
+      });
+    };
+    s.src = getCustFolderScript;
+    document.body.appendChild(s);
+  });
 }
 
 // ========== MY DASHBOARD ==========
