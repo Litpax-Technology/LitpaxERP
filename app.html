@@ -703,15 +703,26 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="modal-body" id="orderDetailBody"></div>
     <!-- PAYMENT SLIPS -->
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Payment Slips</div>
-        <label class="btn btn-sm btn-success" style="cursor:pointer;margin:0;">
-          📎 Upload Slip
-          <input type="file" id="slipFileInput" accept="image/*,.pdf" style="display:none;" onchange="uploadSlip()">
+      <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">💳 Payment Slips</div>
+
+      <!-- Upload area -->
+      <div style="background:var(--surface2);border:2px dashed var(--border2);border-radius:10px;padding:14px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Image ya PDF select karo</div>
+        <label class="btn btn-sm" style="cursor:pointer;background:var(--accent-dim);color:var(--accent);border-color:#C7D2FE;">
+          📎 File Choose karo
+          <input type="file" id="slipFileInput" accept="image/*,.pdf" style="display:none;" onchange="previewSlip()">
         </label>
+        <div id="slipPreviewWrap" style="display:none;margin-top:10px;">
+          <div id="slipPreview"></div>
+          <button class="btn btn-sm btn-success" id="slipUploadBtn" onclick="uploadSlip()" style="margin-top:8px;display:none;">
+            ⬆ Upload
+          </button>
+        </div>
+        <div id="slipUploadStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
       </div>
-      <div id="slipUploadStatus" style="font-size:12px;color:var(--text3);margin-bottom:8px;display:none;"></div>
-      <div id="slipsList"><div style="font-size:12px;color:var(--text3);">Loading slips...</div></div>
+
+      <!-- Uploaded slips list -->
+      <div id="slipsList"></div>
     </div>
 
     <div class="modal-foot">
@@ -1749,54 +1760,83 @@ function uploadSlip() {
   if (!file) return;
 
   const orderID = currentEditOrder?.['Order ID'];
-  if (!orderID) return;
+  if (!orderID) { toast('Order ID nahi mila', 'e'); return; }
 
   const status = document.getElementById('slipUploadStatus');
+  const btn    = document.getElementById('slipUploadBtn');
   status.style.display = 'block';
-  status.style.color = 'var(--warning)';
-  status.textContent = '⏳ Uploading...';
+  status.style.color   = 'var(--warning)';
+  status.textContent   = '⏳ Uploading...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const base64 = e.target.result.split(',')[1];
+    const base64   = e.target.result.split(',')[1];
     const mimeType = file.type || 'image/jpeg';
     const fileName = file.name;
 
-    // Use fetch for POST (base64 can be large)
-    fetch(`${API}?action=uploadSlip&callback=_dummy`, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'uploadSlip',
-        orderID: orderID,
-        fileName: fileName,
-        mimeType: mimeType,
-        base64: base64
-      }),
-      headers: { 'Content-Type': 'application/json' }
-    })
-    .then(r => r.text())
-    .then(txt => {
-      // Parse response
+    // Use XMLHttpRequest POST — avoids CORS preflight
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function() {
       let res;
-      try { res = JSON.parse(txt.replace(/^_dummy\(/, '').replace(/\)$/, '')); }
-      catch(e) { res = JSON.parse(txt); }
-
+      try {
+        let txt = xhr.responseText;
+        // Strip JSONP wrapper if present
+        txt = txt.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, '');
+        res = JSON.parse(txt);
+      } catch(e) {
+        res = { success: false, message: 'Parse error' };
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
       if (res.success) {
-        status.style.color = 'var(--success)';
-        status.textContent = '✅ Uploaded: ' + res.name;
+        status.style.color   = 'var(--success)';
+        status.textContent   = '✅ Uploaded!';
         loadSlips(orderID);
         document.getElementById('slipFileInput').value = '';
+        document.getElementById('slipPreview').innerHTML = '';
+        document.getElementById('slipPreviewWrap').style.display = 'none';
       } else {
         status.style.color = 'var(--error)';
-        status.textContent = '❌ Error: ' + res.message;
+        status.textContent = '❌ ' + (res.message || 'Upload failed');
       }
-    })
-    .catch(err => {
+    };
+    xhr.onerror = function() {
+      if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
       status.style.color = 'var(--error)';
-      status.textContent = '❌ Upload failed — try again';
-    });
+      status.textContent = '❌ Network error — try again';
+    };
+    xhr.send(JSON.stringify({
+      action:   'uploadSlip',
+      orderID:  orderID,
+      fileName: fileName,
+      mimeType: mimeType,
+      base64:   base64
+    }));
   };
   reader.readAsDataURL(file);
+}
+
+function previewSlip() {
+  const file = document.getElementById('slipFileInput').files[0];
+  if (!file) return;
+  const wrap = document.getElementById('slipPreviewWrap');
+  const prev = document.getElementById('slipPreview');
+  wrap.style.display = 'block';
+
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      prev.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid var(--border);">`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    prev.innerHTML = `<div style="padding:12px;background:var(--surface2);border-radius:8px;font-size:12px;">📄 ${file.name}</div>`;
+  }
+
+  const btn = document.getElementById('slipUploadBtn');
+  if (btn) btn.style.display = 'inline-flex';
 }
 
 function loadSlips(orderID) {
