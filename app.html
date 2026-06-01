@@ -1265,21 +1265,6 @@ function onPriceTypeChange() {
   // Show/hide per watt price field
   document.getElementById('perWattField').style.display = isPerWatt ? 'block' : 'none';
 
-  // Update items table header
-  const head = document.getElementById('itemsTableHead');
-  if (useVA) {
-    const priceHeader = isPerWatt ? '' : '<th>Rate/Unit (Ex GST)</th>';
-    head.innerHTML = `<tr>
-      <th>Product Model (Auto)</th><th>Battery Type</th><th>Voltage (V)</th><th>Ampere (Ah)</th>
-      <th>Qty</th>${priceHeader}<th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
-    </tr>`;
-  } else {
-    head.innerHTML = `<tr>
-      <th>Product Model</th><th>Battery Type</th><th>Qty</th>
-      <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
-    </tr>`;
-  }
-
   // Rebuild all item rows
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '';
@@ -1295,8 +1280,7 @@ function isPerWattMode() {
 }
 
 function isVAMode() {
-  const pt = document.getElementById('o-pricetype').value;
-  return pt === 'Per Watt' || pt === 'Absolute' || pt === 'Last Price';
+  return true; // Always show Voltage + Ampere fields
 }
 
 // ========== SAVE + ADD MORE ==========
