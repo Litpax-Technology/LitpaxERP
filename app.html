@@ -974,7 +974,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzG37VcjI7qr63Y3e1hnlvVMPO3VKozkmOl_WHt7ZdF7RNtVofdL_dM2apoZm6Lis9h3Q/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyL1IVf-H4xJojnLi2knd6btFazNa5_a5_n407i6ES_F7ikWlWd_odHKo-tSVWGgr0m/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1785,61 +1785,25 @@ function uploadSlip() {
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const base64 = e.target.result.split(',')[1];
+    const base64   = e.target.result.split(',')[1];
 
-    // Step 1 — Apps Script se empty file create karo Drive mein
-    api({ action: 'getUploadUrl', orderID, fileName, mimeType }, r => {
-      if (!r.success) {
+    // Send directly to uploadSlip — REST API handles it
+    api({ action: 'uploadSlip', orderID, fileName, mimeType, base64 }, r => {
+      if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
+      if (r.success) {
+        status.style.color = 'var(--success)';
+        status.textContent = '✅ Uploaded!';
+        loadSlips(orderID);
+        document.getElementById('slipFileInput').value = '';
+        document.getElementById('slipPreview').innerHTML = '';
+        document.getElementById('slipPreviewWrap').style.display = 'none';
+      } else {
         status.style.color = 'var(--error)';
-        status.textContent = '❌ ' + (r.message || 'Drive error');
-        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-        return;
+        status.textContent = '❌ ' + (r.message || 'Upload failed');
       }
-
-      const fileId = r.fileId;
-
-      // Step 2 — Drive API se file content update karo
-      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-      const blob = new Blob([byteArray], { type: mimeType });
-
-      // Try with service account token from Apps Script
-      api({ action: 'getAccessToken' }, tokenRes => {
-        const token = tokenRes?.token || '';
-        if (!token) {
-          // No token — just save fileId, show Drive link
-          finishUpload(fileId, r.url, r.name, orderID, status, btn);
-          return;
-        }
-
-        fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': mimeType
-          },
-          body: blob
-        })
-        .then(res => res.json())
-        .then(data => {
-          finishUpload(fileId, r.url, r.name, orderID, status, btn);
-        })
-        .catch(() => {
-          finishUpload(fileId, r.url, r.name, orderID, status, btn);
-        });
-      });
     });
   };
   reader.readAsDataURL(file);
-}
-
-function finishUpload(fileId, url, name, orderID, status, btn) {
-  status.style.color = 'var(--success)';
-  status.textContent = '✅ File created in Drive! Content update ke liye Drive folder check karo.';
-  if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-  loadSlips(orderID);
-  document.getElementById('slipFileInput').value = '';
-  document.getElementById('slipPreview').innerHTML = '';
-  document.getElementById('slipPreviewWrap').style.display = 'none';
 }
 
 function previewSlip() {
