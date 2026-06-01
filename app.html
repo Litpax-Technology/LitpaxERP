@@ -1292,7 +1292,7 @@ function addItemRow() {
   const pwMode = isPerWattMode();
   const div    = document.createElement('div');
   div.id = `item-row-${id}`;
-  div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;transition:border-color 0.15s;';
+  div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px 14px 14px;position:relative;transition:border-color 0.15s;overflow:hidden;';
 
   const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','Charger','BMS']
     .map(o => `<option>${o}</option>`).join('');
@@ -1317,42 +1317,30 @@ function addItemRow() {
     ? `<input class="form-control" id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;">`
     : `<input class="form-control" id="im-model-${id}" placeholder="Product model" style="font-size:13px;">`;
 
+  const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
+
   div.innerHTML = `
-    <button onclick="removeItemRow(${id})" style="position:absolute;top:10px;right:10px;background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span style="font-size:11px;font-weight:600;color:var(--accent);">Item #${id}</span>
+      <button onclick="removeItemRow(${id})" style="background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:500;flex-shrink:0;">✕ Remove</button>
+    </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Product Model</label>
-        ${modelField}
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Battery Type</label>
-        <select class="form-control" id="im-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select>
-      </div>
+      <div>${lbl('Product Model')}${modelField}</div>
+      <div>${lbl('Battery Type')}<select class="form-control" id="im-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:10px;">
-      ${vaFields}
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Qty</label>
-        <input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcVAItem' : 'calcItemTotal'}(${id})" style="font-size:13px;">
-      </div>
-      ${priceField}
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Total (₹)</label>
-        <input class="form-control" id="im-total-${id}" readonly placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;">
-      </div>
+    <div style="display:grid;grid-template-columns:${vaMode ? 'repeat(4,1fr)' : '1fr 1fr'};gap:10px;margin-bottom:10px;">
+      ${vaMode ? `<div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
+      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcVAItem(${id})" style="font-size:13px;"></div>` : ''}
+      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcVAItem' : 'calcItemTotal'}(${id})" style="font-size:13px;"></div>
+      ${!pwMode ? `<div>${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="${vaMode ? 'calcAbsoluteItem' : 'calcItemTotal'}(${id})" style="font-size:13px;"></div>` : ''}
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Assigned CRM</label>
-        <input class="form-control" id="im-crm-${id}" value="${crmVal}" placeholder="CRM name" style="font-size:13px;">
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Remarks</label>
-        <input class="form-control" id="im-remarks-${id}" placeholder="Any remarks..." style="font-size:13px;">
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div>${lbl('Total (₹)')}<input class="form-control" id="im-total-${id}" readonly placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Assigned CRM')}<input class="form-control" id="im-crm-${id}" value="${crmVal}" placeholder="CRM name" style="font-size:13px;"></div>
+      <div>${lbl('Remarks')}<input class="form-control" id="im-remarks-${id}" placeholder="Remarks..." style="font-size:13px;"></div>
     </div>`;
 
   body.appendChild(div);
