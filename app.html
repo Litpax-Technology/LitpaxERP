@@ -1015,7 +1015,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwacbD05NcmUIxiaI62Mmxu8o4J5egrTY0bWRiAW3QrCii-SJ9DdIn8G_Eee7-FTgrvMA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyHRGEkgdklIAayR53n3j4NpuN1EWIucyf6q9HNgjI7616GM4DsLmQmzdB9HDw8ydO9_w/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1686,25 +1686,14 @@ function submitOrder() {
   if (currentOrderID) {
     const charger = getChargerData();
     if (charger) {
-      // Save charger as separate OrderItem
+      // Only save Charger Qty + update Total Order Value in Orders sheet
+      // Do NOT add to OrderItems
       api({
-        action: 'addOrderItem',
+        action: 'updateChargerInOrder',
         'Order ID': currentOrderID,
-        'Product Model': 'Charger',
-        'Battery Type': 'Charger',
-        'Qty': charger.qty,
-        'Price Unit (Excluding GST)': charger.price,
-        'Total': charger.total,
-        'Assigned CRM': document.getElementById('o-crm').value || '',
-        'Remarks': 'Charger - 5% GST',
-        'Voltage': '', 'Ampere': ''
-      }, () => {});
-
-      // Update Charger Qty in Orders sheet
-      api({
-        action: 'updateOrder',
-        'Order ID': currentOrderID,
-        'Charger Qty': charger.qty
+        'Charger Qty': charger.qty,
+        'Charger Price': charger.price,
+        'Charger Total': charger.total
       }, () => {});
     }
     toast('Order complete: ' + currentOrderID);
