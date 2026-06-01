@@ -701,6 +701,19 @@ textarea.form-control{resize:vertical;min-height:70px;}
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="detailOrderID">Order Details</div><button class="modal-close" onclick="closeModal('orderDetailModal')">✕</button></div>
     <div class="modal-body" id="orderDetailBody"></div>
+    <!-- PAYMENT SLIPS -->
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Payment Slips</div>
+        <label class="btn btn-sm btn-success" style="cursor:pointer;margin:0;">
+          📎 Upload Slip
+          <input type="file" id="slipFileInput" accept="image/*,.pdf" style="display:none;" onchange="uploadSlip()">
+        </label>
+      </div>
+      <div id="slipUploadStatus" style="font-size:12px;color:var(--text3);margin-bottom:8px;display:none;"></div>
+      <div id="slipsList"><div style="font-size:12px;color:var(--text3);">Loading slips...</div></div>
+    </div>
+
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('orderDetailModal')">Close</button>
       <button class="btn btn-primary" id="editOrderBtn" onclick="openEditOrder()">✏️ Edit Order</button>
@@ -950,7 +963,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzGNRdYy7fvQuhze5LN78vbFuwSRSKrlJDz70tdH2-OQpo8-3xOOcMbdijHlD2E25F64A/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzBhDUqFqONr6-dcZdDN3ta6Mtkd1-UyKKGpexxasYYVDsJrH7gsZAlqEY_IlzsqprtSA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1187,6 +1200,9 @@ function viewOrder(o) {
     <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Order Items</div>
     <div id="detailItems"><div class="loading"><div class="spin"></div></div></div>`;
   openModal('orderDetailModal');
+  // Load slips for this order
+  loadSlips(o['Order ID']);
+
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (!r.success || !r.data.length) { document.getElementById('detailItems').innerHTML = '<div class="empty"><div class="empty-txt">No items found</div></div>'; return; }
     document.getElementById('detailItems').innerHTML = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit</th><th>Total</th><th>CRM</th></tr></thead><tbody>${r.data.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td>₹${fmt(i['Total'])}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}</tbody></table>`;
@@ -1726,6 +1742,82 @@ function submitUser() {
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
+
+// ========== PAYMENT SLIPS ==========
+function uploadSlip() {
+  const file = document.getElementById('slipFileInput').files[0];
+  if (!file) return;
+
+  const orderID = currentEditOrder?.['Order ID'];
+  if (!orderID) return;
+
+  const status = document.getElementById('slipUploadStatus');
+  status.style.display = 'block';
+  status.style.color = 'var(--warning)';
+  status.textContent = '⏳ Uploading...';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+    const mimeType = file.type || 'image/jpeg';
+    const fileName = file.name;
+
+    // Use fetch for POST (base64 can be large)
+    fetch(`${API}?action=uploadSlip&callback=_dummy`, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'uploadSlip',
+        orderID: orderID,
+        fileName: fileName,
+        mimeType: mimeType,
+        base64: base64
+      }),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.text())
+    .then(txt => {
+      // Parse response
+      let res;
+      try { res = JSON.parse(txt.replace(/^_dummy\(/, '').replace(/\)$/, '')); }
+      catch(e) { res = JSON.parse(txt); }
+
+      if (res.success) {
+        status.style.color = 'var(--success)';
+        status.textContent = '✅ Uploaded: ' + res.name;
+        loadSlips(orderID);
+        document.getElementById('slipFileInput').value = '';
+      } else {
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ Error: ' + res.message;
+      }
+    })
+    .catch(err => {
+      status.style.color = 'var(--error)';
+      status.textContent = '❌ Upload failed — try again';
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadSlips(orderID) {
+  const el = document.getElementById('slipsList');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--text3);">Loading...</div>';
+
+  api({ action: 'getSlips', orderID: orderID }, r => {
+    if (!r.success) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);">No slips found</div>'; return; }
+    if (!r.data.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);">No slips uploaded yet</div>'; return; }
+
+    el.innerHTML = r.data.map(s => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text);">📎 ${s.name}</div>
+          <div style="font-size:11px;color:var(--text3);">Uploaded: ${s.date}</div>
+        </div>
+        <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
+      </div>`).join('');
+  });
+}
 
 // ========== SALES DASHBOARD ==========
 function updateSalesDashboard(orders) {
