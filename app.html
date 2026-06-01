@@ -1276,6 +1276,118 @@ function isVAMode() {
   return pt === 'Per Watt' || pt === 'Absolute' || pt === 'Last Price';
 }
 
+// ========== SAVE + ADD ITEM ==========
+let currentOrderID = null; // order ID after first save
+
+function saveAndAddItem(id) {
+  const btn = document.getElementById(`save-item-btn-${id}`);
+
+  // Get item data
+  const model = document.getElementById(`im-model-${id}`)?.value?.trim();
+  if (!model) { toast('Product Model bharo pehle', 'e'); return; }
+
+  const perWatt = isPerWattMode();
+  const vaMode  = isVAMode();
+  const pwPrice = parseFloat(document.getElementById('o-perwatt')?.value) || 0;
+  const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+  const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  let pricePerUnit = 0;
+  if (perWatt) pricePerUnit = volt * amp * pwPrice;
+  else pricePerUnit = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+
+  const itemData = {
+    'Product Model': model,
+    'Battery Type':  document.getElementById(`im-btype-${id}`)?.value || '',
+    'Qty':           document.getElementById(`im-qty-${id}`)?.value || 0,
+    'Price Unit (Excluding GST)': pricePerUnit.toFixed ? pricePerUnit.toFixed(2) : pricePerUnit,
+    'Total':         document.getElementById(`im-total-${id}`)?.value || 0,
+    'Assigned CRM':  document.getElementById(`im-crm-${id}`)?.value || '',
+    'Remarks':       document.getElementById(`im-remarks-${id}`)?.value || '',
+    'Voltage':       vaMode ? (document.getElementById(`im-volt-${id}`)?.value || '') : '',
+    'Ampere':        vaMode ? (document.getElementById(`im-amp-${id}`)?.value || '') : ''
+  };
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  const doSaveItem = (orderID) => {
+    api({ action: 'addOrderItem', 'Order ID': orderID, ...itemData }, r => {
+      if (r.success) {
+        // Mark card as saved
+        const card = document.getElementById(`item-row-${id}`);
+        if (card) {
+          card.style.borderColor = 'var(--success-b)';
+          card.style.background = 'var(--success-dim)';
+          // Disable all inputs in this card
+          card.querySelectorAll('input,select').forEach(el => el.disabled = true);
+          if (btn) { btn.disabled = true; btn.textContent = '✓ Saved'; btn.style.opacity = '0.6'; }
+        }
+        toast('Item saved! ✓');
+        // Add new blank item card
+        addItemRow();
+        // Scroll to new card
+        setTimeout(() => {
+          const body = document.getElementById('itemsBody');
+          body.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      } else {
+        toast(r.message || 'Save failed', 'e');
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; }
+      }
+    });
+  };
+
+  // If order not created yet — create order first
+  if (!currentOrderID) {
+    const cust = document.getElementById('o-cust').value.trim();
+    if (!cust) { toast('Customer Name zaroori hai', 'e'); if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; } return; }
+
+    let totalQty = 0;
+    document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
+
+    const orderData = {
+      action: 'addOrder',
+      'Date': document.getElementById('o-date').value,
+      'Sales Person Name': document.getElementById('o-sales').value,
+      'Customer Name': cust,
+      'Customer Phone': document.getElementById('o-phone').value,
+      'City': document.getElementById('o-city').value,
+      'Total Qty': totalQty,
+      'Price Type': document.getElementById('o-pricetype').value,
+      'Per Watt Price': document.getElementById('o-perwatt')?.value || '',
+      'Payment Mode': document.getElementById('o-paymode').value,
+      'Plan Payment Date': document.getElementById('o-planpay').value,
+      'Order Status': document.getElementById('o-status').value,
+      'Payment Status': document.getElementById('o-paystatus').value,
+      'Suggested Transport': document.getElementById('o-transport').value,
+      'Plan Dispatch Date': document.getElementById('o-plandispatch').value,
+      'Order Remarks': document.getElementById('o-remarks').value,
+      'Warranty': document.getElementById('o-warranty').value,
+      'Transportation Charges': document.getElementById('o-transchg').value,
+      'Priority': document.getElementById('o-priority').value,
+      'Assigned CRM': document.getElementById('o-crm').value,
+      'Final Status': document.getElementById('o-finalstatus').value
+    };
+
+    api(orderData, r => {
+      if (!r.success) {
+        toast(r.message || 'Order create failed', 'e');
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add Item'; }
+        return;
+      }
+      currentOrderID = r.orderID;
+      toast('Order created: ' + currentOrderID);
+
+      // Disable order fields after creation
+      document.getElementById('o-cust').disabled = true;
+      document.getElementById('o-sales').disabled = true;
+
+      doSaveItem(currentOrderID);
+    });
+  } else {
+    doSaveItem(currentOrderID);
+  }
+}
+
 function autoFillCRM() {
   const crmVal = document.getElementById('o-crm').value;
   document.querySelectorAll('[id^="im-crm-"]').forEach(el => {
@@ -1322,7 +1434,10 @@ function addItemRow() {
   div.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <span style="font-size:11px;font-weight:600;color:var(--accent);">Item #${id}</span>
-      <button onclick="removeItemRow(${id})" style="background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:500;flex-shrink:0;">✕ Remove</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="save-item-btn-${id}" onclick="saveAndAddItem(${id})" style="background:var(--success-dim);border:1px solid var(--success-b);color:var(--success);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0;">✓ Save + Add Item</button>
+        <button onclick="removeItemRow(${id})" style="background:var(--error-dim);border:1px solid var(--error-b);color:var(--error);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:500;flex-shrink:0;">✕</button>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1474,12 +1589,26 @@ function submitOrder() {
   const btn = document.getElementById('submitOrderBtn');
   if (btn && btn.disabled) return;
 
+  // If order already created via saveAndAddItem
+  if (currentOrderID) {
+    // Update Total Qty
+    let totalQty = 0;
+    document.querySelectorAll('[id^="im-qty-"]').forEach(el => { totalQty += parseFloat(el.value) || 0; });
+    api({ action: 'updateOrder', 'Order ID': currentOrderID, 'Total Qty': String(totalQty) }, () => {});
+    toast('Order complete: ' + currentOrderID);
+    currentOrderID = null;
+    closeModal('orderModal');
+    resetOrderForm();
+    loadOrders();
+    return;
+  }
+
   const cust = document.getElementById('o-cust').value.trim();
   if (!cust) { toast('Customer Name zaroori hai', 'e'); return; }
 
   // Check at least one product is filled
   const items = getItemRows();
-  if (items.length === 0) { toast('Kam se kam ek product add karo', 'e'); return; }
+  if (items.length === 0) { toast('Pehle koi item save karo', 'e'); return; }
 
   // Disable button to prevent double submit
   if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
@@ -1542,9 +1671,15 @@ function submitOrder() {
 }
 
 function resetOrderForm() {
-  // Re-enable submit button
+  // Reset state
+  currentOrderID = null;
   const btn = document.getElementById('submitOrderBtn');
   if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; }
+  // Re-enable fields
+  ['o-cust','o-sales'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
 
   // Reset per watt field
   document.getElementById('perWattField').style.display = 'none';
