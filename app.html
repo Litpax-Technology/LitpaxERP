@@ -1157,7 +1157,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwcZT5SnIVoPH5-jH3a_kKD6cZ0eSHY3i5DzPP9XxWdq76iwJqQUqRiy3LE9FXn1ajZDw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbypriaY2pemRj9EVFOkvwl9j-1sKVILtdsOsrymYle_zAu-EZIBljO-wGgbuf77KCqkzQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2644,10 +2644,10 @@ function uploadCustDoc() {
     return;
   }
 
-  const mimeType = file.type || 'application/pdf';
+  const mimeType     = file.type || 'application/pdf';
   const custFileName = currentCustName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + file.name;
 
-  // Get token then upload directly
+  // Step 1 — get OAuth token
   api({ action: 'getAccessToken' }, tokenRes => {
     const token = tokenRes?.token || '';
     if (!token) {
@@ -2657,48 +2657,22 @@ function uploadCustDoc() {
       return;
     }
 
-    api({ action: 'getCustomerDocs', customerName: '' }, folderRes => {
-      // Get cust folder ID via separate call
-      api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: custFileName, mimeType, base64: 'CHECK_FOLDER' }, fr => {
-        // Use a simpler approach — get folder ID from Apps Script
-      });
-    });
-
-    // Direct approach — use Apps Script to get folder ID then upload
-    const getCustFolderScript = `${API}?action=uploadCustomerDoc&customerName=${encodeURIComponent(currentCustName)}&fileName=_folder_check&mimeType=text/plain&base64=ZQ%3D%3D&callback=_getFolderCb`;
-    
-    const s = document.createElement('script');
-    window._getFolderCb = function(r) {
-      delete window._getFolderCb;
-      if (!r.success && !r.folderId) {
-        // Upload via Apps Script base64 method as fallback
-        const reader2 = new FileReader();
-        reader2.onload = function(e2) {
-          const base64 = e2.target.result.split(',')[1];
-          api({ action: 'uploadCustomerDoc', customerName: currentCustName, fileName: custFileName, mimeType, base64 }, r2 => {
-            if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
-            if (r2.success) {
-              status.style.color = 'var(--success)';
-              status.textContent = '✅ Uploaded!';
-              loadCustDocs(currentCustName);
-              document.getElementById('custDocFileInput').value = '';
-              document.getElementById('custDocPreviewWrap').style.display = 'none';
-            } else {
-              status.style.color = 'var(--error)';
-              status.textContent = '❌ ' + (r2.message || 'Failed');
-            }
-          });
-        };
-        reader2.readAsDataURL(file);
+    // Step 2 — get customer docs folder ID
+    api({ action: 'getCustFolderId' }, folderRes => {
+      if (!folderRes.success || !folderRes.folderId) {
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ Folder error: ' + (folderRes.message || 'Unknown');
+        if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
         return;
       }
 
-      const folderId = r.folderId || r.fileId;
-      const meta = JSON.stringify({ name: custFileName, parents: [folderId] });
-      const form = new FormData();
+      const folderId = folderRes.folderId;
+      const meta     = JSON.stringify({ name: custFileName, parents: [folderId] });
+      const form     = new FormData();
       form.append('metadata', new Blob([meta], { type: 'application/json' }));
       form.append('file', new Blob([file], { type: mimeType }));
 
+      // Step 3 — upload directly to Drive API
       fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token },
@@ -2708,6 +2682,7 @@ function uploadCustDoc() {
       .then(data => {
         if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
         if (data.id) {
+          // Make public
           fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -2720,17 +2695,15 @@ function uploadCustDoc() {
           document.getElementById('custDocPreviewWrap').style.display = 'none';
         } else {
           status.style.color = 'var(--error)';
-          status.textContent = '❌ Failed';
+          status.textContent = '❌ Upload failed: ' + (data.error?.message || JSON.stringify(data));
         }
       })
-      .catch(() => {
+      .catch(err => {
         if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; }
         status.style.color = 'var(--error)';
-        status.textContent = '❌ Network error';
+        status.textContent = '❌ ' + err.message;
       });
-    };
-    s.src = getCustFolderScript;
-    document.body.appendChild(s);
+    });
   });
 }
 
