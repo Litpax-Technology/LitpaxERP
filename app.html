@@ -1147,7 +1147,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbypriaY2pemRj9EVFOkvwl9j-1sKVILtdsOsrymYle_zAu-EZIBljO-wGgbuf77KCqkzQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbx_EILLvem9ah7xgrjoyGiQWeNxzgH3R4GTylo6mikOfzFTwBg4WRrIGQE3dkT2wvMpIg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1432,32 +1432,30 @@ function viewOrder(o) {
       ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td>₹${fmt(i['Total'])}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
     </tbody></table>`;
 
-    // Charger section — from Orders sheet
-    const chargerQty = o['Charger Qty'];
-    if (chargerQty && Number(chargerQty) > 0) {
-      // Try to find charger model from items (if saved) 
-      const chargerItem = r.data.find(i => (i['Battery Type']||'') === 'Charger');
-      const chargerModel = chargerItem?.['Product Model'] || 'Charger';
-      const chargerPrice = chargerItem?.['Price Unit (Excluding GST)'] || '—';
-      const chargerTotal = chargerItem?.['Total'] || '—';
-
-      html += `<div style="margin-top:14px;">
-        <div style="font-size:11px;font-weight:600;color:var(--warning);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚡ Charger Details</div>
-        <table class="items-table">
-          <thead><tr><th>Model</th><th>Qty</th><th>Price/Unit</th><th>Total (incl. 5% GST)</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>${chargerModel}</td>
-              <td>${chargerQty}</td>
-              <td>${chargerPrice !== '—' ? '₹'+fmt(chargerPrice) : '—'}</td>
-              <td>${chargerTotal !== '—' ? '₹'+fmt(chargerTotal) : '—'}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
-    }
-
     document.getElementById('detailItems').innerHTML = html;
+
+    // Load charger details from OrderItemCharger tab
+    api({ action: 'getChargersByOrder', 'Order ID': o['Order ID'] }, cr => {
+      if (cr.success && cr.data.length) {
+        let chargerHTML = `<div style="margin-top:14px;">
+          <div style="font-size:11px;font-weight:600;color:var(--warning);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚡ Charger Details</div>
+          <table class="items-table">
+            <thead><tr><th>Charger ID</th><th>Model</th><th>Qty</th><th>Price/Unit (₹)</th><th>Total incl. 5% GST (₹)</th><th>Date</th></tr></thead>
+            <tbody>
+              ${cr.data.map(c => `<tr>
+                <td class="td-id">${c['Charger ID']||''}</td>
+                <td>${c['Charger Model']||'—'}</td>
+                <td>${c['Qty']||''}</td>
+                <td>₹${fmt(c['Price/Unit']||0)}</td>
+                <td>₹${fmt(c['Total']||0)}</td>
+                <td>${c['Date']||''}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+        document.getElementById('detailItems').innerHTML += chargerHTML;
+      }
+    });
   });
 }
 
@@ -1867,8 +1865,17 @@ function submitOrder() {
   if (currentOrderID) {
     const charger = getChargerData();
     if (charger) {
-      // Only save Charger Qty + update Total Order Value in Orders sheet
-      // Do NOT add to OrderItems
+      // Save to OrderItemCharger tab
+      api({
+        action: 'addChargerItem',
+        'Order ID': currentOrderID,
+        'Charger Model': charger.model,
+        'Qty': charger.qty,
+        'Price/Unit': charger.price,
+        'Total': charger.total
+      }, () => {});
+
+      // Update Orders sheet Charger Qty + Total Order Value
       api({
         action: 'updateChargerInOrder',
         'Order ID': currentOrderID,
