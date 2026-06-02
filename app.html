@@ -1428,8 +1428,8 @@ function viewOrder(o) {
     // Separate battery items and charger rows (if any saved in OrderItems)
     const batteryItems = r.data.filter(i => (i['Battery Type']||'') !== 'Charger');
     
-    let html = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit (Ex GST)</th><th>Total (Ex GST)</th><th>CRM</th></tr></thead><tbody>
-      ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td>₹${fmt(i['Total'])}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
+    let html = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit (Ex GST)</th><th>Total (incl. 18% GST)</th><th>CRM</th></tr></thead><tbody>
+      ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td style="font-weight:600;color:var(--accent);">₹${fmt(Math.round(parseFloat(i['Total']||0)*1.18))}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
     </tbody></table>`;
 
     document.getElementById('detailItems').innerHTML = html;
@@ -1448,7 +1448,7 @@ function viewOrder(o) {
                 <td>${c['Qty']||''}</td>
                 <td>₹${fmt(c['Price/Unit']||0)}</td>
                 <td>₹${fmt(c['Total']||0)}</td>
-                <td>${c['Date']||''}</td>
+                <td>${fmtDisplayDate(c['Date']||'')}</td>
               </tr>`).join('')}
             </tbody>
           </table>
