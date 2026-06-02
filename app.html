@@ -731,11 +731,17 @@ textarea.form-control{resize:vertical;min-height:70px;}
             </label>
           </div>
           <div id="chargerFields" style="display:none;">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Charger Model</label>
+                <input class="form-control" id="charger-model" placeholder="e.g. 48V 5A Charger" style="font-size:13px;">
+              </div>
               <div>
                 <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Qty</label>
                 <input class="form-control" id="charger-qty" type="number" placeholder="0" oninput="calcCharger()" style="font-size:13px;">
               </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div>
                 <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Per Unit Price (₹)</label>
                 <input class="form-control" id="charger-price" type="number" placeholder="0" oninput="calcCharger()" style="font-size:13px;">
@@ -1627,10 +1633,12 @@ function getChargerData() {
   if (!document.getElementById('chargerCheck')?.checked) return null;
   const qty   = parseFloat(document.getElementById('charger-qty')?.value) || 0;
   const price = parseFloat(document.getElementById('charger-price')?.value) || 0;
+  const model = document.getElementById('charger-model')?.value?.trim() || 'Charger';
   if (!qty || !price) return null;
   return {
     qty:   qty,
     price: price,
+    model: model,
     total: parseFloat((qty * price * 1.05).toFixed(2))
   };
 }
@@ -1866,6 +1874,7 @@ function resetOrderForm() {
   const chargerCheck = document.getElementById('chargerCheck');
   if (chargerCheck) { chargerCheck.checked = false; }
   document.getElementById('chargerFields').style.display = 'none';
+  document.getElementById('charger-model').value = '';
   document.getElementById('charger-qty').value = '';
   document.getElementById('charger-price').value = '';
   document.getElementById('charger-total').value = '';
