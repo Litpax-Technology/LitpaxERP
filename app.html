@@ -232,6 +232,58 @@ textarea.form-control{resize:vertical;min-height:70px;}
 .search-input:focus{border-color:var(--accent);}
 
 ::-webkit-scrollbar{width:4px;height:4px;}
+
+/* PAYMENT DRAWER */
+.pay-drawer{
+  position:fixed;top:var(--topbar);right:-420px;width:400px;
+  height:calc(100vh - var(--topbar));
+  background:var(--surface);border-left:1px solid var(--border);
+  box-shadow:-4px 0 24px rgba(0,0,0,0.1);
+  z-index:500;transition:right 0.3s cubic-bezier(0.4,0,0.2,1);
+  display:flex;flex-direction:column;
+}
+.pay-drawer.open{right:0;}
+.pay-drawer-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.2);z-index:499;
+  top:var(--topbar);backdrop-filter:blur(2px);
+}
+.pay-drawer-overlay.show{display:block;}
+.pay-drawer-head{
+  padding:16px 18px;border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.pay-drawer-title{font-size:14px;font-weight:700;color:var(--text);}
+.pay-drawer-sub{font-size:12px;color:var(--text3);margin-top:3px;}
+.pay-drawer-body{flex:1;overflow-y:auto;padding:16px 18px;}
+.pay-drawer-foot{padding:14px 18px;border-top:1px solid var(--border);background:var(--surface2);}
+
+/* Slip item */
+.slip-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+  margin-bottom:8px;background:var(--surface);transition:background 0.12s;
+}
+.slip-item:hover{background:var(--accent-light);}
+.slip-icon{font-size:20px;margin-right:10px;}
+.slip-info{flex:1;}
+.slip-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+.slip-date{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* Upload zone */
+.upload-zone{
+  border:2px dashed var(--border2);border-radius:10px;
+  padding:20px;text-align:center;cursor:pointer;
+  transition:all 0.15s;background:var(--surface2);
+  margin-top:14px;
+}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-light);}
+.upload-zone.has-file{border-color:var(--success);background:var(--success-dim);}
+
+@media(max-width:768px){
+  .pay-drawer{width:100%;right:-100%;}
+  .pay-drawer.open{right:0;}
+}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 
@@ -780,29 +832,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="detailOrderID">Order Details</div><button class="modal-close" onclick="closeModal('orderDetailModal')">✕</button></div>
     <div class="modal-body" id="orderDetailBody"></div>
-    <!-- PAYMENT SLIPS -->
-    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-      <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">💳 Payment Slips</div>
 
-      <!-- Upload area -->
-      <div style="background:var(--surface2);border:2px dashed var(--border2);border-radius:10px;padding:14px;margin-bottom:12px;text-align:center;">
-        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Image ya PDF select karo</div>
-        <label class="btn btn-sm" style="cursor:pointer;background:var(--accent-dim);color:var(--accent);border-color:#C7D2FE;">
-          📎 File Choose karo
-          <input type="file" id="slipFileInput" accept="image/*,.pdf" style="display:none;" onchange="previewSlip()">
-        </label>
-        <div id="slipPreviewWrap" style="display:none;margin-top:10px;">
-          <div id="slipPreview"></div>
-          <button class="btn btn-sm btn-success" id="slipUploadBtn" onclick="uploadSlip()" style="margin-top:8px;display:none;">
-            ⬆ Upload
-          </button>
-        </div>
-        <div id="slipUploadStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
-      </div>
-
-      <!-- Uploaded slips list -->
-      <div id="slipsList"></div>
-    </div>
 
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('orderDetailModal')">Close</button>
@@ -953,6 +983,50 @@ textarea.form-control{resize:vertical;min-height:70px;}
       </div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="submitUser()">Add</button></div>
+  </div>
+</div>
+
+<!-- PAYMENT DRAWER -->
+<div class="pay-drawer-overlay" id="payDrawerOverlay" onclick="closePayDrawer()"></div>
+<div class="pay-drawer" id="payDrawer">
+  <div class="pay-drawer-head">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="pay-drawer-title" id="payDrawerTitle">💳 Payment Slips</div>
+        <div class="pay-drawer-sub" id="payDrawerSub"></div>
+      </div>
+      <button onclick="closePayDrawer()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;padding:4px;">✕</button>
+    </div>
+  </div>
+
+  <div class="pay-drawer-body">
+    <!-- Uploaded slips -->
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Uploaded Payments</div>
+    <div id="payDrawerSlips">
+      <div class="loading"><div class="spin"></div></div>
+    </div>
+
+    <!-- Upload zone -->
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-top:20px;margin-bottom:8px;">Upload New Proof</div>
+    <label class="upload-zone" id="payUploadZone">
+      <input type="file" id="paySlipInput" accept="image/*,.pdf" style="display:none;" onchange="onPaySlipSelect()">
+      <div id="payUploadPrompt">
+        <div style="font-size:24px;margin-bottom:8px;">📎</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text2);">Click to choose file</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">Image ya PDF — max 4MB</div>
+      </div>
+      <div id="payFilePreview" style="display:none;">
+        <div id="payFileThumb"></div>
+        <div id="payFileName" style="font-size:12px;font-weight:500;color:var(--success);margin-top:8px;"></div>
+      </div>
+    </label>
+    <div id="payUploadStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
+  </div>
+
+  <div class="pay-drawer-foot">
+    <button id="payUploadBtn" onclick="uploadPaySlip()" class="btn btn-primary" style="width:100%;padding:11px;" disabled>
+      ⬆ Upload Payment Proof
+    </button>
   </div>
 </div>
 
@@ -1320,6 +1394,7 @@ function renderOrders() {
       <td>${o['Assigned CRM']||''}</td>
       <td style="display:flex;gap:4px;">
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
+        <button class="btn btn-sm btn-success" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
       </td>
     </tr>`).join('');
 }
@@ -2337,6 +2412,169 @@ function loadSlips(orderID) {
         </div>
         <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
       </div>`).join('');
+  });
+}
+
+// ========== PAYMENT DRAWER ==========
+let currentPayOrder = null;
+
+function openPayDrawer(o) {
+  currentPayOrder = o;
+  const orderID  = o['Order ID'] || '';
+  const custName = o['Customer Name'] || '';
+  const total    = o['Total Order Value'] ? '₹' + Number(o['Total Order Value']).toLocaleString('en-IN') : '';
+
+  document.getElementById('payDrawerTitle').textContent = '💳 ' + orderID;
+  document.getElementById('payDrawerSub').textContent   = custName + (total ? ' | ' + total : '');
+
+  // Reset upload zone
+  document.getElementById('paySlipInput').value = '';
+  document.getElementById('payUploadPrompt').style.display = 'block';
+  document.getElementById('payFilePreview').style.display  = 'none';
+  document.getElementById('payUploadBtn').disabled = true;
+  document.getElementById('payUploadStatus').style.display = 'none';
+  document.getElementById('payUploadZone').classList.remove('has-file');
+
+  // Open drawer
+  document.getElementById('payDrawer').classList.add('open');
+  document.getElementById('payDrawerOverlay').classList.add('show');
+
+  // Load slips
+  loadPaySlips(orderID, custName);
+}
+
+function closePayDrawer() {
+  document.getElementById('payDrawer').classList.remove('open');
+  document.getElementById('payDrawerOverlay').classList.remove('show');
+  currentPayOrder = null;
+}
+
+function loadPaySlips(orderID, custName) {
+  const el = document.getElementById('payDrawerSlips');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+
+  api({ action: 'getSlips', orderID }, r => {
+    if (!r.success || !r.data.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">No payments uploaded yet</div>';
+      return;
+    }
+    el.innerHTML = r.data.map(s => `
+      <div class="slip-item">
+        <span class="slip-icon">${s.name.endsWith('.pdf') ? '📄' : '🖼️'}</span>
+        <div class="slip-info">
+          <div class="slip-name">${s.name}</div>
+          <div class="slip-date">${s.date}</div>
+        </div>
+        <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;flex-shrink:0;">View</a>
+      </div>`).join('');
+  });
+}
+
+function onPaySlipSelect() {
+  const file = document.getElementById('paySlipInput').files[0];
+  if (!file) return;
+
+  document.getElementById('payUploadPrompt').style.display = 'none';
+  document.getElementById('payFilePreview').style.display  = 'block';
+  document.getElementById('payFileName').textContent = file.name;
+  document.getElementById('payUploadZone').classList.add('has-file');
+  document.getElementById('payUploadBtn').disabled = false;
+
+  // Show image preview if image
+  const thumb = document.getElementById('payFileThumb');
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => { thumb.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:120px;border-radius:8px;margin:0 auto;display:block;">`; };
+    reader.readAsDataURL(file);
+  } else {
+    thumb.innerHTML = '<div style="font-size:36px;text-align:center;">📄</div>';
+  }
+}
+
+function uploadPaySlip() {
+  const file = document.getElementById('paySlipInput').files[0];
+  if (!file || !currentPayOrder) return;
+
+  const orderID  = currentPayOrder['Order ID'] || '';
+  const custName = (currentPayOrder['Customer Name'] || '').replace(/[^a-zA-Z0-9]/g, '');
+  const ext      = file.name.split('.').pop();
+  const fileName = orderID + '_' + custName + '_' + Date.now() + '.' + ext;
+  const mimeType = file.type || 'image/jpeg';
+
+  const btn    = document.getElementById('payUploadBtn');
+  const status = document.getElementById('payUploadStatus');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  status.style.display = 'block';
+  status.style.color   = 'var(--warning)';
+  status.textContent   = '⏳ Uploading...';
+
+  if (file.size > 4 * 1024 * 1024) {
+    status.style.color = 'var(--error)';
+    status.textContent = '❌ File 4MB se badi hai';
+    btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof';
+    return;
+  }
+
+  // Get token → get folder → upload
+  api({ action: 'getAccessToken' }, tokenRes => {
+    const token = tokenRes?.token || '';
+    if (!token) {
+      status.style.color = 'var(--error)';
+      status.textContent = '❌ Auth error';
+      btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof';
+      return;
+    }
+
+    api({ action: 'getUploadUrl', orderID, fileName, mimeType }, folderRes => {
+      if (!folderRes.success) {
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ Folder error';
+        btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof';
+        return;
+      }
+
+      const folderId = folderRes.folderId;
+      const meta = JSON.stringify({ name: fileName, parents: [folderId] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', new Blob([file], { type: mimeType }));
+
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+      })
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof';
+        if (data.id) {
+          // Make public
+          fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          });
+          status.style.color = 'var(--success)';
+          status.textContent = '✅ Uploaded successfully!';
+          // Reset upload zone
+          document.getElementById('paySlipInput').value = '';
+          document.getElementById('payUploadPrompt').style.display = 'block';
+          document.getElementById('payFilePreview').style.display  = 'none';
+          document.getElementById('payUploadZone').classList.remove('has-file');
+          btn.disabled = true;
+          // Reload slips
+          setTimeout(() => loadPaySlips(orderID, custName), 500);
+        } else {
+          status.style.color = 'var(--error)';
+          status.textContent = '❌ Upload failed';
+        }
+      })
+      .catch(err => {
+        btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof';
+        status.style.color = 'var(--error)';
+        status.textContent = '❌ ' + err.message;
+      });
+    });
   });
 }
 
