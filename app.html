@@ -1137,7 +1137,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbxsgCeV-VkF0d9QQOt3cNcLsjAVPrvQWSzODcLd9-kDFwjZTUT_g6KmiKmmjQpLVljnoA/exec';
+const API = 'https://script.google.com/macros/s/AKfycby2JUC_NsSdN-ZO15MtxdrXzw_XwWwZwKrxmBdjWowZnchHg7-BmcIlabjl2Gl_xJ5FyQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1897,7 +1897,7 @@ function submitOrder() {
   if (currentOrderID) {
     const charger = getChargerData();
     if (charger) {
-      // Save to OrderItemCharger tab
+      // Save to OrderItemCharger tab first, then update order totals
       api({
         action: 'addChargerItem',
         'Order ID': currentOrderID,
@@ -1905,16 +1905,16 @@ function submitOrder() {
         'Qty': charger.qty,
         'Price/Unit': charger.price,
         'Total': charger.total
-      }, () => {});
-
-      // Update Orders sheet Charger Qty + Total Order Value
-      api({
-        action: 'updateChargerInOrder',
-        'Order ID': currentOrderID,
-        'Charger Qty': charger.qty,
-        'Charger Price': charger.price,
-        'Charger Total': charger.total
-      }, () => {});
+      }, r => {
+        // After saving charger, update Orders sheet with Charger Qty + correct Total Order Value
+        api({
+          action: 'updateChargerInOrder',
+          'Order ID': currentOrderID,
+          'Charger Qty': charger.qty,
+          'Charger Price': charger.price,
+          'Charger Total': charger.total
+        }, () => {});
+      });
     }
     toast('Order complete: ' + currentOrderID);
     currentOrderID = null;
