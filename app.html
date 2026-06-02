@@ -1410,7 +1410,7 @@ function viewOrder(o) {
     ['Total Order Value', o['Total Order Value'] ? '₹'+Number(o['Total Order Value']).toLocaleString('en-IN') : '—'],
     ['Payment Mode', o['Payment Mode']], ['Order Status', o['Order Status']],
     ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
-    ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', o['Plan Dispatch Date']],
+    ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date']||'')],
     ['Transport Charges', o['Transportation Charges']], ['Warranty', o['Warranty']],
     ['Assigned CRM', o['Assigned CRM']], ['Final Status', o['Final Status']], ['Remarks', o['Order Remarks']]
   ];
@@ -1424,7 +1424,40 @@ function viewOrder(o) {
 
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (!r.success || !r.data.length) { document.getElementById('detailItems').innerHTML = '<div class="empty"><div class="empty-txt">No items found</div></div>'; return; }
-    document.getElementById('detailItems').innerHTML = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit</th><th>Total</th><th>CRM</th></tr></thead><tbody>${r.data.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td>₹${fmt(i['Total'])}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}</tbody></table>`;
+    
+    // Separate battery items and charger rows (if any saved in OrderItems)
+    const batteryItems = r.data.filter(i => (i['Battery Type']||'') !== 'Charger');
+    
+    let html = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit (Ex GST)</th><th>Total (Ex GST)</th><th>CRM</th></tr></thead><tbody>
+      ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td>₹${fmt(i['Total'])}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
+    </tbody></table>`;
+
+    // Charger section — from Orders sheet
+    const chargerQty = o['Charger Qty'];
+    if (chargerQty && Number(chargerQty) > 0) {
+      // Try to find charger model from items (if saved) 
+      const chargerItem = r.data.find(i => (i['Battery Type']||'') === 'Charger');
+      const chargerModel = chargerItem?.['Product Model'] || 'Charger';
+      const chargerPrice = chargerItem?.['Price Unit (Excluding GST)'] || '—';
+      const chargerTotal = chargerItem?.['Total'] || '—';
+
+      html += `<div style="margin-top:14px;">
+        <div style="font-size:11px;font-weight:600;color:var(--warning);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚡ Charger Details</div>
+        <table class="items-table">
+          <thead><tr><th>Model</th><th>Qty</th><th>Price/Unit</th><th>Total (incl. 5% GST)</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>${chargerModel}</td>
+              <td>${chargerQty}</td>
+              <td>${chargerPrice !== '—' ? '₹'+fmt(chargerPrice) : '—'}</td>
+              <td>${chargerTotal !== '—' ? '₹'+fmt(chargerTotal) : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+    }
+
+    document.getElementById('detailItems').innerHTML = html;
   });
 }
 
