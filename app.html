@@ -492,7 +492,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
 <!-- ===== ORDERS PAGE ===== -->
 <div class="page active" id="page-orders">
-  <div class="pipeline">
+  <div class="pipeline" id="ordersPipeline">
     <div class="pipe-node active" onclick="filterOrders('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="pc-all">0</div><div class="pipe-lbl">All</div></div>
     <div class="pipe-sep">›</div>
     <div class="pipe-node" onclick="filterOrders('advance',this)"><div class="pipe-icon">💰</div><div class="pipe-count" id="pc-adv">0</div><div class="pipe-lbl">Advance</div></div>
@@ -1172,6 +1172,12 @@ const roleAccess = {
     const mod = el.id.replace('nav-','');
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
+
+  // Hide pipeline for Sales role — sirf Admin ko dikhao
+  if (user.role === 'Sales') {
+    const pipeline = document.getElementById('ordersPipeline');
+    if (pipeline) pipeline.style.display = 'none';
+  }
 
   // Role based sidebar
   if (user.role === 'Sales') {
