@@ -492,14 +492,6 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
 <!-- ===== ORDERS PAGE ===== -->
 <div class="page active" id="page-orders">
-  <!-- SALES DASHBOARD — only shown for Sales role -->
-  <div id="salesDashboard" style="display:none;margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Production Updates — My Orders</div>
-    <div id="salesProdAlerts">
-      <div class="loading"><div class="spin"></div> Loading updates...</div>
-    </div>
-  </div>
-
   <div class="pipeline">
     <div class="pipe-node active" onclick="filterOrders('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="pc-all">0</div><div class="pipe-lbl">All</div></div>
     <div class="pipe-sep">›</div>
@@ -591,20 +583,18 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
 <!-- ===== MY DASHBOARD PAGE ===== -->
 <div class="page" id="page-mydashboard">
-  <div class="stats-row" id="myStatsRow">
+  <!-- Stats -->
+  <div class="stats-row">
     <div class="stat c-blue"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="my-total">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Total Value</div><div class="stat-val" id="my-value" style="font-size:16px;">₹0</div></div>
     <div class="stat c-amber"><div class="stat-lbl">In Production</div><div class="stat-val" id="my-prod">0</div></div>
-    <div class="stat c-green"><div class="stat-lbl">Dispatched</div><div class="stat-val" id="my-dispatched">0</div></div>
-    <div class="stat c-red"><div class="stat-lbl">Delayed</div><div class="stat-val" id="my-delayed">0</div></div>
+    <div class="stat c-purple"><div class="stat-lbl">Ready/Dispatched</div><div class="stat-val" id="my-dispatched">0</div></div>
+    <div class="stat c-red"><div class="stat-lbl">Payment Pending</div><div class="stat-val" id="my-paypending">0</div></div>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">📊 My Orders — Production Status</div>
-    </div>
-    <div id="myDashboardContent" style="padding:16px;">
-      <div class="loading"><div class="spin"></div> Loading...</div>
-    </div>
+  <!-- Order Cards -->
+  <div id="myDashboardContent">
+    <div class="loading"><div class="spin"></div> Loading...</div>
   </div>
 </div>
 
@@ -1366,11 +1356,7 @@ function renderOrders() {
   document.getElementById('pc-adv').textContent = adv;
   document.getElementById('pc-dis').textContent = dis;
 
-  // Update sales dashboard if Sales role
-  if (user.role === 'Sales') {
-    document.getElementById('salesDashboard').style.display = 'block';
-    updateSalesDashboard(allOrders);
-  }
+
 
   const srch = (document.getElementById('orderSearch').value||'').toLowerCase();
   if (srch) data = data.filter(o => (o['Order ID']||'').toLowerCase().includes(srch) || (o['Customer Name']||'').toLowerCase().includes(srch) || (o['Sales Person Name']||'').toLowerCase().includes(srch));
@@ -2712,55 +2698,113 @@ function loadMyDashboard() {
   const el = document.getElementById('myDashboardContent');
   el.innerHTML = '<div class="loading"><div class="spin"></div> Loading...</div>';
 
-  // Load my orders
   api({ action: 'getOrders' }, r => {
     let orders = r.data || [];
     if (user.role === 'Sales' && user.salesName) {
       orders = orders.filter(o => (o['Sales Person Name']||'') === user.salesName);
     }
-
-    // Update stats
-    document.getElementById('my-total').textContent      = orders.length;
-    document.getElementById('my-dispatched').textContent = orders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
-    document.getElementById('my-delayed').textContent    = orders.filter(o => (o['Order Status']||'').includes('Delay')).length;
-
     if (!orders.length) {
       el.innerHTML = '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Koi orders nahi hain abhi</div></div>';
       return;
     }
 
     const myOrderIDs = new Set(orders.map(o => o['Order ID']));
+    const totalVal   = orders.reduce((s,o) => s + (parseFloat(o['Total Order Value'])||0), 0);
 
-    // Load production data
+    // Stats
+    document.getElementById('my-total').textContent     = orders.length;
+    document.getElementById('my-value').textContent     = '₹' + fmt(totalVal);
+    document.getElementById('my-dispatched').textContent= orders.filter(o => (o['Order Status']||'').includes('Dispatched') || (o['Order Status']||'').includes('Ready')).length;
+    document.getElementById('my-paypending').textContent= orders.filter(o => ['Advance Pending','Pending','Request Full Payment','Credit'].includes(o['Payment Status']||'')).length;
+
+    // Load production
     api({ action: 'getProduction' }, pr => {
-      const myProd = (pr.data || []).filter(p => myOrderIDs.has(p['Order ID']));
-      document.getElementById('my-prod').textContent = myProd.filter(p => p['Status'] === 'In Progress').length;
+      const prodMap = {};
+      (pr.data || []).filter(p => myOrderIDs.has(p['Order ID'])).forEach(p => {
+        if (!prodMap[p['Order ID']]) prodMap[p['Order ID']] = [];
+        prodMap[p['Order ID']].push(p);
+      });
 
-      if (!myProd.length) {
-        el.innerHTML = '<div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">Production mein koi order nahi abhi</div></div>';
-        return;
-      }
+      document.getElementById('my-prod').textContent = Object.values(prodMap).flat().filter(p => p['Status'] === 'In Progress').length;
 
-      el.innerHTML = myProd.map(p => {
-        let color = 'var(--border2)', icon = '📋', statusText = p['Status'] || 'Pending';
-        if (p['Status'] === 'Completed')  { color = 'var(--success)'; icon = '✅'; }
-        else if (p['Status'] === 'In Progress') { color = 'var(--info)'; icon = '⚙️'; }
-        else if (p['Status'] === 'Delayed')     { color = 'var(--error)'; icon = '⚠️'; }
-        else if (p['Production Start Plan'])     { color = 'var(--warning)'; icon = '📅'; }
+      el.innerHTML = orders.map(o => {
+        const oid      = o['Order ID'] || '';
+        const prods    = prodMap[oid] || [];
+        const oStatus  = o['Order Status'] || '';
+        const payStatus= o['Payment Status'] || '';
 
-        const orderInfo = orders.find(o => o['Order ID'] === p['Order ID']);
-        const custName  = orderInfo?.['Customer Name'] || '';
-        const planStart = p['Production Start Plan'] ? `Start: ${fmtDisplayDate(p['Production Start Plan'])}` : '';
-        const planEnd   = p['Production Complete Plan'] ? `Complete: ${fmtDisplayDate(p['Production Complete Plan'])}` : '';
-        const dates     = [planStart, planEnd].filter(Boolean).join(' | ');
+        // Order status color
+        let oColor = 'var(--border2)';
+        if (oStatus.includes('Dispatched'))       oColor = 'var(--accent)';
+        else if (oStatus.includes('Ready'))        oColor = 'var(--success)';
+        else if (oStatus.includes('Processing') || oStatus.includes('Progressing')) oColor = 'var(--info)';
+        else if (oStatus.includes('Delay'))        oColor = 'var(--error)';
+        else if (oStatus.includes('Received'))     oColor = 'var(--warning)';
 
-        return `<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);border-left:3px solid ${color};">
-          <span style="font-size:20px;">${icon}</span>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--text);">${p['Order ID']} — ${p['Product Model']||''} ${p['Battery Type'] ? '('+p['Battery Type']+')' : ''}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">👤 ${custName} | Qty: ${p['Qty']||''} ${dates ? '| '+dates : ''}</div>
+        // Payment badge
+        let payColor = 'var(--text3)';
+        if (payStatus === 'Paid')                  payColor = 'var(--success)';
+        else if (payStatus === 'Advance Received') payColor = 'var(--info)';
+        else if (['Pending','Advance Pending','Credit','Request Full Payment'].includes(payStatus)) payColor = 'var(--error)';
+
+        // Production items
+        const prodHTML = prods.length ? prods.map(p => {
+          let pColor = 'var(--border2)', pIcon = '⏳';
+          if (p['Status'] === 'Completed')      { pColor = 'var(--success)'; pIcon = '✅'; }
+          else if (p['Status'] === 'In Progress'){ pColor = 'var(--info)';    pIcon = '⚙️'; }
+          else if (p['Status'] === 'Delayed')    { pColor = 'var(--error)';   pIcon = '⚠️'; }
+
+          const sp   = p['Production Start Plan']    ? fmtDisplayDate(p['Production Start Plan'])    : '—';
+          const sa   = p['Production Start Actual']  ? fmtDisplayDate(p['Production Start Actual'])  : '—';
+          const cp   = p['Production Complete Plan'] ? fmtDisplayDate(p['Production Complete Plan']) : '—';
+          const ca   = p['Production Complete Actual']? fmtDisplayDate(p['Production Complete Actual']):'—';
+
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid ${pColor};margin-bottom:6px;">
+            <span style="font-size:16px;margin-top:1px;">${pIcon}</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);">${p['Product Model']||''} <span style="color:var(--text3);font-weight:400;">${p['Battery Type']?'('+p['Battery Type']+')':''}</span> — Qty: ${p['Qty']||''}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;">
+                <div style="font-size:10px;color:var(--text3);">Start Plan: <span style="color:var(--text);font-weight:500;">${sp}</span></div>
+                <div style="font-size:10px;color:var(--text3);">Start Actual: <span style="color:var(--text);font-weight:500;">${sa}</span></div>
+                <div style="font-size:10px;color:var(--text3);">Complete Plan: <span style="color:var(--text);font-weight:500;">${cp}</span></div>
+                <div style="font-size:10px;color:var(--text3);">Complete Actual: <span style="color:var(--text);font-weight:500;">${ca}</span></div>
+              </div>
+              ${p['Production Delay'] ? `<div style="font-size:10px;color:var(--error);margin-top:4px;">⚠ Delay: ${p['Production Delay']}</div>` : ''}
+            </div>
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:${pColor}20;color:${pColor};white-space:nowrap;">${p['Status']||'Pending'}</span>
+          </div>`;
+        }).join('') : '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Production data nahi hai abhi</div>';
+
+        return `<div class="card" style="margin-bottom:14px;border-left:3px solid ${oColor};">
+          <!-- Order Header -->
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--accent);">${oid}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text);">${o['Customer Name']||''}</span>
+              <span style="font-size:12px;color:var(--text3);">${o['City']||''}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:${oColor}15;color:${oColor};">${oStatus}</span>
+              <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:${payColor}15;color:${payColor};">💳 ${payStatus||'—'}</span>
+            </div>
           </div>
-          <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${color}20;color:${color};white-space:nowrap;">${statusText}</span>
+
+          <!-- Order Info Row -->
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:16px;background:var(--surface2);">
+            <div><span style="font-size:10px;color:var(--text3);">DATE </span><span style="font-size:12px;font-weight:500;">${fmtDisplayDate(o['Date']||'')}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">QTY </span><span style="font-size:12px;font-weight:500;">${o['Total Qty']||'0'}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">CHARGER QTY </span><span style="font-size:12px;font-weight:500;">${o['Charger Qty']||'0'}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">VALUE </span><span style="font-size:12px;font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">PRICE TYPE </span><span style="font-size:12px;font-weight:500;">${o['Price Type']||'—'}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">DISPATCH PLAN </span><span style="font-size:12px;font-weight:500;">${fmtDisplayDate(o['Plan Dispatch Date']||'') || '—'}</span></div>
+            <div><span style="font-size:10px;color:var(--text3);">PRIORITY </span><span style="font-size:12px;font-weight:500;">${o['Priority']||'—'}</span></div>
+          </div>
+
+          <!-- Production Section -->
+          <div style="padding:12px 16px;">
+            <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚙️ Production Status</div>
+            ${prodHTML}
+          </div>
         </div>`;
       }).join('');
     });
