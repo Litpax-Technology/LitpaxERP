@@ -1137,7 +1137,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbxP3HFANiRt0YLynrrv42Xl1CoyMmQHO-D9wX_TJo03yvGjAFU60czGfp_B2xr3DoYMjw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzCTZAevauD6SlK-F3lDnTPwK_LBGmGgF4tZtJoOmM29NCnWnhcChgWjzxtUrxugP7SqA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1906,14 +1906,7 @@ function submitOrder() {
         'Price/Unit': charger.price,
         'Total': charger.total
       }, r => {
-        // After saving charger, update Orders sheet with Charger Qty + correct Total Order Value
-        api({
-          action: 'updateChargerInOrder',
-          'Order ID': currentOrderID,
-          'Charger Qty': charger.qty,
-          'Charger Price': charger.price,
-          'Charger Total': charger.total
-        }, () => {});
+        // updateOrderTotalValue already called inside addChargerItem on server side
       });
     }
     toast('Order complete: ' + currentOrderID);
