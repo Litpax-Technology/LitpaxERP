@@ -512,7 +512,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <table>
         <thead><tr>
           <th>Order ID</th><th>Date</th><th>Sales Person</th><th>Customer</th><th>City</th>
-          <th>Total Qty</th><th>Price Type</th><th>Total Value (GST)</th><th>Payment Mode</th><th>Order Status</th>
+          <th>Total Qty</th><th>Total Value (GST)</th><th>Payment Mode</th><th>Order Status</th>
           <th>Payment Status</th><th>Priority</th><th>Assigned CRM</th><th>Action</th>
         </tr></thead>
         <tbody id="ordersTable"><tr><td colspan="13"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
@@ -676,12 +676,6 @@ textarea.form-control{resize:vertical;min-height:70px;}
         </div>
 
         <div class="form-section">Payment & Pricing</div>
-        <div class="form-group"><label class="form-label">Price Type</label>
-          <select class="form-control" id="o-pricetype" onchange="onPriceTypeChange()">
-            <option value="">Select Price Type</option>
-            <option>Absolute</option><option>Per Watt</option><option>Last Price</option>
-          </select>
-        </div>
         <div class="form-group" id="perWattField" style="display:none;"></div>
         <div class="form-group"><label class="form-label">Payment Mode</label>
           <select class="form-control" id="o-paymode">
@@ -1067,11 +1061,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
           </select>
         </div>
         <div class="form-section">Payment & Status</div>
-        <div class="form-group"><label class="form-label">Price Type</label>
-          <select class="form-control" id="e-pricetype">
-            <option value="">Select</option><option>Absolute</option><option>Per Watt</option><option>Last Price</option>
-          </select>
-        </div>
+
         <div class="form-group"><label class="form-label">Payment Mode</label>
           <select class="form-control" id="e-paymode">
             <option value="">Select</option><option>Advance</option><option>Credit</option>
@@ -1377,7 +1367,6 @@ function renderOrders() {
       <td class="td-bold">${o['Customer Name']||''}</td>
       <td>${o['City']||''}</td>
       <td style="text-align:right;">${fmt(o['Total Qty'])}</td>
-      <td>${o['Price Type']||''}</td>
       <td style="font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</td>
       <td>${o['Payment Mode']||''}</td>
       <td>${orderStatusBadge(o['Order Status'])}</td>
@@ -1406,7 +1395,7 @@ function viewOrder(o) {
   const fields = [
     ['Order ID', o['Order ID']], ['Date', o['Date']], ['Sales Person', o['Sales Person Name']],
     ['Customer Name', o['Customer Name']], ['Customer Phone', o['Customer Phone']], ['City', o['City']],
-    ['Total Qty', o['Total Qty']], ['Charger Qty', o['Charger Qty']||'—'], ['Price Type', o['Price Type']],
+    ['Total Qty', o['Total Qty']], ['Charger Qty', o['Charger Qty']||'—'],
     ['Total Order Value', o['Total Order Value'] ? '₹'+Number(o['Total Order Value']).toLocaleString('en-IN') : '—'],
     ['Payment Mode', o['Payment Mode']], ['Order Status', o['Order Status']],
     ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
@@ -1428,8 +1417,8 @@ function viewOrder(o) {
     // Separate battery items and charger rows (if any saved in OrderItems)
     const batteryItems = r.data.filter(i => (i['Battery Type']||'') !== 'Charger');
     
-    let html = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Price/Unit (Ex GST)</th><th>Total (incl. 18% GST)</th><th>CRM</th></tr></thead><tbody>
-      ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td style="font-weight:600;color:var(--accent);">₹${fmt(Math.round(parseFloat(i['Total']||0)*1.18))}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
+    let html = `<table class="items-table"><thead><tr><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Price Type</th><th>Qty</th><th>Price/Unit (Ex GST)</th><th>Total (incl. 18% GST)</th><th>CRM</th></tr></thead><tbody>
+      ${batteryItems.map(i=>`<tr><td class="td-id">${i['Item ID']||''}</td><td>${i['Product Model']||''}</td><td>${i['Battery Type']||''}</td><td>${i['Price Type']||'—'}</td><td>${i['Qty']||''}</td><td>₹${fmt(i['Price Unit (Excluding GST)'])}</td><td style="font-weight:600;color:var(--accent);">₹${fmt(Math.round(parseFloat(i['Total']||0)*1.18))}</td><td>${i['Assigned CRM']||''}</td></tr>`).join('')}
     </tbody></table>`;
 
     document.getElementById('detailItems').innerHTML = html;
@@ -1463,31 +1452,10 @@ function viewOrder(o) {
 let itemRowCount = 1;
 
 // ========== PRICE TYPE LOGIC ==========
-function onPriceTypeChange() {
-  const pt = document.getElementById('o-pricetype').value;
-  const isPerWatt  = pt === 'Per Watt';
-  const isAbsolute = pt === 'Absolute' || pt === 'Last Price';
-  const useVA      = isPerWatt || isAbsolute; // both use Voltage + Ampere
+function onPriceTypeChange() {} // Deprecated — now per item
 
-  // Per Watt Price is now per-item — no order-level field needed
-
-  // Rebuild all item rows
-  const tbody = document.getElementById('itemsBody');
-  tbody.innerHTML = '';
-  itemRowCount = 0;
-  addItemRow();
-
-  updateOrderTotals();
-  updateOrderStatus();
-}
-
-function isPerWattMode() {
-  return document.getElementById('o-pricetype').value === 'Per Watt';
-}
-
-function isVAMode() {
-  return true; // Always show Voltage + Ampere fields
-}
+function isPerWattMode() { return false; } // Deprecated — now per item
+function isVAMode() { return true; }
 
 // ========== SAVE + ADD MORE ==========
 let currentOrderID = null;
@@ -1504,8 +1472,8 @@ function saveAndAddMore() {
   const model = document.getElementById(`im-model-${id}`)?.value?.trim();
   if (!model) { toast('Product Model bharo pehle', 'e'); return; }
 
-  const perWatt = isPerWattMode();
-  const vaMode  = isVAMode();
+  const pt      = document.getElementById(`im-pricetype-${id}`)?.value || '';
+  const perWatt = pt === 'Per Watt';
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
   const pwPrice = perWatt ? (parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0) : 0;
@@ -1521,9 +1489,10 @@ function saveAndAddMore() {
     'Total':         document.getElementById(`im-total-${id}`)?.value || 0,
     'Assigned CRM':  document.getElementById(`im-crm-${id}`)?.value || '',
     'Remarks':       document.getElementById(`im-remarks-${id}`)?.value || '',
-    'Voltage':       vaMode ? (volt || '') : '',
-    'Ampere':        vaMode ? (amp || '') : '',
-    'Per Watt Price': isPerWattMode() ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : ''
+    'Voltage':       volt || '',
+    'Ampere':        amp || '',
+    'Per Watt Price': perWatt ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : '',
+    'Price Type':    pt
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -1570,7 +1539,7 @@ function saveAndAddMore() {
       'Customer Phone': document.getElementById('o-phone').value,
       'City': document.getElementById('o-city').value,
       'Total Qty': totalQty,
-      'Price Type': document.getElementById('o-pricetype').value,
+
 
       'Payment Mode': document.getElementById('o-paymode').value,
       'Plan Payment Date': document.getElementById('o-planpay').value,
@@ -1673,15 +1642,31 @@ function addItemRow() {
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>${lbl('Product Model')}${modelField}</div>
+      <div>${lbl('Product Model')}<input class="form-control" id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
       <div>${lbl('Battery Type')}<select class="form-control" id="im-btype-${id}" style="font-size:13px;" onchange="autoGST(${id})"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
 
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>${lbl('Price Type')}
+        <select class="form-control" id="im-pricetype-${id}" style="font-size:13px;" onchange="onItemPriceTypeChange(${id})">
+          <option value="">Select</option>
+          <option>Absolute</option>
+          <option>Per Watt</option>
+          <option>Last Price</option>
+        </select>
+      </div>
+      <div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px;">
-      <div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
-      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
-      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcVAItem(${id})" style="font-size:13px;"></div>
-      ${pwMode ? `<div>${lbl('Per Watt Price (₹)')}<input class="form-control" id="im-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcVAItem(${id})" style="font-size:13px;"></div>` : `<div>${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcAbsoluteItem(${id})" style="font-size:13px;"></div>`}
+      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+      <div id="im-pricefield-${id}">
+        ${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;">
+      </div>
+      <div id="im-pwfield-${id}" style="display:none;">
+        ${lbl('Per Watt Price (₹)')}<input class="form-control" id="im-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcItemAuto(${id})" style="font-size:13px;">
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
@@ -1739,6 +1724,45 @@ function getChargerData() {
     model: model,
     total: parseFloat((qty * price * 1.05).toFixed(2))
   };
+}
+
+function onItemPriceTypeChange(id) {
+  const pt      = document.getElementById(`im-pricetype-${id}`)?.value || '';
+  const pwField = document.getElementById(`im-pwfield-${id}`);
+  const prField = document.getElementById(`im-pricefield-${id}`);
+
+  if (pt === 'Per Watt') {
+    if (pwField) pwField.style.display = 'block';
+    if (prField) prField.style.display = 'none';
+  } else {
+    if (pwField) pwField.style.display = 'none';
+    if (prField) prField.style.display = 'block';
+  }
+  calcItemAuto(id);
+}
+
+function calcItemAuto(id) {
+  const pt   = document.getElementById(`im-pricetype-${id}`)?.value || '';
+  const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+  const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  const qty  = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
+
+  // Auto-fill product model
+  const modelEl = document.getElementById(`im-model-${id}`);
+  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+
+  let total = 0;
+  if (pt === 'Per Watt') {
+    const pw = parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0;
+    total = volt * amp * qty * pw;
+  } else {
+    const rate = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+    total = qty * rate;
+  }
+
+  const totalEl = document.getElementById(`im-total-${id}`);
+  if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+  updateOrderTotals();
 }
 
 function autoGST(id) {
@@ -2841,7 +2865,7 @@ function loadMyDashboard() {
             <div><span style="font-size:10px;color:var(--text3);">QTY </span><span style="font-size:12px;font-weight:500;">${o['Total Qty']||'0'}</span></div>
             <div><span style="font-size:10px;color:var(--text3);">CHARGER QTY </span><span style="font-size:12px;font-weight:500;">${o['Charger Qty']||'0'}</span></div>
             <div><span style="font-size:10px;color:var(--text3);">VALUE </span><span style="font-size:12px;font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">PRICE TYPE </span><span style="font-size:12px;font-weight:500;">${o['Price Type']||'—'}</span></div>
+
             <div><span style="font-size:10px;color:var(--text3);">DISPATCH PLAN </span><span style="font-size:12px;font-weight:500;">${fmtDisplayDate(o['Plan Dispatch Date']||'') || '—'}</span></div>
             <div><span style="font-size:10px;color:var(--text3);">PRIORITY </span><span style="font-size:12px;font-weight:500;">${o['Priority']||'—'}</span></div>
           </div>
@@ -3034,7 +3058,7 @@ function submitEditOrder() {
     'Customer Phone': document.getElementById('e-phone').value,
     'City': document.getElementById('e-city').value,
     'Priority': document.getElementById('e-priority').value,
-    'Price Type': document.getElementById('e-pricetype').value,
+
     'Payment Mode': document.getElementById('e-paymode').value,
     'Order Status': document.getElementById('e-status').value,
     'Payment Status': document.getElementById('e-paystatus').value,
