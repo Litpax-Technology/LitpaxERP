@@ -513,7 +513,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <thead><tr>
           <th>Order ID</th><th>Date</th><th>Sales Person</th><th>Customer</th><th>City</th>
           <th>Total Qty</th><th>Total Value (GST)</th><th>Payment Mode</th><th>Order Status</th>
-          <th>Payment Status</th><th>Priority</th><th>Assigned CRM</th><th>Action</th>
+          <th>Payment Status</th><th>Corridor</th><th>Assigned CRM</th><th>Action</th>
         </tr></thead>
         <tbody id="ordersTable"><tr><td colspan="13"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
@@ -668,10 +668,10 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="o-cust" placeholder="Customer name"></div>
         <div class="form-group"><label class="form-label">Customer Phone</label><input class="form-control" id="o-phone" placeholder="Phone number"></div>
         <div class="form-group"><label class="form-label">City</label><input class="form-control" id="o-city" placeholder="City"></div>
-        <div class="form-group"><label class="form-label">Priority</label>
+        <div class="form-group"><label class="form-label">Corridor</label>
           <select class="form-control" id="o-priority">
-            <option value="">Select Priority</option>
-            <option>Low</option><option>Medium</option><option>High</option>
+            <option value="">Select Corridor</option>
+            <option>Normal</option><option>VIP</option>
           </select>
         </div>
 
@@ -726,7 +726,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Suggested Transport</label><input class="form-control" id="o-transport" placeholder="Transport name"></div>
         <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="o-plandispatch"></div>
         <div class="form-group"><label class="form-label">Transportation Charges</label><input class="form-control" type="number" id="o-transchg" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Warranty</label><input class="form-control" id="o-warranty" placeholder="e.g. 1 Year"></div>
+
         <div class="form-group"><label class="form-label">Assigned CRM</label>
           <select class="form-control" id="o-crm" onchange="autoFillCRM()">
             <option value="">Select CRM</option>
@@ -1055,9 +1055,9 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="e-cust" placeholder="Customer name"></div>
         <div class="form-group"><label class="form-label">Customer Phone</label><input class="form-control" id="e-phone" placeholder="Phone"></div>
         <div class="form-group"><label class="form-label">City</label><input class="form-control" id="e-city" placeholder="City"></div>
-        <div class="form-group"><label class="form-label">Priority</label>
+        <div class="form-group"><label class="form-label">Corridor</label>
           <select class="form-control" id="e-priority">
-            <option value="">Select</option><option>Low</option><option>Medium</option><option>High</option>
+            <option value="">Select</option><option>Normal</option><option>VIP</option>
           </select>
         </div>
         <div class="form-section">Payment & Status</div>
@@ -1098,7 +1098,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Suggested Transport</label><input class="form-control" id="e-transport" placeholder="Transport"></div>
         <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="e-plandispatch"></div>
         <div class="form-group"><label class="form-label">Transportation Charges</label><input class="form-control" type="number" id="e-transchg" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Warranty</label><input class="form-control" id="e-warranty" placeholder="e.g. 1 Year"></div>
+
         <div class="form-group"><label class="form-label">Assigned CRM</label>
           <select class="form-control" id="e-crm">
             <option value="">Select</option><option>Kamal</option><option>Self</option>
@@ -1280,6 +1280,11 @@ function priorityBadge(s) {
   const cl = s==='High'?'b-high':s==='Medium'?'b-medium':'b-low';
   return `<span class="badge ${cl}">${s}</span>`;
 }
+function corridorBadge(s) {
+  if (!s) return '';
+  const cl = s==='VIP' ? 'b-high' : 'b-low';
+  return `<span class="badge ${cl}">${s}</span>`;
+}
 function fmt(n) { return Number(n||0).toLocaleString('en-IN'); }
 
 function fmtDisplayDate(val) {
@@ -1371,7 +1376,7 @@ function renderOrders() {
       <td>${o['Payment Mode']||''}</td>
       <td>${orderStatusBadge(o['Order Status'])}</td>
       <td>${payStatusBadge(o['Payment Status'])}</td>
-      <td>${priorityBadge(o['Priority'])}</td>
+      <td>${corridorBadge(o['Corridor']||o['Priority'])}</td>
       <td>${o['Assigned CRM']||''}</td>
       <td style="display:flex;gap:4px;">
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
@@ -1400,7 +1405,8 @@ function viewOrder(o) {
     ['Payment Mode', o['Payment Mode']], ['Order Status', o['Order Status']],
     ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
     ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date']||'')],
-    ['Transport Charges', o['Transportation Charges']], ['Warranty', o['Warranty']],
+    ['Corridor', o['Corridor']||o['Priority']||'—'],
+    ['Transport Charges', o['Transportation Charges']],
     ['Assigned CRM', o['Assigned CRM']], ['Final Status', o['Final Status']], ['Remarks', o['Order Remarks']]
   ];
   document.getElementById('orderDetailBody').innerHTML = `
@@ -1492,7 +1498,8 @@ function saveAndAddMore() {
     'Voltage':       volt || '',
     'Ampere':        amp || '',
     'Per Watt Price': perWatt ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : '',
-    'Price Type':    pt
+    'Price Type':    pt,
+    'Warranty':      document.getElementById(`im-warranty-${id}`)?.value || ''
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -1548,7 +1555,7 @@ function saveAndAddMore() {
       'Suggested Transport': document.getElementById('o-transport').value,
       'Plan Dispatch Date': document.getElementById('o-plandispatch').value,
       'Order Remarks': document.getElementById('o-remarks').value,
-      'Warranty': document.getElementById('o-warranty').value,
+
       'Transportation Charges': document.getElementById('o-transchg').value,
       'Priority': document.getElementById('o-priority').value,
       'Assigned CRM': document.getElementById('o-crm').value,
@@ -1669,8 +1676,9 @@ function addItemRow() {
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
       <div>${lbl('Total (₹)')}<input class="form-control" id="im-total-${id}" readonly placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Warranty')}<input class="form-control" id="im-warranty-${id}" placeholder="e.g. 1 Year" style="font-size:13px;"></div>
       <div>${lbl('Assigned CRM')}<input class="form-control" id="im-crm-${id}" value="${crmVal}" placeholder="CRM name" style="font-size:13px;"></div>
       <div>${lbl('Remarks')}<input class="form-control" id="im-remarks-${id}" placeholder="Remarks..." style="font-size:13px;"></div>
     </div>`;
@@ -2012,7 +2020,7 @@ function resetOrderForm() {
 
   ['o-date','o-sales','o-cust','o-phone','o-city','o-pricetype','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg','o-warranty',
-   'o-crm','o-finalstatus','o-remarks','o-priority'].forEach(id => {
+   'o-crm','o-finalstatus','o-remarks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -3065,7 +3073,7 @@ function submitEditOrder() {
     'Suggested Transport': document.getElementById('e-transport').value,
     'Plan Dispatch Date': fmtDisplayDate(document.getElementById('e-plandispatch').value),
     'Transportation Charges': document.getElementById('e-transchg').value,
-    'Warranty': document.getElementById('e-warranty').value,
+
     'Assigned CRM': document.getElementById('e-crm').value,
     'Final Status': document.getElementById('e-finalstatus').value,
     'Order Remarks': document.getElementById('e-remarks').value
