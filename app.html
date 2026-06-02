@@ -1924,6 +1924,8 @@ function submitOrder() {
   const items = getItemRows();
   if (items.length === 0) { toast('Pehle koi item save karo', 'e'); return; }
 
+  // Note: charger is only saved after order creation via currentOrderID flow
+
   // Disable button to prevent double submit
   if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
 
@@ -1968,17 +1970,26 @@ function submitOrder() {
     items.forEach(item => {
       api({ action: 'addOrderItem', 'Order ID': orderID, ...item }, ir => {
         pending--;
-        // Update Production with first item's model & battery type
         if (firstItem && ir.success) {
           firstItem = false;
-          api({
-            action: 'updateProdItems',
-            'Order ID': orderID,
-            'Product Model': item['Product Model'] || '',
-            'Battery Type': item['Battery Type'] || ''
-          }, () => {});
+          api({ action: 'updateProdItems', 'Order ID': orderID, 'Product Model': item['Product Model'] || '', 'Battery Type': item['Battery Type'] || '' }, () => {});
         }
-        if (pending === 0) { closeModal('orderModal'); resetOrderForm(); loadOrders(); }
+        if (pending === 0) {
+          // Save charger if added
+          const charger = getChargerData();
+          if (charger) {
+            api({
+              action: 'addChargerItem',
+              'Order ID': orderID,
+              'Charger Model': charger.model,
+              'Qty': charger.qty,
+              'Price/Unit': charger.price,
+              'Total': charger.total
+            }, () => { closeModal('orderModal'); resetOrderForm(); loadOrders(); });
+          } else {
+            closeModal('orderModal'); resetOrderForm(); loadOrders();
+          }
+        }
       });
     });
   });
