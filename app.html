@@ -1897,7 +1897,7 @@ function submitOrder() {
   if (currentOrderID) {
     const charger = getChargerData();
     if (charger) {
-      // Save to OrderItemCharger tab first, then update order totals
+      // Save charger THEN reload
       api({
         action: 'addChargerItem',
         'Order ID': currentOrderID,
@@ -1906,14 +1906,19 @@ function submitOrder() {
         'Price/Unit': charger.price,
         'Total': charger.total
       }, r => {
-        // updateOrderTotalValue already called inside addChargerItem on server side
+        toast('Order complete: ' + currentOrderID);
+        currentOrderID = null;
+        closeModal('orderModal');
+        resetOrderForm();
+        loadOrders(); // reload AFTER charger saved
       });
+    } else {
+      toast('Order complete: ' + currentOrderID);
+      currentOrderID = null;
+      closeModal('orderModal');
+      resetOrderForm();
+      loadOrders();
     }
-    toast('Order complete: ' + currentOrderID);
-    currentOrderID = null;
-    closeModal('orderModal');
-    resetOrderForm();
-    loadOrders();
     return;
   }
 
