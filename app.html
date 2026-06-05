@@ -48,6 +48,8 @@
   <div class="nav-item" onclick="nav('customers',this)" id="nav-customers"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="nav('products',this)" id="nav-products"><span class="nav-icon">⚡</span>Products</div>
   <div class="nav-item" onclick="nav('suppliers',this)" id="nav-suppliers"><span class="nav-icon">🏭</span>Suppliers</div>
+  <div class="nav-sec" id="sec-finance">Finance</div>
+  <div class="nav-item" onclick="nav('accounts',this)" id="nav-accounts"><span class="nav-icon">💰</span>Accounts</div>
   <div class="nav-sec" id="sec-admin">Admin</div>
   <div class="nav-item" onclick="nav('users',this)" id="nav-users"><span class="nav-icon">🔐</span>Users</div>
   <div class="sidebar-foot"><div class="sidebar-ver">LitpaxERP v3.0</div></div>
@@ -203,6 +205,34 @@
     <div class="table-wrap">
       <table><thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Role</th><th>Active</th></tr></thead>
       <tbody id="usersTable"><tr><td colspan="5"><div class="loading"><div class="spin"></div></div></td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ACCOUNTS PAGE ===== -->
+<div class="page" id="page-accounts">
+  <div class="stats-row">
+    <div class="stat c-blue"><div class="stat-lbl">Total Items</div><div class="stat-val" id="acc-total">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="acc-orders">0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">Total Qty</div><div class="stat-val" id="acc-qty">0</div></div>
+    <div class="stat c-purple"><div class="stat-lbl">With Charger</div><div class="stat-val" id="acc-charger">0</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Accounts</div>
+      <div class="card-actions">
+        <input class="search-input" id="accSearch" placeholder="Search order / customer..." oninput="searchAccounts()" style="width:200px;padding:6px 10px;font-size:12px;">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th>
+          <th>Product Model</th><th>Battery Type</th><th>Qty</th>
+          <th>Charger Model</th><th>Charger Qty</th><th>Sales Person</th><th>Assigned CRM</th>
+        </tr></thead>
+        <tbody id="accountsTable"><tr><td colspan="12"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+      </table>
     </div>
   </div>
 </div>
