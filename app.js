@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbwzkTFlKya4OGRzJRzowYjbIVI-NPvj12AylEUaweFBToiOM8U71QKUYAQpiBnVMl5SPA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxGJTcSaX-PUR1QwFBr2PAoZdzXeiI4yumqy-xpEI_0woZ3KfMAlYIEwnxLgiT5LuTYGA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -10,8 +10,9 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin:      ['orders','crm','production','customers','products','suppliers','users'],
+  Admin:      ['orders','crm','production','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','customers','mydashboard'],
+  Accounts:   ['accounts'],
   Production: ['production'],
   CRM:        ['crm','orders']
 };
@@ -28,7 +29,12 @@ const roleAccess = {
     if (pipeline) pipeline.style.display = 'none';
   }
 
-  if (user.role === 'Sales') {
+  if (user.role === 'Accounts') {
+    document.querySelector('.sidebar').style.display = 'flex';
+    ['sec-tracking','sec-master','sec-admin','sec-sales','sec-finance'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+  } else if (user.role === 'Sales') {
     document.querySelector('.sidebar').style.display = 'flex';
     ['sec-tracking', 'sec-admin'].forEach(id => {
       const el = document.getElementById(id);
@@ -42,6 +48,8 @@ const roleAccess = {
     setTimeout(() => nav('production', document.getElementById('nav-production')), 100);
   } else if (user.role === 'CRM') {
     setTimeout(() => nav('crm', document.getElementById('nav-crm')), 100);
+  } else if (user.role === 'Accounts') {
+    setTimeout(() => nav('accounts', document.getElementById('nav-accounts')), 100);
   }
 })();
 
@@ -54,7 +62,8 @@ const pageMeta = {
   customers:{title:'Customers',sub:'Customer master data'},
   products:{title:'Products',sub:'Product master data'},
   suppliers:{title:'Suppliers',sub:'Supplier master data'},
-  users:{title:'Users & Access',sub:'Manage users and roles'}
+  users:{title:'Users & Access',sub:'Manage users and roles'},
+  accounts:{title:'Accounts',sub:'Order accounts & finance tracking'}
 };
 
 function nav(id, el) {
@@ -77,6 +86,7 @@ function loadPage(id) {
   else if (id === 'products') loadProducts();
   else if (id === 'suppliers') loadSuppliers();
   else if (id === 'users') loadUsers();
+  else if (id === 'accounts') loadAccounts();
 }
 
 // API
@@ -1058,6 +1068,57 @@ function submitUser() {
   api({ action:'addUser', UserID:document.getElementById('u-id').value, Name:document.getElementById('u-name').value, Username:document.getElementById('u-uname').value, Password:document.getElementById('u-pass').value, Role:document.getElementById('u-role').value, IsActive:true }, r => {
     if (r.success) { toast('User added'); closeModal('userModal'); loadUsers(); } else toast(r.message,'e');
   });
+}
+
+// ========== ACCOUNTS ==========
+let allAccounts = [];
+
+function loadAccounts() {
+  api({ action: 'getAccounts' }, r => {
+    if (!r.success) {
+      document.getElementById('accountsTable').innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
+      return;
+    }
+    allAccounts = r.data || [];
+    const uniqueOrders = new Set(allAccounts.map(a => a['Order ID'])).size;
+    const totalQty     = allAccounts.reduce((s,a) => s + (parseFloat(a['Qty'])||0), 0);
+    const withCharger  = allAccounts.filter(a => a['Charger Qty']).length;
+    document.getElementById('acc-total').textContent   = allAccounts.length;
+    document.getElementById('acc-orders').textContent  = uniqueOrders;
+    document.getElementById('acc-qty').textContent     = totalQty;
+    document.getElementById('acc-charger').textContent = withCharger;
+    renderAccounts(allAccounts);
+  });
+}
+
+function renderAccounts(data) {
+  if (!data.length) {
+    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
+    return;
+  }
+  document.getElementById('accountsTable').innerHTML = data.map(a => `<tr>
+    <td>${a['Sr No']||''}</td>
+    <td class="td-id">${a['Item ID']||''}</td>
+    <td class="td-id">${a['Order ID']||''}</td>
+    <td>${fmtDisplayDate(a['Order Date']||'')}</td>
+    <td class="td-bold">${a['Customer Name']||''}</td>
+    <td>${a['Product Model']||''}</td>
+    <td>${a['Battery Type']||''}</td>
+    <td>${a['Qty']||''}</td>
+    <td>${a['Charger Model']||''}</td>
+    <td>${a['Charger Qty']||''}</td>
+    <td>${a['Sales Person']||''}</td>
+    <td>${a['Assigned CRM']||''}</td>
+  </tr>`).join('');
+}
+
+function searchAccounts() {
+  const q = (document.getElementById('accSearch').value||'').toLowerCase();
+  renderAccounts(q ? allAccounts.filter(a =>
+    (a['Order ID']||'').toLowerCase().includes(q) ||
+    (a['Customer Name']||'').toLowerCase().includes(q) ||
+    (a['Product Model']||'').toLowerCase().includes(q)
+  ) : allAccounts);
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
