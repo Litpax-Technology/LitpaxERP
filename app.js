@@ -790,6 +790,7 @@ function renderCRM(data) {
   if (!data.length) { document.getElementById('crmTable').innerHTML = '<tr><td colspan="26"><div class="empty"><div class="empty-ico">&#x1F3AF;</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
   document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
     <td>${c['Sr No']||''}</td>
+    <td class="td-id">${c['Item ID']||''}</td>
     <td class="td-id">${c['Order ID']||''}</td>
     <td>${fmtDisplayDate(c['Order Date']||'')}</td>
     <td class="td-bold">${c['Customer Name']||''}</td>
