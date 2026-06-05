@@ -625,6 +625,7 @@ function submitOrder() {
   if (btn && btn.disabled) return;
 
   if (currentOrderID) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
     // Pehle check karo koi last item filled hai kya
     const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
     const finishOrder = () => {
@@ -797,6 +798,10 @@ function renderCRM(data) {
     <td>${c['Product Model']||''}</td>
     <td>${c['Qty']||''}</td>
     <td>${c['Sales Person']||''}</td>
+    <td>${c['Payment Mode']||''}</td>
+    <td>${fmtDisplayDate(c['Plan Payment Date']||'')}</td>
+    <td>${c['Payment Status']||''}</td>
+    <td>${fmtDisplayDate(c['Plan Dispatch Date']||'')}</td>
     <td>${fmtDisplayDate(c['Production Start Plan']||'')}</td>
     <td>${fmtDisplayDate(c['Production Start Actual']||'')}</td>
     <td>${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
