@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbxj5rF10o3lGnyCYWys479K_-BcKynnuDUXsuqfYcb1jxjhyesBudPPXL3WydIDYBohNg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzeGweQIyhuDfYtUvMpGLQ0z6kJyzVY5HGmVwP1Of__txr7n655GBg3EbN0eX3bXgfwGw/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -902,8 +902,10 @@ function loadProduction() {
       <td>${p['Product Model']||''}</td>
       <td>${p['Battery Type']||''}</td>
       <td>${p['Qty']||''}</td>
+      <td>${p['Charger Qty']||''}</td>
       <td>${p['Sales Person']||''}</td>
       <td>${p['Assigned CRM']||''}</td>
+      <td>${p['Sales Remarks']||''}</td>
       <td>${fmtDisplayDate(p['Production Start Plan']||'')}</td>
       <td>${fmtDisplayDate(p['Production Start Actual']||'')}</td>
       <td>${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
