@@ -793,6 +793,7 @@ function renderCRM(data) {
     <td>${fmtDisplayDate(c['Order Date']||'')}</td>
     <td class="td-bold">${c['Customer Name']||''}</td>
     <td>${c['Customer No']||''}</td>
+    <td>${c['Product Type']||''}</td>
     <td>${c['Product Model']||''}</td>
     <td>${c['Qty']||''}</td>
     <td>${c['Sales Person']||''}</td>
