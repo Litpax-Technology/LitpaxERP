@@ -625,22 +625,55 @@ function submitOrder() {
   if (btn && btn.disabled) return;
 
   if (currentOrderID) {
-    const charger = getChargerData();
-    if (charger) {
-      api({ action: 'addChargerItem', 'Order ID': currentOrderID, 'Charger Model': charger.model, 'Qty': charger.qty, 'Price/Unit': charger.price, 'Total': charger.total }, r => {
+    // Pehle check karo koi last item filled hai kya
+    const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
+    const finishOrder = () => {
+      const charger = getChargerData();
+      if (charger) {
+        api({ action: 'addChargerItem', 'Order ID': currentOrderID, 'Charger Model': charger.model, 'Qty': charger.qty, 'Price/Unit': charger.price, 'Total': charger.total }, () => {
+          toast('Order complete: ' + currentOrderID);
+          currentOrderID = null; closeModal('orderModal'); resetOrderForm(); loadOrders();
+        });
+      } else {
         toast('Order complete: ' + currentOrderID);
-        currentOrderID = null;
-        closeModal('orderModal');
-        resetOrderForm();
-        loadOrders();
-      });
-    } else {
-      toast('Order complete: ' + currentOrderID);
-      currentOrderID = null;
-      closeModal('orderModal');
-      resetOrderForm();
-      loadOrders();
+        currentOrderID = null; closeModal('orderModal'); resetOrderForm(); loadOrders();
+      }
+    };
+
+    if (cards.length) {
+      const card = cards[cards.length - 1];
+      const id = card.id.replace('item-row-', '');
+      const model = document.getElementById(`im-model-${id}`)?.value?.trim();
+      if (model) {
+        // Last item filled hai — save karo pehle
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+        const pt = document.getElementById(`im-pricetype-${id}`)?.value || '';
+        const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+        const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+        let pricePerUnit = pt === 'Per Watt'
+          ? volt * amp * (parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0)
+          : parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+        const itemData = {
+          'Product Model': model,
+          'Battery Type': document.getElementById(`im-btype-${id}`)?.value || '',
+          'Qty': document.getElementById(`im-qty-${id}`)?.value || 0,
+          'Price Unit (Excluding GST)': pricePerUnit.toFixed(2),
+          'Total': document.getElementById(`im-total-${id}`)?.value || 0,
+          'Assigned CRM': document.getElementById(`im-crm-${id}`)?.value || '',
+          'Remarks': document.getElementById(`im-remarks-${id}`)?.value || '',
+          'Voltage': volt || '',
+          'Ampere': amp || '',
+          'Price Type': pt,
+          'Warranty': document.getElementById(`im-warranty-${id}`)?.value || ''
+        };
+        api({ action: 'addOrderItem', 'Order ID': currentOrderID, ...itemData }, () => {
+          finishOrder();
+        });
+        return;
+      }
     }
+    // Last item empty tha — seedha finish
+    finishOrder();
     return;
   }
 
