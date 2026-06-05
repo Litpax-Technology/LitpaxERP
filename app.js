@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbyMunG1sD66b_z3927-T3n2w0d3pkrm_3FtYhiywhTGIDYxuD0lbQ9_aIHZWmqZ0gx9GA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyqzxJigX-GXMszsotkFrhAhWr1OyALYblrRviK1wE32-7tBU2ZCB-zbD4hq5AfFY13Hg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -921,7 +921,7 @@ function loadProduction() {
 
 function openProdUpdate(p) {
   document.getElementById('pu-orderid').value = p['Order ID']||'';
-  document.getElementById('pu-srno').value = p['Sr No']||'';
+  document.getElementById('pu-itemid').value = p['Item ID']||'';
   document.getElementById('pu-model').value = p['Product Model']||'';
   document.getElementById('pu-btype').value = p['Battery Type']||'';
   document.getElementById('pu-status').value = p['Status']||'Pending';
@@ -938,10 +938,10 @@ function submitProdUpdate() {
   const btn = document.getElementById('prodUpdateBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
 
-  var srNo    = document.getElementById('pu-srno').value;
+  var itemID  = document.getElementById('pu-itemid').value;
   var orderID = document.getElementById('pu-orderid').value;
   var params  = { action: 'updateProduction', 'Order ID': orderID };
-  if (srNo) params['Sr No'] = srNo;
+  if (itemID) params['Item ID'] = itemID;
 
   var dateIds = ['pu-sp','pu-sa','pu-cp','pu-ca'];
   var fields = [
