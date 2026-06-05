@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbyUaHrcoF18yS95vDjRwZJQRBwMJ_Ms_nlXJnTCjijM9HToKQA065VdYvG3Shhj-aTJmw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyphZ5OBNevMgDAvPNptSrOV4n86uvU8j3a2g4887KwSN3djIw2CqBFRI2CCYB-4LKmhg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -921,6 +921,7 @@ function loadProduction() {
 
 function openProdUpdate(p) {
   document.getElementById('pu-orderid').value = p['Order ID']||'';
+  document.getElementById('pu-srno').value = p['Sr No']||'';
   document.getElementById('pu-model').value = p['Product Model']||'';
   document.getElementById('pu-btype').value = p['Battery Type']||'';
   document.getElementById('pu-status').value = p['Status']||'Pending';
@@ -934,7 +935,14 @@ function openProdUpdate(p) {
 }
 
 function submitProdUpdate() {
-  var params = { action: 'updateProduction', 'Order ID': document.getElementById('pu-orderid').value };
+  const btn = document.querySelector('#prodUpdateModal .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
+  var srNo    = document.getElementById('pu-srno').value;
+  var orderID = document.getElementById('pu-orderid').value;
+  var params  = { action: 'updateProduction', 'Order ID': orderID };
+  if (srNo) params['Sr No'] = srNo;
+
   var dateIds = ['pu-sp','pu-sa','pu-cp','pu-ca'];
   var fields = [
     ['Product Model','pu-model'],['Battery Type','pu-btype'],['Status','pu-status'],
@@ -953,9 +961,12 @@ function submitProdUpdate() {
   var actualComplete = document.getElementById('pu-ca').value;
   if (actualComplete) params['Status'] = 'Completed';
 
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Update Production'; } };
+
   api(params, r => {
+    resetBtn();
     if (r.success) {
-      const crmParams = { action: 'updateCRM', 'Order ID': params['Order ID'] };
+      const crmParams = { action: 'updateCRM', 'Order ID': orderID };
       if (params['Production Start Plan'])      crmParams['Production Start Plan']      = params['Production Start Plan'];
       if (params['Production Start Actual'])    crmParams['Production Start Actual']    = params['Production Start Actual'];
       if (params['Production Complete Plan'])   crmParams['Production Complete Plan']   = params['Production Complete Plan'];
