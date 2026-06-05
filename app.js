@@ -786,34 +786,33 @@ function loadCRM() {
 }
 
 function renderCRM(data) {
-  if (!data.length) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="27"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No records</div></div></td></tr>`; return; }
+  if (!data.length) { document.getElementById('crmTable').innerHTML = '<tr><td colspan="26"><div class="empty"><div class="empty-ico">&#x1F3AF;</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
   document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
     <td>${c['Sr No']||''}</td>
     <td class="td-id">${c['Order ID']||''}</td>
     <td>${fmtDisplayDate(c['Order Date']||'')}</td>
     <td class="td-bold">${c['Customer Name']||''}</td>
+    <td>${c['Customer No']||''}</td>
     <td>${c['Product Model']||''}</td>
     <td>${c['Qty']||''}</td>
     <td>${c['Sales Person']||''}</td>
-    <td><span class="badge b-processing">${c['Current Stage']||''}</span></td>
     <td>${fmtDisplayDate(c['Production Start Plan']||'')}</td>
     <td>${fmtDisplayDate(c['Production Start Actual']||'')}</td>
     <td>${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
     <td>${fmtDisplayDate(c['Production Complete Actual']||'')}</td>
-    <td>${c['Production Delay']?`<span class="badge b-delay">${c['Production Delay']}</span>`:''}</td>
+    <td>${c['Production Delay']?'<span class="badge b-delay">'+c['Production Delay']+'</span>':''}</td>
     <td>${c['Payment Received Plan']||''}</td>
     <td>${c['Payment Received Actual']||''}</td>
-    <td>${c['Payment Delay']?`<span class="badge b-delay">${c['Payment Delay']}</span>`:''}</td>
+    <td>${c['Payment Delay']?'<span class="badge b-delay">'+c['Payment Delay']+'</span>':''}</td>
     <td>${c['Ready to Dispatch Plan']||''}</td>
     <td>${c['Ready to Dispatch Actual']||''}</td>
-    <td>${c['Dispatch Delay']?`<span class="badge b-delay">${c['Dispatch Delay']}</span>`:''}</td>
+    <td>${c['Dispatch Delay']?'<span class="badge b-delay">'+c['Dispatch Delay']+'</span>':''}</td>
     <td>${c['Billing Docs Plan']||''}</td>
     <td>${c['Billing Docs Actual']||''}</td>
-    <td>${c['Billing Delay']?`<span class="badge b-delay">${c['Billing Delay']}</span>`:''}</td>
+    <td>${c['Billing Delay']?'<span class="badge b-delay">'+c['Billing Delay']+'</span>':''}</td>
     <td>${c['Order Verification']||''}</td>
     <td>${c['Payment/Advance Check']||''}</td>
     <td>${c['Remarks']||''}</td>
-    <td>${c['Customer No']||''}</td>
     <td><button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button></td>
   </tr>`).join('');
 }
