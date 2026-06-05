@@ -412,7 +412,7 @@
     <div class="modal-head"><div class="modal-title">Update Production</div><button class="modal-close" onclick="closeModal('prodUpdateModal')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Order ID</label><input class="form-control" id="pu-orderid" readonly></div>
+        <div class="form-group"><label class="form-label">Order ID</label><input class="form-control" id="pu-orderid" readonly><input type="hidden" id="pu-srno"></div>
         <div class="form-group"><label class="form-label">Product Model</label><input class="form-control" id="pu-model" placeholder="Product model"></div>
         <div class="form-group"><label class="form-label">Battery Type</label><input class="form-control" id="pu-btype" placeholder="Battery type"></div>
         <div class="form-group"><label class="form-label">Status</label>
@@ -451,7 +451,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('prodUpdateModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitProdUpdate()">Update Production</button>
+      <button class="btn btn-primary" id="prodUpdateBtn" onclick="submitProdUpdate()">Update Production</button>
     </div>
   </div>
 </div>
