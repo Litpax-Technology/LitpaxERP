@@ -896,6 +896,7 @@ function loadProduction() {
     if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="17"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
     document.getElementById('prodTable').innerHTML = allProd.map(p => `<tr>
       <td>${p['Sr No']||''}</td>
+      <td class="td-id">${p['Item ID']||''}</td>
       <td class="td-id">${p['Order ID']||''}</td>
       <td>${fmtDisplayDate(p['Order Date']||'')}</td>
       <td class="td-bold">${p['Customer Name']||''}</td>
