@@ -424,7 +424,28 @@
         <div class="form-group"><label class="form-label">Prod Start Actual</label><input class="form-control" type="date" id="pu-sa"></div>
         <div class="form-group"><label class="form-label">Prod Complete Plan</label><input class="form-control" type="date" id="pu-cp"></div>
         <div class="form-group"><label class="form-label">Prod Complete Actual</label><input class="form-control" type="date" id="pu-ca"></div>
-        <div class="form-group"><label class="form-label">Production Delay</label><input class="form-control" id="pu-delay" placeholder="Reason if any"></div>
+        <div class="form-group"><label class="form-label">Production Delay</label>
+          <select class="form-control" id="pu-delay">
+            <option value="">No Delay</option>
+            <option>Material Unavailable</option>
+            <option>Raw Material Quality Issue</option>
+            <option>Worker Absent</option>
+            <option>Machine Breakdown</option>
+            <option>Power Outage</option>
+            <option>Cell Shortage</option>
+            <option>BMS Unavailable</option>
+            <option>Wiring Issue</option>
+            <option>Quality Check Failed</option>
+            <option>Rework Required</option>
+            <option>Customer Request - Hold</option>
+            <option>Customer Request - Change</option>
+            <option>Transport Delay</option>
+            <option>Packaging Issue</option>
+            <option>Testing Failed</option>
+            <option>Approval Pending</option>
+            <option>Other</option>
+          </select>
+        </div>
         <div class="form-group form-full"><label class="form-label">Remarks</label><textarea class="form-control" id="pu-remarks"></textarea></div>
       </div>
     </div>
