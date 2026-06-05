@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbyqzxJigX-GXMszsotkFrhAhWr1OyALYblrRviK1wE32-7tBU2ZCB-zbD4hq5AfFY13Hg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwzkTFlKya4OGRzJRzowYjbIVI-NPvj12AylEUaweFBToiOM8U71QKUYAQpiBnVMl5SPA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -967,6 +967,7 @@ function submitProdUpdate() {
     resetBtn();
     if (r.success) {
       const crmParams = { action: 'updateCRM', 'Order ID': orderID };
+      if (itemID) crmParams['Item ID'] = itemID;
       if (params['Production Start Plan'])      crmParams['Production Start Plan']      = params['Production Start Plan'];
       if (params['Production Start Actual'])    crmParams['Production Start Actual']    = params['Production Start Actual'];
       if (params['Production Complete Plan'])   crmParams['Production Complete Plan']   = params['Production Complete Plan'];
