@@ -935,7 +935,7 @@ function openProdUpdate(p) {
 }
 
 function submitProdUpdate() {
-  const btn = document.querySelector('#prodUpdateModal .btn-primary');
+  const btn = document.getElementById('prodUpdateBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
 
   var srNo    = document.getElementById('pu-srno').value;
