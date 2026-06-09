@@ -189,7 +189,7 @@ function toInputDate(val) {
 }
 
 // ========== ORDERS ==========
-let allOrders = [], orderFilter = 'all';
+let allOrders = [], orderFilter = 'all', showCompleted = false;
 
 function loadOrders() {
   api({ action: 'getOrders' }, r => {
@@ -203,12 +203,27 @@ function loadOrders() {
   });
 }
 
+function toggleCompleted() {
+  showCompleted = !showCompleted;
+  const btn = document.getElementById('toggleCompletedBtn');
+  if (btn) {
+    btn.textContent = showCompleted ? '🔵 Hide Completed' : '⚪ Show Completed';
+    btn.className = showCompleted ? 'btn btn-info btn-sm' : 'btn btn-sm';
+  }
+  renderOrders();
+}
+
 function renderOrders() {
   let data = allOrders;
-  if (orderFilter === 'advance') data = allOrders.filter(o => (o['Order Status']||'').startsWith('Advance'));
-  else if (orderFilter === 'pdc') data = allOrders.filter(o => (o['Order Status']||'').startsWith('PDC'));
-  else if (orderFilter === 'credit') data = allOrders.filter(o => (o['Order Status']||'').startsWith('Credit'));
-  else if (orderFilter === 'dispatched') data = allOrders.filter(o => (o['Order Status']||'').includes('Dispatched'));
+  // Completed orders filter
+  const completedStatuses = ['Production Completed', 'Order Completed', 'Completed', 'Dispatched'];
+  if (!showCompleted) {
+    data = data.filter(o => !completedStatuses.includes(o['Final Status']||''));
+  }
+  if (orderFilter === 'advance') data = data.filter(o => (o['Order Status']||'').startsWith('Advance'));
+  else if (orderFilter === 'pdc') data = data.filter(o => (o['Order Status']||'').startsWith('PDC'));
+  else if (orderFilter === 'credit') data = data.filter(o => (o['Order Status']||'').startsWith('Credit'));
+  else if (orderFilter === 'dispatched') data = data.filter(o => (o['Order Status']||'').includes('Dispatched'));
 
   const adv = allOrders.filter(o => (o['Order Status']||'').startsWith('Advance')).length;
   const dis = allOrders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
@@ -792,7 +807,10 @@ let crmBilledMap = {};
 function loadCRM() {
   api({ action: 'getCRM' }, r => {
     if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="33"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
-    allCRM = r.data || [];
+    allCRM = (r.data || []).filter(c => {
+      const fs = (c['Current Stage']||'').toLowerCase();
+      return showCompleted || (fs !== 'completed' && fs !== 'billed' && fs !== 'order completed');
+    });
     document.getElementById('crm-total').textContent = allCRM.length;
     document.getElementById('crm-prod').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('production')).length;
     document.getElementById('crm-dispatch').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('dispatch')).length;
@@ -1087,6 +1105,13 @@ function loadProduction() {
   api({ action: 'getProduction' }, r => {
     if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
     allProd = r.data || [];
+    // Completed orders hide karo
+    if (!showCompleted) {
+      const completedOrderIDs = new Set(
+        allOrders.filter(o => ['Production Completed','Order Completed','Completed'].includes(o['Final Status']||'')).map(o => o['Order ID'])
+      );
+      allProd = allProd.filter(p => !completedOrderIDs.has(p['Order ID']));
+    }
     document.getElementById('prod-total').textContent = allProd.length;
     document.getElementById('prod-inprog').textContent = allProd.filter(p => p['Status'] === 'In Progress').length;
     document.getElementById('prod-done').textContent = allProd.filter(p => p['Status'] === 'Completed').length;
@@ -1348,6 +1373,13 @@ function loadAccounts() {
       return;
     }
     allAccounts = r.data || [];
+    // Completed orders hide karo
+    if (!showCompleted) {
+      const completedOrderIDs = new Set(
+        allOrders.filter(o => ['Production Completed','Order Completed','Completed'].includes(o['Final Status']||'')).map(o => o['Order ID'])
+      );
+      allAccounts = allAccounts.filter(a => !completedOrderIDs.has(a['Order ID']));
+    }
     const uniqueOrderIDs = [...new Set(allAccounts.map(a => a['Order ID']))];
     const totalQty    = allAccounts.reduce((s,a) => s + (parseFloat(a['Qty'])||0), 0);
     const withCharger = allAccounts.filter(a => a['Charger Qty']).length;
