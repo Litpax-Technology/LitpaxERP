@@ -1284,42 +1284,68 @@ function renderAccounts(data, prodMap, orderValMap) {
     document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
     return;
   }
-  document.getElementById('accountsTable').innerHTML = data.map(a => {
-    const orderID   = a['Order ID'] || '';
-    const prodStatus = prodMap[a['Item ID']] || 'Pending';
-    const prodBadge = prodStatus === 'Completed'
-      ? '<span class="badge b-ready">✅ Done</span>'
-      : prodStatus === 'In Progress'
-      ? '<span class="badge b-processing">⚙️ In Progress</span>'
-      : prodStatus === 'Delayed'
-      ? '<span class="badge b-delay">⚠️ Delayed</span>'
-      : '<span class="badge b-pending">⏳ Pending</span>';
 
-    const payData    = orderPayMap[orderID] || {};
-    const orderVal   = payData.orderVal || orderValMap[orderID] || 0;
-    const received   = payData.totalReceived || 0;
-    const balance    = orderVal - received;
-    const balColor   = balance <= 0 ? 'var(--success)' : balance < orderVal ? 'var(--warning)' : 'var(--error)';
+  // Orders group karo
+  const orderGroups = {};
+  const orderSeq = [];
+  data.forEach(a => {
+    const oid = a['Order ID'] || '';
+    if (!orderGroups[oid]) { orderGroups[oid] = []; orderSeq.push(oid); }
+    orderGroups[oid].push(a);
+  });
 
-    return `<tr>
-      <td>${a['Sr No']||''}</td>
-      <td class="td-id">${a['Item ID']||''}</td>
-      <td class="td-id">${orderID}</td>
-      <td>${fmtDisplayDate(a['Order Date']||'')}</td>
-      <td class="td-bold">${a['Customer Name']||''}</td>
-      <td>${a['Product Model']||''}</td>
-      <td>${a['Battery Type']||''}</td>
-      <td>${a['Qty']||''}</td>
-      <td>${a['Charger Model']||''}</td>
-      <td>${a['Charger Qty']||''}</td>
-      <td>${a['Sales Person']||''}</td>
-      <td>${a['Assigned CRM']||''}</td>
-      <td>${prodBadge}</td>
-      <td style="font-weight:600;color:var(--accent);">₹${fmt(orderVal)}</td>
-      <td style="font-weight:600;color:var(--success);">₹${fmt(received)}</td>
-      <td style="font-weight:700;color:${balColor};">₹${fmt(balance)}</td>
-    </tr>`;
-  }).join('');
+  let rows = '';
+  let sr = 1;
+  orderSeq.forEach(orderID => {
+    const items   = orderGroups[orderID];
+    const count   = items.length;
+    const payData = orderPayMap[orderID] || {};
+    const orderVal  = payData.orderVal || orderValMap[orderID] || 0;
+    const received  = payData.totalReceived || 0;
+    const balance   = orderVal - received;
+    const balColor  = balance <= 0 ? 'var(--success)' : balance < orderVal ? 'var(--warning)' : 'var(--error)';
+    const firstItem = items[0];
+
+    items.forEach((a, idx) => {
+      const prodStatus = prodMap[a['Item ID']] || 'Pending';
+      const prodBadge  = prodStatus === 'Completed'
+        ? '<span class="badge b-ready">✅ Done</span>'
+        : prodStatus === 'In Progress'
+        ? '<span class="badge b-processing">⚙️ In Progress</span>'
+        : prodStatus === 'Delayed'
+        ? '<span class="badge b-delay">⚠️ Delayed</span>'
+        : '<span class="badge b-pending">⏳ Pending</span>';
+
+      const isFirst = idx === 0;
+      const borderTop = isFirst && sr > 1 ? 'border-top:2px solid var(--border2);' : '';
+
+      // Order-level cells sirf pehli row mein (rowspan)
+      const orderCells = isFirst ? `
+        <td class="td-id" rowspan="${count}" style="vertical-align:middle;${borderTop}">${orderID}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${fmtDisplayDate(a['Order Date']||'')}</td>
+        <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${borderTop}">${a['Customer Name']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${a['Sales Person']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${a['Assigned CRM']||''}</td>
+        <td rowspan="${count}" style="font-weight:600;color:var(--accent);vertical-align:middle;${borderTop}">₹${fmt(orderVal)}</td>
+        <td rowspan="${count}" style="font-weight:600;color:var(--success);vertical-align:middle;${borderTop}">₹${fmt(received)}</td>
+        <td rowspan="${count}" style="font-weight:700;color:${balColor};vertical-align:middle;${borderTop}">₹${fmt(balance)}</td>
+      ` : '';
+
+      rows += `<tr style="${borderTop}">
+        <td style="${borderTop}">${sr++}</td>
+        <td class="td-id" style="${borderTop}">${a['Item ID']||''}</td>
+        ${orderCells}
+        <td style="${borderTop}">${a['Product Model']||''}</td>
+        <td style="${borderTop}">${a['Battery Type']||''}</td>
+        <td style="${borderTop}">${a['Qty']||''}</td>
+        <td style="${borderTop}">${a['Charger Model']||''}</td>
+        <td style="${borderTop}">${a['Charger Qty']||''}</td>
+        <td style="${borderTop}">${prodBadge}</td>
+      </tr>`;
+    });
+  });
+
+  document.getElementById('accountsTable').innerHTML = rows;
 }
 
 function viewOrderPayments(orderID, custName, orderVal) {
