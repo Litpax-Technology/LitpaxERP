@@ -898,6 +898,7 @@ function submitCRMUpdate() {
 let currentPaymentOrderID = '';
 let currentPaymentCustName = '';
 
+
 function openPaymentModal(orderID, custName) {
   currentPaymentOrderID = orderID;
   currentPaymentCustName = custName;
@@ -912,18 +913,17 @@ function openPaymentModal(orderID, custName) {
   document.getElementById('pm-balance').textContent = '—';
   document.getElementById('pm-orderval-display').textContent = '—';
   openModal('paymentModal');
-  // Order value fetch karo
   const orderData = allOrders.find(o => o['Order ID'] === orderID);
   if (orderData && orderData['Total Order Value']) {
     document.getElementById('pm-orderval-display').textContent = '₹' + fmt(orderData['Total Order Value']);
+    loadPaymentsList(orderID);
   } else {
-    // Orders load nahi hue to fetch karo
     api({ action: 'getOrders' }, r => {
       const o = (r.data||[]).find(x => x['Order ID'] === orderID);
       if (o) document.getElementById('pm-orderval-display').textContent = '₹' + fmt(o['Total Order Value']||0);
+      loadPaymentsList(orderID);
     });
   }
-  loadPaymentsList(orderID);
 }
 
 function loadPaymentsList(orderID) {
