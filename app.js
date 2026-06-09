@@ -868,11 +868,7 @@ function renderCRM(data) {
         <td style="${bt}">${c['Ready to Dispatch Plan']||''}</td>
         <td style="${bt}">${c['Ready to Dispatch Actual']||''}</td>
         <td style="${bt}">${c['Dispatch Delay']?'<span class="badge b-delay">'+c['Dispatch Delay']+'</span>':''}</td>
-        <td style="${bt}">${c['Billing Docs Plan']||''}</td>
-        <td style="${bt}">${c['Billing Docs Actual']||''}</td>
-        <td style="${bt}">${c['Billing Delay']?'<span class="badge b-delay">'+c['Billing Delay']+'</span>':''}</td>
-        <td style="${bt}">${c['Order Verification']||''}</td>
-        <td style="${bt}">${c['Payment/Advance Check']||''}</td>
+        <td style="${bt}">${fmtDisplayDate(c['Billing Docs Actual']||'')}</td>
         <td style="${bt}">${c['Remarks']||''}</td>
         <td style="${bt}"><button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button></td>
       </tr>`;
@@ -902,19 +898,13 @@ function openCRMUpdate(c) {
   document.getElementById('cu-disp-plan').value = toInputDate(c['Ready to Dispatch Plan']||'');
   document.getElementById('cu-disp-actual').value = toInputDate(c['Ready to Dispatch Actual']||'');
   document.getElementById('cu-disp-delay').value = c['Dispatch Delay']||'';
-  document.getElementById('cu-bill-plan').value = toInputDate(c['Billing Docs Plan']||'');
-  document.getElementById('cu-bill-actual').value = toInputDate(c['Billing Docs Actual']||'');
-  document.getElementById('cu-bill-delay').value = c['Billing Delay']||'';
-  document.getElementById('cu-verify').value = c['Order Verification']||'';
-  document.getElementById('cu-advcheck').value = c['Payment/Advance Check']||'';
   document.getElementById('cu-remarks').value = c['Remarks']||'';
   openModal('crmUpdateModal');
 }
 
 function submitCRMUpdate() {
   var dateFields = ['cu-ps-plan','cu-ps-actual','cu-pc-plan','cu-pc-actual',
-                    'cu-pay-plan','cu-pay-actual','cu-disp-plan','cu-disp-actual',
-                    'cu-bill-plan','cu-bill-actual'];
+                    'cu-pay-plan','cu-pay-actual','cu-disp-plan','cu-disp-actual'];
   var fieldMap = {
     'Current Stage':'cu-stage','Next Stage':'cu-nextstage','Follow-up With':'cu-followup',
     'Production Start Plan':'cu-ps-plan','Production Start Actual':'cu-ps-actual',
@@ -922,9 +912,7 @@ function submitCRMUpdate() {
     'Production Delay':'cu-prod-delay','Payment Received Plan':'cu-pay-plan',
     'Payment Received Actual':'cu-pay-actual','Payment Delay':'cu-pay-delay',
     'Ready to Dispatch Plan':'cu-disp-plan','Ready to Dispatch Actual':'cu-disp-actual',
-    'Dispatch Delay':'cu-disp-delay','Billing Docs Plan':'cu-bill-plan',
-    'Billing Docs Actual':'cu-bill-actual','Billing Delay':'cu-bill-delay',
-    'Order Verification':'cu-verify','Payment/Advance Check':'cu-advcheck','Remarks':'cu-remarks'
+    'Dispatch Delay':'cu-disp-delay','Remarks':'cu-remarks'
   };
   var params = { action: 'updateCRM', 'Order ID': document.getElementById('cu-orderid').value };
   Object.entries(fieldMap).forEach(([key, id]) => {
