@@ -451,9 +451,10 @@
         <div class="form-group"><label class="form-label">Product Model</label><input class="form-control" id="pu-model" placeholder="Product model"></div>
         <div class="form-group"><label class="form-label">Battery Type</label><input class="form-control" id="pu-btype" placeholder="Battery type"></div>
         <div class="form-group"><label class="form-label">Status</label>
-          <select class="form-control" id="pu-status">
+          <select class="form-control" id="pu-status" style="background:var(--surface2);color:var(--text3);" disabled>
             <option>Pending</option><option>In Progress</option><option>Completed</option><option>Delayed</option>
           </select>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Auto: Start Actual → In Progress | Complete Actual → Completed</div>
         </div>
         <div class="form-group"><label class="form-label">Prod Start Plan</label><input class="form-control" type="date" id="pu-sp"></div>
         <div class="form-group"><label class="form-label">Prod Start Actual</label><input class="form-control" type="date" id="pu-sa"></div>
