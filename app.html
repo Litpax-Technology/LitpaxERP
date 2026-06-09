@@ -141,7 +141,7 @@
         <thead><tr>
           <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th>
           <th>Charger Model</th><th>Charger Qty</th><th>Sales Person</th><th>Assigned CRM</th>
-          <th>Sales Remarks</th><th>Product Model</th><th>Battery Type</th><th>Qty</th>
+          <th>Sales Remarks</th><th>Product Model</th><th>Battery Type</th><th>Qty (Produced/Total)</th><th>Pending</th>
           <th>Prod Start Plan</th><th>Prod Start Actual</th>
           <th>Prod Complete Plan</th><th>Prod Complete Actual</th><th>Prod Delay</th>
           <th>Status</th><th>Remarks</th><th>Action</th>
@@ -234,7 +234,7 @@
           <th>Sales Person</th><th>Assigned CRM</th>
           <th>Order Value</th><th>Received</th><th>Balance</th>
           <th>Charger Model</th><th>Charger Qty</th>
-          <th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Production</th>
+          <th>Product Model</th><th>Battery Type</th><th>Qty (Produced/Total)</th><th>Pending</th><th>Production</th>
         </tr></thead>
         <tbody id="accountsTable"><tr><td colspan="14"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
@@ -482,6 +482,24 @@
           </select>
         </div>
         <div class="form-group form-full"><label class="form-label">Remarks</label><textarea class="form-control" id="pu-remarks"></textarea></div>
+        <!-- Produced Qty Section -->
+        <div class="form-section">Production Quantity</div>
+        <div class="form-group">
+          <label class="form-label">Total Qty</label>
+          <div style="padding:8px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:600;color:var(--text);" id="pu-total-qty">—</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Already Produced</label>
+          <div style="padding:8px 11px;background:var(--success-dim);border:1px solid var(--success-b);border-radius:7px;font-size:13px;font-weight:600;color:var(--success);" id="pu-produced-qty">0</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pending</label>
+          <div style="padding:8px 11px;background:var(--warning-dim);border:1px solid var(--warning-b);border-radius:7px;font-size:13px;font-weight:600;color:var(--warning);" id="pu-pending-qty">—</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Produced Qty (Update)</label>
+          <input class="form-control" type="number" id="pu-produced" placeholder="Kitni bani abhi tak (total)">
+        </div>
       </div>
     </div>
     <div class="modal-foot">
