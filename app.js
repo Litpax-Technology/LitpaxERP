@@ -903,13 +903,26 @@ function openPaymentModal(orderID, custName) {
   currentPaymentCustName = custName;
   document.getElementById('pm-orderid-display').textContent = orderID;
   document.getElementById('pm-cust-display').textContent = custName;
-  // Reset form
   document.getElementById('pm-amount').value = '';
   document.getElementById('pm-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('pm-mode').value = '';
   document.getElementById('pm-ref').value = '';
   document.getElementById('pm-remarks').value = '';
+  document.getElementById('pm-total-received').textContent = '₹0';
+  document.getElementById('pm-balance').textContent = '—';
+  document.getElementById('pm-orderval-display').textContent = '—';
   openModal('paymentModal');
+  // Order value fetch karo
+  const orderData = allOrders.find(o => o['Order ID'] === orderID);
+  if (orderData && orderData['Total Order Value']) {
+    document.getElementById('pm-orderval-display').textContent = '₹' + fmt(orderData['Total Order Value']);
+  } else {
+    // Orders load nahi hue to fetch karo
+    api({ action: 'getOrders' }, r => {
+      const o = (r.data||[]).find(x => x['Order ID'] === orderID);
+      if (o) document.getElementById('pm-orderval-display').textContent = '₹' + fmt(o['Total Order Value']||0);
+    });
+  }
   loadPaymentsList(orderID);
 }
 
@@ -920,10 +933,14 @@ function loadPaymentsList(orderID) {
     if (!r.success || !r.data.length) {
       el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Koi payment entry nahi abhi</div>';
       document.getElementById('pm-total-received').textContent = '₹0';
+      document.getElementById('pm-balance').textContent = document.getElementById('pm-orderval-display').textContent;
       return;
     }
     const total = r.totalReceived || 0;
     document.getElementById('pm-total-received').textContent = '₹' + fmt(total);
+    const orderVal = parseFloat((document.getElementById('pm-orderval-display').textContent||'').replace(/[₹,]/g,'')) || 0;
+    const balance = orderVal - total;
+    document.getElementById('pm-balance').textContent = orderVal ? '₹' + fmt(balance) : '—';
     el.innerHTML = r.data.map(p => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
         <div style="display:flex;align-items:center;gap:10px;">
