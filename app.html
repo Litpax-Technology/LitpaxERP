@@ -234,7 +234,7 @@
           <th>Sales Person</th><th>Assigned CRM</th>
           <th>Order Value</th><th>Received</th><th>Balance</th>
           <th>Charger Model</th><th>Charger Qty</th>
-          <th>Product Model</th><th>Battery Type</th><th>Qty (Produced/Total)</th><th>Pending</th><th>Production</th>
+          <th>Product Model</th><th>Battery Type</th><th>Qty (Produced/Total)</th><th>Pending</th><th>Billed</th><th>Production</th><th>Bill</th>
         </tr></thead>
         <tbody id="accountsTable"><tr><td colspan="14"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
@@ -830,6 +830,62 @@
       <div id="vp-list" style="max-height:280px;overflow-y:auto;"></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('viewPaymentsModal')">Close</button></div>
+  </div>
+</div>
+
+
+<!-- ===== BILLING MODAL (Accounts) ===== -->
+<div class="modal-overlay" id="billingModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">🧾 Create Billing Entry</div>
+      <button class="modal-close" onclick="closeModal('billingModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--accent-dim);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Order ID</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;" id="bl-orderid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Item ID</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;" id="bl-itemid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Product</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);" id="bl-product-display"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--info-dim);border:1px solid var(--info-b);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--info);text-transform:uppercase;font-weight:600;">Total Qty</div>
+          <div style="font-size:18px;font-weight:700;color:var(--info);" id="bl-total-qty">0</div>
+        </div>
+        <div style="background:var(--success-dim);border:1px solid var(--success-b);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--success);text-transform:uppercase;font-weight:600;">Produced</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);" id="bl-produced-qty">0</div>
+        </div>
+        <div style="background:var(--warning-dim);border:1px solid var(--warning-b);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--warning);text-transform:uppercase;font-weight:600;">Already Billed</div>
+          <div style="font-size:18px;font-weight:700;color:var(--warning);" id="bl-billed-qty">0</div>
+        </div>
+      </div>
+      <div id="bl-history" style="margin-bottom:14px;max-height:150px;overflow-y:auto;"></div>
+      <div style="border-top:2px solid var(--border);padding-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">+ New Billing Entry</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Invoice No</label><input class="form-control" id="bl-invoice-no" placeholder="INV-001"></div>
+          <div class="form-group"><label class="form-label">Invoice Date</label><input class="form-control" type="date" id="bl-invoice-date"></div>
+          <div class="form-group"><label class="form-label">Billed Qty</label><input class="form-control" type="number" id="bl-billed-qty-input" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Invoice Amount (₹)</label><input class="form-control" type="number" id="bl-invoice-amount" placeholder="0"></div>
+          <div class="form-group form-full"><label class="form-label">Remarks</label><input class="form-control" id="bl-remarks" placeholder="Optional"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('billingModal')">Close</button>
+      <button class="btn btn-primary" id="bl-submit-btn" onclick="submitBilling()">🧾 Save Billing</button>
+    </div>
   </div>
 </div>
 
