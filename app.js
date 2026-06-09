@@ -920,16 +920,10 @@ function loadPaymentsList(orderID) {
     if (!r.success || !r.data.length) {
       el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Koi payment entry nahi abhi</div>';
       document.getElementById('pm-total-received').textContent = '₹0';
-      document.getElementById('pm-balance').textContent = '—';
       return;
     }
     const total = r.totalReceived || 0;
     document.getElementById('pm-total-received').textContent = '₹' + fmt(total);
-    // Balance calculate — order value se
-    const order = allCRM.find(c => c['Order ID'] === orderID);
-    const orderVal = order ? (parseFloat(allOrders.find(o => o['Order ID'] === orderID)?.['Total Order Value']) || 0) : 0;
-    const balance = orderVal - total;
-    document.getElementById('pm-balance').textContent = orderVal ? '₹' + fmt(balance) : '—';
     el.innerHTML = r.data.map(p => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
         <div style="display:flex;align-items:center;gap:10px;">
