@@ -979,15 +979,7 @@ function submitPayment() {
       document.getElementById('pm-amount').value = '';
       document.getElementById('pm-ref').value = '';
       document.getElementById('pm-remarks').value = '';
-      // Agar screenshot select hai to upload karo
-      const slipFile = document.getElementById('pm-slip-input').files[0];
-      if (slipFile) {
-        uploadPaymentSlip(slipFile, currentPaymentOrderID, currentPaymentCustName, () => {
-          loadPaymentsList(currentPaymentOrderID);
-        });
-      } else {
-        loadPaymentsList(currentPaymentOrderID);
-      }
+      loadPaymentsList(currentPaymentOrderID);
     } else {
       toast(r.message || 'Failed', 'e');
     }
@@ -1021,12 +1013,12 @@ function uploadPaymentSlip(file, orderID, custName, cb) {
             method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: 'reader', type: 'anyone' })
           });
-          if (status) { status.style.color = 'var(--success)'; status.textContent = 'Screenshot uploaded!'; }
-          // Reset upload zone
+          if (status) { status.style.display = 'block'; status.style.color = 'var(--success)'; status.textContent = '✅ Uploaded!'; }
           document.getElementById('pm-slip-input').value = '';
-          if (zone) zone.classList.remove('has-file');
-          document.getElementById('pm-slip-prompt').style.display = 'block';
-          document.getElementById('pm-slip-preview').style.display = 'none';
+          const nameEl = document.getElementById('pm-slip-name');
+          const uploadBtn = document.getElementById('pm-slip-upload-btn');
+          if (nameEl) nameEl.textContent = '';
+          if (uploadBtn) uploadBtn.style.display = 'none';
         } else {
           if (status) { status.style.color = 'var(--error)'; status.textContent = 'Upload failed'; }
         }
@@ -1040,19 +1032,18 @@ function uploadPaymentSlip(file, orderID, custName, cb) {
 function onPmSlipSelect() {
   const file = document.getElementById('pm-slip-input').files[0];
   if (!file) return;
-  const zone = document.getElementById('pm-slip-zone');
-  if (zone) zone.classList.add('has-file');
-  document.getElementById('pm-slip-prompt').style.display = 'none';
-  document.getElementById('pm-slip-preview').style.display = 'block';
-  document.getElementById('pm-slip-name').textContent = file.name;
-  const thumb = document.getElementById('pm-slip-thumb');
-  if (file.type.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = e => { thumb.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:80px;border-radius:6px;">'; };
-    reader.readAsDataURL(file);
-  } else {
-    thumb.innerHTML = '<div style="font-size:28px;text-align:center;">📄</div>';
-  }
+  const nameEl = document.getElementById('pm-slip-name');
+  const uploadBtn = document.getElementById('pm-slip-upload-btn');
+  const status = document.getElementById('pm-slip-status');
+  if (nameEl) nameEl.textContent = file.name;
+  if (uploadBtn) uploadBtn.style.display = 'inline-flex';
+  if (status) { status.style.display = 'none'; status.textContent = ''; }
+}
+
+function uploadPmSlipNow() {
+  const file = document.getElementById('pm-slip-input').files[0];
+  if (!file) return;
+  uploadPaymentSlip(file, currentPaymentOrderID, currentPaymentCustName, () => {});
 }
 
 // ========== PRODUCTION ==========
