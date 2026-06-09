@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbxAq-gEMiISxw_F6fsdYkBfhWW4djUxN9T-yXjXMsf0oBfl9oxlysd6-Briaq83IbgR-g/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxn3NoHI2oRZJ9CoA4rLEYtOhpWH9m38Ey6wDP1nsKqWmS-rP0TCY5MxxWx7Y1zJ8kOlA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1225,50 +1225,86 @@ function submitUser() {
 // ========== ACCOUNTS ==========
 let allAccounts = [];
 
+// orderPayMap: { orderID: { total, balance, orderVal } }
+let orderPayMap = {};
+
 function loadAccounts() {
+  document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
+  // Step 1: Accounts data
   api({ action: 'getAccounts' }, r => {
-    if (!r.success) {
-      document.getElementById('accountsTable').innerHTML = '<tr><td colspan="14"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
+    if (!r.success || !r.data.length) {
+      document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
       return;
     }
     allAccounts = r.data || [];
-    const uniqueOrders = new Set(allAccounts.map(a => a['Order ID'])).size;
-    const totalQty     = allAccounts.reduce((s,a) => s + (parseFloat(a['Qty'])||0), 0);
-    const withCharger  = allAccounts.filter(a => a['Charger Qty']).length;
+    const uniqueOrderIDs = [...new Set(allAccounts.map(a => a['Order ID']))];
+    const totalQty    = allAccounts.reduce((s,a) => s + (parseFloat(a['Qty'])||0), 0);
+    const withCharger = allAccounts.filter(a => a['Charger Qty']).length;
     document.getElementById('acc-total').textContent   = allAccounts.length;
-    document.getElementById('acc-orders').textContent  = uniqueOrders;
+    document.getElementById('acc-orders').textContent  = uniqueOrderIDs.length;
     document.getElementById('acc-qty').textContent     = totalQty;
     document.getElementById('acc-charger').textContent = withCharger;
 
-    // Production data bhi fetch karo for status
-    api({ action: 'getProduction' }, pr => {
-      const prodMap = {};
-      (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
-      renderAccounts(allAccounts, prodMap);
+    // Step 2: Orders data (for Total Value)
+    api({ action: 'getOrders' }, or => {
+      const ordersData = or.data || [];
+      const orderValMap = {};
+      ordersData.forEach(o => { orderValMap[o['Order ID']] = parseFloat(o['Total Order Value'])||0; });
+
+      // Step 3: Production data
+      api({ action: 'getProduction' }, pr => {
+        const prodMap = {};
+        (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
+
+        // Step 4: Payments — fetch all unique orders ke payments
+        orderPayMap = {};
+        let pending = uniqueOrderIDs.length;
+        if (!pending) { renderAccounts(allAccounts, prodMap, orderValMap); return; }
+
+        uniqueOrderIDs.forEach(orderID => {
+          api({ action: 'getPayments', 'Order ID': orderID }, pr2 => {
+            orderPayMap[orderID] = {
+              totalReceived: pr2.totalReceived || 0,
+              orderVal: orderValMap[orderID] || 0,
+              balance: (orderValMap[orderID] || 0) - (pr2.totalReceived || 0)
+            };
+            pending--;
+            if (pending === 0) renderAccounts(allAccounts, prodMap, orderValMap);
+          });
+        });
+      });
     });
   });
 }
 
-function renderAccounts(data, prodMap) {
+function renderAccounts(data, prodMap, orderValMap) {
   prodMap = prodMap || {};
+  orderValMap = orderValMap || {};
   if (!data.length) {
-    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="14"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
+    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
     return;
   }
   document.getElementById('accountsTable').innerHTML = data.map(a => {
+    const orderID   = a['Order ID'] || '';
     const prodStatus = prodMap[a['Item ID']] || 'Pending';
     const prodBadge = prodStatus === 'Completed'
-      ? '<span class="badge b-ready">✅ Completed</span>'
+      ? '<span class="badge b-ready">✅ Done</span>'
       : prodStatus === 'In Progress'
       ? '<span class="badge b-processing">⚙️ In Progress</span>'
       : prodStatus === 'Delayed'
       ? '<span class="badge b-delay">⚠️ Delayed</span>'
       : '<span class="badge b-pending">⏳ Pending</span>';
 
+    const payData    = orderPayMap[orderID] || {};
+    const orderVal   = payData.orderVal || orderValMap[orderID] || 0;
+    const received   = payData.totalReceived || 0;
+    const balance    = orderVal - received;
+    const balColor   = balance <= 0 ? 'var(--success)' : balance < orderVal ? 'var(--warning)' : 'var(--error)';
+
     return `<tr>
       <td>${a['Sr No']||''}</td>
       <td class="td-id">${a['Item ID']||''}</td>
-      <td class="td-id">${a['Order ID']||''}</td>
+      <td class="td-id">${orderID}</td>
       <td>${fmtDisplayDate(a['Order Date']||'')}</td>
       <td class="td-bold">${a['Customer Name']||''}</td>
       <td>${a['Product Model']||''}</td>
@@ -1279,7 +1315,9 @@ function renderAccounts(data, prodMap) {
       <td>${a['Sales Person']||''}</td>
       <td>${a['Assigned CRM']||''}</td>
       <td>${prodBadge}</td>
-      <td><button class="btn btn-sm btn-info" onclick='viewOrderPayments("${a['Order ID']||''}","${a['Customer Name']||''}",${allOrders.find(o=>o['Order ID']===a['Order ID'])?JSON.stringify(allOrders.find(o=>o['Order ID']===a['Order ID'])['Total Order Value']||0):'0'})'>💰 Payments</button></td>
+      <td style="font-weight:600;color:var(--accent);">₹${fmt(orderVal)}</td>
+      <td style="font-weight:600;color:var(--success);">₹${fmt(received)}</td>
+      <td style="font-weight:700;color:${balColor};">₹${fmt(balance)}</td>
     </tr>`;
   }).join('');
 }
@@ -1320,20 +1358,13 @@ function viewOrderPayments(orderID, custName, orderVal) {
 
 function searchAccounts() {
   const q = (document.getElementById('accSearch').value||'').toLowerCase();
-  if (!q) {
-    api({ action: 'getProduction' }, pr => {
-      const prodMap = {};
-      (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
-      renderAccounts(allAccounts, prodMap);
-    });
-    return;
-  }
+  if (!q) { loadAccounts(); return; }
   const filtered = allAccounts.filter(a =>
     (a['Order ID']||'').toLowerCase().includes(q) ||
     (a['Customer Name']||'').toLowerCase().includes(q) ||
     (a['Product Model']||'').toLowerCase().includes(q)
   );
-  renderAccounts(filtered, {});
+  renderAccounts(filtered, {}, {});
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
