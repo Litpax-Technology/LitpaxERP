@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbxGJTcSaX-PUR1QwFBr2PAoZdzXeiI4yumqy-xpEI_0woZ3KfMAlYIEwnxLgiT5LuTYGA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxAq-gEMiISxw_F6fsdYkBfhWW4djUxN9T-yXjXMsf0oBfl9oxlysd6-Briaq83IbgR-g/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -636,7 +636,6 @@ function submitOrder() {
 
   if (currentOrderID) {
     if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
-    // Pehle check karo koi last item filled hai kya
     const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
     const finishOrder = () => {
       const charger = getChargerData();
@@ -656,7 +655,6 @@ function submitOrder() {
       const id = card.id.replace('item-row-', '');
       const model = document.getElementById(`im-model-${id}`)?.value?.trim();
       if (model) {
-        // Last item filled hai — save karo pehle
         if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
         const pt = document.getElementById(`im-pricetype-${id}`)?.value || '';
         const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
@@ -683,7 +681,6 @@ function submitOrder() {
         return;
       }
     }
-    // Last item empty tha — seedha finish
     finishOrder();
     return;
   }
@@ -786,7 +783,7 @@ function resetOrderForm() {
 let allCRM = [];
 function loadCRM() {
   api({ action: 'getCRM' }, r => {
-    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="27"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
+    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="32"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
     allCRM = r.data || [];
     document.getElementById('crm-total').textContent = allCRM.length;
     document.getElementById('crm-prod').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('production')).length;
@@ -797,7 +794,7 @@ function loadCRM() {
 }
 
 function renderCRM(data) {
-  if (!data.length) { document.getElementById('crmTable').innerHTML = '<tr><td colspan="26"><div class="empty"><div class="empty-ico">&#x1F3AF;</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
+  if (!data.length) { document.getElementById('crmTable').innerHTML = '<tr><td colspan="32"><div class="empty"><div class="empty-ico">&#x1F3AF;</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
   document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
     <td>${c['Sr No']||''}</td>
     <td class="td-id">${c['Item ID']||''}</td>
@@ -830,7 +827,10 @@ function renderCRM(data) {
     <td>${c['Order Verification']||''}</td>
     <td>${c['Payment/Advance Check']||''}</td>
     <td>${c['Remarks']||''}</td>
-    <td><button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button>
+      <button class="btn btn-sm btn-success" onclick='openPaymentModal("${c['Order ID']||''}","${c['Customer Name']||''}")' title="Payments">💰</button>
+    </td>
   </tr>`).join('');
 }
 
@@ -894,17 +894,98 @@ function submitCRMUpdate() {
   });
 }
 
+// ========== PAYMENTS MODAL ==========
+let currentPaymentOrderID = '';
+let currentPaymentCustName = '';
+
+function openPaymentModal(orderID, custName) {
+  currentPaymentOrderID = orderID;
+  currentPaymentCustName = custName;
+  document.getElementById('pm-orderid-display').textContent = orderID;
+  document.getElementById('pm-cust-display').textContent = custName;
+  // Reset form
+  document.getElementById('pm-amount').value = '';
+  document.getElementById('pm-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('pm-mode').value = '';
+  document.getElementById('pm-ref').value = '';
+  document.getElementById('pm-remarks').value = '';
+  openModal('paymentModal');
+  loadPaymentsList(orderID);
+}
+
+function loadPaymentsList(orderID) {
+  const el = document.getElementById('pm-payments-list');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  api({ action: 'getPayments', 'Order ID': orderID }, r => {
+    if (!r.success || !r.data.length) {
+      el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Koi payment entry nahi abhi</div>';
+      document.getElementById('pm-total-received').textContent = '₹0';
+      document.getElementById('pm-balance').textContent = '—';
+      return;
+    }
+    const total = r.totalReceived || 0;
+    document.getElementById('pm-total-received').textContent = '₹' + fmt(total);
+    // Balance calculate — order value se
+    const order = allCRM.find(c => c['Order ID'] === orderID);
+    const orderVal = order ? (parseFloat(allOrders.find(o => o['Order ID'] === orderID)?.['Total Order Value']) || 0) : 0;
+    const balance = orderVal - total;
+    document.getElementById('pm-balance').textContent = orderVal ? '₹' + fmt(balance) : '—';
+    el.innerHTML = r.data.map(p => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">💵</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--success);">₹${fmt(p['Amount']||0)}</div>
+            <div style="font-size:11px;color:var(--text3);">${p['Date']||''} · ${p['Mode']||''} ${p['Reference']?'· '+p['Reference']:''}</div>
+            ${p['Remarks']?`<div style="font-size:11px;color:var(--text3);">${p['Remarks']}</div>`:''}
+          </div>
+        </div>
+        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${p['Payment ID']||''}</span>
+      </div>`).join('');
+  });
+}
+
+function submitPayment() {
+  const btn = document.getElementById('pm-submit-btn');
+  const amount = parseFloat(document.getElementById('pm-amount').value) || 0;
+  if (!amount) { toast('Amount bharo', 'e'); return; }
+  const mode = document.getElementById('pm-mode').value;
+  if (!mode) { toast('Payment mode select karo', 'e'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({
+    action: 'addPayment',
+    'Order ID': currentPaymentOrderID,
+    'Amount': amount,
+    'Date': document.getElementById('pm-date').value,
+    'Mode': mode,
+    'Reference': document.getElementById('pm-ref').value,
+    'Remarks': document.getElementById('pm-remarks').value,
+    'Added By': user.name || ''
+  }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '+ Add Payment'; }
+    if (r.success) {
+      toast('Payment added!');
+      document.getElementById('pm-amount').value = '';
+      document.getElementById('pm-ref').value = '';
+      document.getElementById('pm-remarks').value = '';
+      loadPaymentsList(currentPaymentOrderID);
+    } else {
+      toast(r.message || 'Failed', 'e');
+    }
+  });
+}
+
 // ========== PRODUCTION ==========
 let allProd = [];
 function loadProduction() {
   api({ action: 'getProduction' }, r => {
-    if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="17"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
+    if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="21"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
     allProd = r.data || [];
     document.getElementById('prod-total').textContent = allProd.length;
     document.getElementById('prod-inprog').textContent = allProd.filter(p => p['Status'] === 'In Progress').length;
     document.getElementById('prod-done').textContent = allProd.filter(p => p['Status'] === 'Completed').length;
     document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Status'] === 'Delayed').length;
-    if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="17"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
+    if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="21"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
     document.getElementById('prodTable').innerHTML = allProd.map(p => `<tr>
       <td>${p['Sr No']||''}</td>
       <td class="td-id">${p['Item ID']||''}</td>
@@ -1076,7 +1157,7 @@ let allAccounts = [];
 function loadAccounts() {
   api({ action: 'getAccounts' }, r => {
     if (!r.success) {
-      document.getElementById('accountsTable').innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
+      document.getElementById('accountsTable').innerHTML = '<tr><td colspan="14"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
       return;
     }
     allAccounts = r.data || [];
@@ -1087,38 +1168,101 @@ function loadAccounts() {
     document.getElementById('acc-orders').textContent  = uniqueOrders;
     document.getElementById('acc-qty').textContent     = totalQty;
     document.getElementById('acc-charger').textContent = withCharger;
-    renderAccounts(allAccounts);
+
+    // Production data bhi fetch karo for status
+    api({ action: 'getProduction' }, pr => {
+      const prodMap = {};
+      (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
+      renderAccounts(allAccounts, prodMap);
+    });
   });
 }
 
-function renderAccounts(data) {
+function renderAccounts(data, prodMap) {
+  prodMap = prodMap || {};
   if (!data.length) {
-    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
+    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="14"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
     return;
   }
-  document.getElementById('accountsTable').innerHTML = data.map(a => `<tr>
-    <td>${a['Sr No']||''}</td>
-    <td class="td-id">${a['Item ID']||''}</td>
-    <td class="td-id">${a['Order ID']||''}</td>
-    <td>${fmtDisplayDate(a['Order Date']||'')}</td>
-    <td class="td-bold">${a['Customer Name']||''}</td>
-    <td>${a['Product Model']||''}</td>
-    <td>${a['Battery Type']||''}</td>
-    <td>${a['Qty']||''}</td>
-    <td>${a['Charger Model']||''}</td>
-    <td>${a['Charger Qty']||''}</td>
-    <td>${a['Sales Person']||''}</td>
-    <td>${a['Assigned CRM']||''}</td>
-  </tr>`).join('');
+  document.getElementById('accountsTable').innerHTML = data.map(a => {
+    const prodStatus = prodMap[a['Item ID']] || 'Pending';
+    const prodBadge = prodStatus === 'Completed'
+      ? '<span class="badge b-ready">✅ Completed</span>'
+      : prodStatus === 'In Progress'
+      ? '<span class="badge b-processing">⚙️ In Progress</span>'
+      : prodStatus === 'Delayed'
+      ? '<span class="badge b-delay">⚠️ Delayed</span>'
+      : '<span class="badge b-pending">⏳ Pending</span>';
+
+    return `<tr>
+      <td>${a['Sr No']||''}</td>
+      <td class="td-id">${a['Item ID']||''}</td>
+      <td class="td-id">${a['Order ID']||''}</td>
+      <td>${fmtDisplayDate(a['Order Date']||'')}</td>
+      <td class="td-bold">${a['Customer Name']||''}</td>
+      <td>${a['Product Model']||''}</td>
+      <td>${a['Battery Type']||''}</td>
+      <td>${a['Qty']||''}</td>
+      <td>${a['Charger Model']||''}</td>
+      <td>${a['Charger Qty']||''}</td>
+      <td>${a['Sales Person']||''}</td>
+      <td>${a['Assigned CRM']||''}</td>
+      <td>${prodBadge}</td>
+      <td><button class="btn btn-sm btn-info" onclick='viewOrderPayments("${a['Order ID']||''}","${a['Customer Name']||''}",${allOrders.find(o=>o['Order ID']===a['Order ID'])?JSON.stringify(allOrders.find(o=>o['Order ID']===a['Order ID'])['Total Order Value']||0):'0'})'>💰 Payments</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function viewOrderPayments(orderID, custName, orderVal) {
+  document.getElementById('vp-orderid').textContent  = orderID;
+  document.getElementById('vp-custname').textContent = custName;
+  document.getElementById('vp-orderval').textContent = '₹' + fmt(orderVal||0);
+  document.getElementById('vp-list').innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  document.getElementById('vp-total').textContent   = '₹0';
+  document.getElementById('vp-balance').textContent = '—';
+  openModal('viewPaymentsModal');
+  api({ action: 'getPayments', 'Order ID': orderID }, r => {
+    if (!r.success || !r.data.length) {
+      document.getElementById('vp-list').innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Koi payment entry nahi abhi</div>';
+      document.getElementById('vp-total').textContent   = '₹0';
+      document.getElementById('vp-balance').textContent = '₹' + fmt(orderVal||0);
+      return;
+    }
+    const total   = r.totalReceived || 0;
+    const balance = (parseFloat(orderVal)||0) - total;
+    document.getElementById('vp-total').textContent   = '₹' + fmt(total);
+    document.getElementById('vp-balance').textContent = '₹' + fmt(balance);
+    document.getElementById('vp-list').innerHTML = r.data.map(p => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">💵</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--success);">₹${fmt(p['Amount']||0)}</div>
+            <div style="font-size:11px;color:var(--text3);">${p['Date']||''} · ${p['Mode']||''} ${p['Reference']?'· '+p['Reference']:''}</div>
+            ${p['Remarks']?`<div style="font-size:11px;color:var(--text3);">${p['Remarks']}</div>`:''}
+          </div>
+        </div>
+        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${p['Payment ID']||''}</span>
+      </div>`).join('');
+  });
 }
 
 function searchAccounts() {
   const q = (document.getElementById('accSearch').value||'').toLowerCase();
-  renderAccounts(q ? allAccounts.filter(a =>
+  if (!q) {
+    api({ action: 'getProduction' }, pr => {
+      const prodMap = {};
+      (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
+      renderAccounts(allAccounts, prodMap);
+    });
+    return;
+  }
+  const filtered = allAccounts.filter(a =>
     (a['Order ID']||'').toLowerCase().includes(q) ||
     (a['Customer Name']||'').toLowerCase().includes(q) ||
     (a['Product Model']||'').toLowerCase().includes(q)
-  ) : allAccounts);
+  );
+  renderAccounts(filtered, {});
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
