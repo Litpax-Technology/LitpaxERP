@@ -118,7 +118,7 @@
           <th>Order Verify</th><th>Advance Check</th><th>Remarks</th>
           <th>Action</th>
         </tr></thead>
-        <tbody id="crmTable"><tr><td colspan="27"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+        <tbody id="crmTable"><tr><td colspan="32"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -143,7 +143,7 @@
           <th>Prod Complete Plan</th><th>Prod Complete Actual</th><th>Prod Delay</th>
           <th>Status</th><th>Remarks</th><th>Action</th>
         </tr></thead>
-        <tbody id="prodTable"><tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+        <tbody id="prodTable"><tr><td colspan="21"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -230,8 +230,9 @@
           <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th>
           <th>Product Model</th><th>Battery Type</th><th>Qty</th>
           <th>Charger Model</th><th>Charger Qty</th><th>Sales Person</th><th>Assigned CRM</th>
+          <th>Production</th><th>Payments</th>
         </tr></thead>
-        <tbody id="accountsTable"><tr><td colspan="12"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+        <tbody id="accountsTable"><tr><td colspan="14"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -707,6 +708,93 @@
       <button class="btn" onclick="closeModal('editOrderModal')">Cancel</button>
       <button class="btn btn-primary" id="submitEditBtn" onclick="submitEditOrder()">Save Changes</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== PAYMENT ENTRY MODAL (CRM) ===== -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">💰 Payment Entry</div>
+      <button class="modal-close" onclick="closeModal('paymentModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:16px;margin-bottom:16px;padding:12px 14px;background:var(--accent-dim);border-radius:10px;border:1px solid #C7D2FE;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Order ID</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;" id="pm-orderid-display"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Customer</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);" id="pm-cust-display"></div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Total Received</div>
+          <div style="font-size:16px;font-weight:700;color:var(--success);" id="pm-total-received">₹0</div>
+          <div style="font-size:11px;color:var(--text3);">Balance: <span id="pm-balance" style="font-weight:600;color:var(--error);">—</span></div>
+        </div>
+      </div>
+      <div id="pm-payments-list" style="max-height:180px;overflow-y:auto;margin-bottom:16px;"></div>
+      <div style="border-top:2px solid var(--border);padding-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">+ New Payment Entry</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Amount (₹)</label><input class="form-control" type="number" id="pm-amount" placeholder="Enter amount"></div>
+          <div class="form-group"><label class="form-label">Date</label><input class="form-control" type="date" id="pm-date"></div>
+          <div class="form-group"><label class="form-label">Mode</label>
+            <select class="form-control" id="pm-mode">
+              <option value="">Select Mode</option>
+              <option>NEFT</option><option>RTGS</option><option>UPI</option>
+              <option>Cheque</option><option>Cash</option><option>IMPS</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Reference No</label><input class="form-control" id="pm-ref" placeholder="UTR / Cheque no"></div>
+          <div class="form-group form-full"><label class="form-label">Remarks</label><input class="form-control" id="pm-remarks" placeholder="Optional"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('paymentModal')">Close</button>
+      <button class="btn btn-primary" id="pm-submit-btn" onclick="submitPayment()">+ Add Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== VIEW PAYMENTS MODAL (Accounts) ===== -->
+<div class="modal-overlay" id="viewPaymentsModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-head">
+      <div class="modal-title">💰 Payment Summary</div>
+      <button class="modal-close" onclick="closeModal('viewPaymentsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--accent-dim);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Order ID</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;" id="vp-orderid"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Order Value</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);" id="vp-orderval"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Customer</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);" id="vp-custname"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--success-dim);border:1px solid var(--success-b);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:10px;color:var(--success);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:4px;">Total Received</div>
+          <div style="font-size:20px;font-weight:700;color:var(--success);" id="vp-total">₹0</div>
+        </div>
+        <div style="background:var(--error-dim);border:1px solid var(--error-b);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:10px;color:var(--error);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:4px;">Balance Due</div>
+          <div style="font-size:20px;font-weight:700;color:var(--error);" id="vp-balance">—</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Payment Entries</div>
+      <div id="vp-list" style="max-height:280px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('viewPaymentsModal')">Close</button></div>
   </div>
 </div>
 
