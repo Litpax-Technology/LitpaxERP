@@ -795,43 +795,71 @@ function loadCRM() {
 
 function renderCRM(data) {
   if (!data.length) { document.getElementById('crmTable').innerHTML = '<tr><td colspan="32"><div class="empty"><div class="empty-ico">&#x1F3AF;</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
-  document.getElementById('crmTable').innerHTML = data.map(c => `<tr>
-    <td>${c['Sr No']||''}</td>
-    <td class="td-id">${c['Item ID']||''}</td>
-    <td class="td-id">${c['Order ID']||''}</td>
-    <td>${fmtDisplayDate(c['Order Date']||'')}</td>
-    <td class="td-bold">${c['Customer Name']||''}</td>
-    <td>${c['Customer No']||''}</td>
-    <td>${c['Product Type']||''}</td>
-    <td>${c['Product Model']||''}</td>
-    <td>${c['Qty']||''}</td>
-    <td>${c['Sales Person']||''}</td>
-    <td>${c['Payment Mode']||''}</td>
-    <td>${fmtDisplayDate(c['Plan Payment Date']||'')}</td>
-    <td>${c['Payment Status']||''}</td>
-    <td>${fmtDisplayDate(c['Plan Dispatch Date']||'')}</td>
-    <td>${fmtDisplayDate(c['Production Start Plan']||'')}</td>
-    <td>${fmtDisplayDate(c['Production Start Actual']||'')}</td>
-    <td>${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
-    <td>${fmtDisplayDate(c['Production Complete Actual']||'')}</td>
-    <td>${c['Production Delay']?'<span class="badge b-delay">'+c['Production Delay']+'</span>':''}</td>
-    <td>${c['Payment Received Plan']||''}</td>
-    <td>${c['Payment Received Actual']||''}</td>
-    <td>${c['Payment Delay']?'<span class="badge b-delay">'+c['Payment Delay']+'</span>':''}</td>
-    <td>${c['Ready to Dispatch Plan']||''}</td>
-    <td>${c['Ready to Dispatch Actual']||''}</td>
-    <td>${c['Dispatch Delay']?'<span class="badge b-delay">'+c['Dispatch Delay']+'</span>':''}</td>
-    <td>${c['Billing Docs Plan']||''}</td>
-    <td>${c['Billing Docs Actual']||''}</td>
-    <td>${c['Billing Delay']?'<span class="badge b-delay">'+c['Billing Delay']+'</span>':''}</td>
-    <td>${c['Order Verification']||''}</td>
-    <td>${c['Payment/Advance Check']||''}</td>
-    <td>${c['Remarks']||''}</td>
-    <td style="display:flex;gap:4px;">
-      <button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button>
-      <button class="btn btn-sm btn-success" onclick='openPaymentModal("${c['Order ID']||''}","${c['Customer Name']||''}")' title="Payments">💰</button>
-    </td>
-  </tr>`).join('');
+
+  // Order wise group karo
+  const crmGroups = {};
+  const crmSeq = [];
+  data.forEach(c => {
+    const oid = c['Order ID'] || '';
+    if (!crmGroups[oid]) { crmGroups[oid] = []; crmSeq.push(oid); }
+    crmGroups[oid].push(c);
+  });
+
+  let crmRows = '';
+  let crmSr = 1;
+  crmSeq.forEach(orderID => {
+    const items = crmGroups[orderID];
+    const count = items.length;
+    const first = items[0];
+
+    items.forEach((c, idx) => {
+      const isFirst = idx === 0;
+      const bt = (isFirst && crmSr > 1) ? 'border-top:2px solid var(--border2);' : '';
+
+      const orderCells = isFirst ? `
+        <td class="td-id" rowspan="${count}" style="vertical-align:middle;${bt}">${orderID}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Order Date']||'')}</td>
+        <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer Name']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer No']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Sales Person']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Payment Mode']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Plan Payment Date']||'')}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Payment Status']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Plan Dispatch Date']||'')}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">
+          <button class="btn btn-sm btn-success" onclick='openPaymentModal("${orderID}","${first['Customer Name']||''}")' title="Payments">💰</button>
+        </td>
+      ` : '';
+
+      crmRows += `<tr>
+        <td style="${bt}">${crmSr++}</td>
+        <td class="td-id" style="${bt}">${c['Item ID']||''}</td>
+        ${orderCells}
+        <td style="${bt}">${c['Product Type']||''}</td>
+        <td style="${bt}">${c['Product Model']||''}</td>
+        <td style="${bt}">${c['Qty']||''}</td>
+        <td style="${bt}">${fmtDisplayDate(c['Production Start Plan']||'')}</td>
+        <td style="${bt}">${fmtDisplayDate(c['Production Start Actual']||'')}</td>
+        <td style="${bt}">${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
+        <td style="${bt}">${fmtDisplayDate(c['Production Complete Actual']||'')}</td>
+        <td style="${bt}">${c['Production Delay']?'<span class="badge b-delay">'+c['Production Delay']+'</span>':''}</td>
+        <td style="${bt}">${c['Payment Received Plan']||''}</td>
+        <td style="${bt}">${c['Payment Received Actual']||''}</td>
+        <td style="${bt}">${c['Payment Delay']?'<span class="badge b-delay">'+c['Payment Delay']+'</span>':''}</td>
+        <td style="${bt}">${c['Ready to Dispatch Plan']||''}</td>
+        <td style="${bt}">${c['Ready to Dispatch Actual']||''}</td>
+        <td style="${bt}">${c['Dispatch Delay']?'<span class="badge b-delay">'+c['Dispatch Delay']+'</span>':''}</td>
+        <td style="${bt}">${c['Billing Docs Plan']||''}</td>
+        <td style="${bt}">${c['Billing Docs Actual']||''}</td>
+        <td style="${bt}">${c['Billing Delay']?'<span class="badge b-delay">'+c['Billing Delay']+'</span>':''}</td>
+        <td style="${bt}">${c['Order Verification']||''}</td>
+        <td style="${bt}">${c['Payment/Advance Check']||''}</td>
+        <td style="${bt}">${c['Remarks']||''}</td>
+        <td style="${bt}"><button class="btn btn-sm btn-warning" onclick='openCRMUpdate(${JSON.stringify(c)})'>Update</button></td>
+      </tr>`;
+    });
+  });
+  document.getElementById('crmTable').innerHTML = crmRows;
 }
 
 function searchCRM() {
