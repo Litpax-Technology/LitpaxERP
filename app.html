@@ -754,28 +754,22 @@
           <div class="form-group"><label class="form-label">Reference No</label><input class="form-control" id="pm-ref" placeholder="UTR / Cheque no"></div>
           <div class="form-group form-full"><label class="form-label">Remarks</label><input class="form-control" id="pm-remarks" placeholder="Optional"></div>
         </div>
-        <!-- Screenshot Upload -->
-        <div style="margin-top:12px;">
-          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📎 Payment Screenshot (Optional)</div>
-          <div class="upload-zone" id="pm-slip-zone" onclick="document.getElementById('pm-slip-input').click()" style="padding:12px;">
-            <input type="file" id="pm-slip-input" accept="image/*,.pdf" style="display:none;" onchange="onPmSlipSelect()">
-            <div id="pm-slip-prompt">
-              <div style="font-size:22px;margin-bottom:4px;">📎</div>
-              <div style="font-size:12px;font-weight:500;color:var(--text2);">Click to attach screenshot</div>
-              <div style="font-size:11px;color:var(--text3);">Image ya PDF — max 4MB</div>
-            </div>
-            <div id="pm-slip-preview" style="display:none;">
-              <div id="pm-slip-thumb"></div>
-              <div id="pm-slip-name" style="font-size:12px;font-weight:500;color:var(--success);margin-top:4px;"></div>
-            </div>
-          </div>
-          <div id="pm-slip-status" style="font-size:12px;margin-top:6px;display:none;"></div>
-        </div>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn" onclick="closeModal('paymentModal')">Close</button>
-      <button class="btn btn-primary" id="pm-submit-btn" onclick="submitPayment()">+ Add Payment</button>
+    <div class="modal-foot" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label class="btn btn-info" style="cursor:pointer;margin:0;">
+          📎 Upload Screenshot
+          <input type="file" id="pm-slip-input" accept="image/*,.pdf" style="display:none;" onchange="onPmSlipSelect()">
+        </label>
+        <span id="pm-slip-name" style="font-size:12px;color:var(--text3);"></span>
+        <button id="pm-slip-upload-btn" class="btn btn-success" style="display:none;" onclick="uploadPmSlipNow()">⬆ Upload</button>
+        <span id="pm-slip-status" style="font-size:12px;display:none;"></span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal('paymentModal')">Close</button>
+        <button class="btn btn-primary" id="pm-submit-btn" onclick="submitPayment()">+ Add Payment</button>
+      </div>
     </div>
   </div>
 </div>
