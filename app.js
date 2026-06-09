@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbwTc1P1RX7yb3A4ktpvzbz_sgyoAuQk7ixtRR_drY1L1oXjcg1LrU2Kz5gdeRdenzjTeQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwsY0FRbkY8EvrxtGtuvnopRw9OzYhF1c8TrcaIOoLi8a1Xrup8WVbRPNzruNe_mKRfCA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1422,9 +1422,10 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerQty || '—'}</td>
       ` : '';
 
-      const aProd    = parseFloat(a['Produced Qty']) || 0;
-      const aTotal   = parseFloat(a['Qty']) || 0;
-      const aPending = parseFloat(a['Pending Qty']) || (aTotal - aProd);
+      const aProd      = parseFloat(a['Produced Qty']) || 0;
+      const aTotal     = parseFloat(a['Qty']) || 0;
+      const aPending   = parseFloat(a['Pending Qty']) || (aTotal - aProd);
+      const aBilledQty = parseFloat(a['Billed Qty']) || 0;
       const aQtyDisp = aProd > 0
         ? `<span style="color:var(--success);font-weight:600;">${aProd}</span>/<span style="font-weight:600;">${aTotal}</span>`
         : `${aTotal}`;
@@ -1440,12 +1441,90 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td style="${borderTop}">${a['Battery Type']||''}</td>
         <td style="${borderTop}">${aQtyDisp}</td>
         <td style="${borderTop}">${aPendDisp}</td>
+        <td style="${borderTop};font-weight:600;color:var(--purple);">${aBilledQty > 0 ? aBilledQty : '—'}</td>
         <td style="${borderTop}">${prodBadge}</td>
+        <td style="${borderTop}"><button class="btn btn-sm btn-primary" onclick='openBillingModal(${JSON.stringify(a)})'>🧾 Bill</button></td>
       </tr>`;
     });
   });
 
   document.getElementById('accountsTable').innerHTML = rows;
+}
+
+// ========== BILLING ==========
+let currentBillingData = {};
+
+function openBillingModal(a) {
+  currentBillingData = a;
+  document.getElementById('bl-orderid-display').textContent  = a['Order ID'] || '';
+  document.getElementById('bl-itemid-display').textContent   = a['Item ID'] || '';
+  document.getElementById('bl-product-display').textContent  = a['Product Model'] || '';
+  document.getElementById('bl-total-qty').textContent        = a['Qty'] || 0;
+  document.getElementById('bl-produced-qty').textContent     = a['Produced Qty'] || 0;
+  document.getElementById('bl-invoice-date').value           = new Date().toISOString().split('T')[0];
+  document.getElementById('bl-invoice-no').value             = '';
+  document.getElementById('bl-billed-qty-input').value       = a['Produced Qty'] || '';
+  document.getElementById('bl-invoice-amount').value         = '';
+  document.getElementById('bl-remarks').value                = '';
+  document.getElementById('bl-billed-qty').textContent       = a['Billed Qty'] || 0;
+  openModal('billingModal');
+  loadBillingHistory(a['Order ID'], a['Item ID']);
+}
+
+function loadBillingHistory(orderID, itemID) {
+  const el = document.getElementById('bl-history');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  api({ action: 'getBillings', 'Order ID': orderID, 'Item ID': itemID }, r => {
+    if (!r.success || !r.data.length) {
+      el.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text3);font-size:12px;">Koi billing entry nahi abhi</div>';
+      return;
+    }
+    el.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Previous Billings</div>' +
+      r.data.map(b => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface);">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">Invoice: ${b['Invoice No']||'—'} &nbsp;|&nbsp; Qty: ${b['Billed Qty']||0} &nbsp;|&nbsp; ₹${fmt(b['Invoice Amount']||0)}</div>
+            <div style="font-size:11px;color:var(--text3);">${b['Invoice Date']||''} ${b['Remarks']?'· '+b['Remarks']:''}</div>
+          </div>
+          <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${b['Billing ID']||''}</span>
+        </div>`).join('');
+  });
+}
+
+function submitBilling() {
+  const btn = document.getElementById('bl-submit-btn');
+  const invoiceNo = document.getElementById('bl-invoice-no').value.trim();
+  if (!invoiceNo) { toast('Invoice No bharo', 'e'); return; }
+  const billedQty = parseFloat(document.getElementById('bl-billed-qty-input').value) || 0;
+  if (!billedQty) { toast('Billed Qty bharo', 'e'); return; }
+  const amount = parseFloat(document.getElementById('bl-invoice-amount').value) || 0;
+  if (!amount) { toast('Invoice Amount bharo', 'e'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({
+    action: 'addBilling',
+    'Order ID':       currentBillingData['Order ID'] || '',
+    'Item ID':        currentBillingData['Item ID'] || '',
+    'Invoice No':     invoiceNo,
+    'Invoice Date':   document.getElementById('bl-invoice-date').value,
+    'Billed Qty':     billedQty,
+    'Invoice Amount': amount,
+    'Remarks':        document.getElementById('bl-remarks').value,
+    'Added By':       user.name || ''
+  }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '🧾 Save Billing'; }
+    if (r.success) {
+      toast('Billing saved! ' + r.billingID);
+      document.getElementById('bl-invoice-no').value    = '';
+      document.getElementById('bl-billed-qty-input').value = '';
+      document.getElementById('bl-invoice-amount').value = '';
+      document.getElementById('bl-remarks').value        = '';
+      loadBillingHistory(currentBillingData['Order ID'], currentBillingData['Item ID']);
+      loadAccounts();
+    } else {
+      toast(r.message || 'Failed', 'e');
+    }
+  });
 }
 
 function viewOrderPayments(orderID, custName, orderVal) {
