@@ -1151,6 +1151,14 @@ function loadProduction() {
   });
 }
 
+function calcProdQty() {
+  const produced = parseFloat(document.getElementById('pu-produced').value) || 0;
+  const total    = parseFloat(document.getElementById('pu-total-qty').textContent) || 0;
+  const pending  = total - produced;
+  document.getElementById('pu-produced-qty').textContent = produced;
+  document.getElementById('pu-pending-qty').textContent  = pending >= 0 ? pending : 0;
+}
+
 function openProdUpdate(p) {
   document.getElementById('pu-orderid').value = p['Order ID']||'';
   document.getElementById('pu-itemid').value = p['Item ID']||'';
