@@ -40,6 +40,12 @@ const roleAccess = {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
+  } else if (user.role === 'Production' || user.role === 'CRM') {
+    document.querySelector('.sidebar').style.display = 'flex';
+    // Sirf relevant section dikhao
+    ['sec-sales','sec-master','sec-admin','sec-finance'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
   } else if (user.role !== 'Admin') {
     document.querySelector('.sidebar').style.display = 'none';
   }
@@ -1181,7 +1187,6 @@ function renderProduction(billedMap) {
       });
     });
     document.getElementById('prodTable').innerHTML = prodRows;
-  });
 }
 
 function calcProdQty() {
