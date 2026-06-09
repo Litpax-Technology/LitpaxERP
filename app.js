@@ -235,6 +235,7 @@ function renderOrders() {
       <td>${payStatusBadge(o['Payment Status'])}</td>
       <td>${corridorBadge(o['Corridor']||o['Priority'])}</td>
       <td>${o['Assigned CRM']||''}</td>
+      <td>${o['Final Status'] ? `<span class="badge b-processing">${o['Final Status']}</span>` : '—'}</td>
       <td style="display:flex;gap:4px;">
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
         <button class="btn btn-sm btn-success" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
