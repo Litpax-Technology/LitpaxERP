@@ -1,32 +1,26 @@
-const API = 'https://script.google.com/macros/s/AKfycbxGJTcSaX-PUR1QwFBr2PAoZdzXeiI4yumqy-xpEI_0woZ3KfMAlYIEwnxLgiT5LuTYGA/exec';
-
+const API = 'https://script.google.com/macros/s/AKfycbxAq-gEMiISxw_F6fsdYkBfhWW4djUxN9T-yXjXMsf0oBfl9oxlysd6-Briaq83IbgR-g/exec';
 document.getElementById('pword').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
 document.getElementById('uname').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('pword').focus();
 });
-
 function toggleEye() {
   const i = document.getElementById('pword');
   i.type = i.type === 'password' ? 'text' : 'password';
 }
-
 function setLoad(on) {
   document.getElementById('loginBtn').disabled = on;
   document.getElementById('spin').style.display = on ? 'block' : 'none';
   document.getElementById('btnTxt').textContent = on ? 'Signing in...' : 'Sign In →';
 }
-
 function showErr(m) {
   document.getElementById('errTxt').textContent = m;
   document.getElementById('errBox').classList.add('show');
 }
-
 function hideErr() {
   document.getElementById('errBox').classList.remove('show');
 }
-
 function doLogin() {
   const u = document.getElementById('uname').value.trim();
   const p = document.getElementById('pword').value.trim();
@@ -40,7 +34,6 @@ function doLogin() {
     if (!window._done) { setLoad(false); showErr('Timeout — please retry'); }
   }, 12000);
 }
-
 function onLogin(res) {
   window._done = true; setLoad(false);
   if (res.success) {
