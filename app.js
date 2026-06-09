@@ -1205,8 +1205,10 @@ function submitProdUpdate() {
     if (dateIds.includes(id)) val = fmtDisplayDate(val);
     params[key] = val;
   });
+  var actualStart    = document.getElementById('pu-sa').value;
   var actualComplete = document.getElementById('pu-ca').value;
   if (actualComplete) params['Status'] = 'Completed';
+  else if (actualStart) params['Status'] = 'In Progress';
 
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Update Production'; } };
 
