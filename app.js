@@ -1152,11 +1152,10 @@ function loadProduction() {
 }
 
 function calcProdQty() {
-  const produced = parseFloat(document.getElementById('pu-produced').value) || 0;
+  const produced = parseFloat(document.getElementById('pu-produced-qty').value) || 0;
   const total    = parseFloat(document.getElementById('pu-total-qty').textContent) || 0;
   const pending  = total - produced;
-  document.getElementById('pu-produced-qty').textContent = produced;
-  document.getElementById('pu-pending-qty').textContent  = pending >= 0 ? pending : 0;
+  document.getElementById('pu-pending-qty').textContent = pending >= 0 ? pending : 0;
 }
 
 function openProdUpdate(p) {
@@ -1176,9 +1175,8 @@ function openProdUpdate(p) {
   const producedQty = parseFloat(p['Produced Qty']) || 0;
   const pendingQty  = parseFloat(p['Pending Qty']) || (totalQty - producedQty);
   document.getElementById('pu-total-qty').textContent   = totalQty;
-  document.getElementById('pu-produced-qty').textContent = producedQty;
-  document.getElementById('pu-pending-qty').textContent  = pendingQty > 0 ? pendingQty : 0;
-  document.getElementById('pu-produced').value = producedQty || '';
+  document.getElementById('pu-produced-qty').value = producedQty || '';
+  document.getElementById('pu-pending-qty').textContent = pendingQty > 0 ? pendingQty : 0;
   openModal('prodUpdateModal');
 }
 
@@ -1197,7 +1195,7 @@ function submitProdUpdate() {
     ['Production Start Plan','pu-sp'],['Production Start Actual','pu-sa'],
     ['Production Complete Plan','pu-cp'],['Production Complete Actual','pu-ca'],
     ['Production Delay','pu-delay'],['Remarks','pu-remarks'],
-    ['Produced Qty','pu-produced']
+    ['Produced Qty','pu-produced-qty']
   ];
   fields.forEach(([key, id]) => {
     var el = document.getElementById(id);
