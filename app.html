@@ -490,16 +490,13 @@
         </div>
         <div class="form-group">
           <label class="form-label">Already Produced</label>
-          <div style="padding:8px 11px;background:var(--success-dim);border:1px solid var(--success-b);border-radius:7px;font-size:13px;font-weight:600;color:var(--success);" id="pu-produced-qty">0</div>
+          <input class="form-control" type="number" id="pu-produced-qty" placeholder="0" oninput="calcProdQty()" style="background:var(--success-dim);border-color:var(--success-b);color:var(--success);font-weight:600;">
         </div>
         <div class="form-group">
           <label class="form-label">Pending</label>
           <div style="padding:8px 11px;background:var(--warning-dim);border:1px solid var(--warning-b);border-radius:7px;font-size:13px;font-weight:600;color:var(--warning);" id="pu-pending-qty">—</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Produced Qty (Update)</label>
-          <input class="form-control" type="number" id="pu-produced" placeholder="Kitni bani abhi tak (total)" oninput="calcProdQty()">
-        </div>
+
       </div>
     </div>
     <div class="modal-foot">
