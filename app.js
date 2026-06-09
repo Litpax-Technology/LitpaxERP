@@ -1336,10 +1336,24 @@ function loadAccounts() {
       const orderValMap = {};
       ordersData.forEach(o => { orderValMap[o['Order ID']] = parseFloat(o['Total Order Value'])||0; });
 
-      // Step 3: Production data
+      // Step 3: Production data — status + produced/pending qty live fetch
       api({ action: 'getProduction' }, pr => {
         const prodMap = {};
-        (pr.data || []).forEach(p => { prodMap[p['Item ID']] = p['Status'] || 'Pending'; });
+        (pr.data || []).forEach(p => {
+          prodMap[p['Item ID']] = {
+            status:      p['Status'] || 'Pending',
+            producedQty: parseFloat(p['Produced Qty']) || 0,
+            pendingQty:  parseFloat(p['Pending Qty'])  || 0
+          };
+        });
+        // Accounts data mein production values merge karo
+        allAccounts.forEach(a => {
+          const pd = prodMap[a['Item ID']];
+          if (pd) {
+            a['Produced Qty'] = pd.producedQty;
+            a['Pending Qty']  = pd.pendingQty;
+          }
+        });
 
         // Step 4: Payments — fetch all unique orders ke payments
         orderPayMap = {};
@@ -1392,7 +1406,8 @@ function renderAccounts(data, prodMap, orderValMap) {
     const firstItem = items[0];
 
     items.forEach((a, idx) => {
-      const prodStatus = prodMap[a['Item ID']] || 'Pending';
+      const prodData   = prodMap[a['Item ID']] || {};
+      const prodStatus = typeof prodData === 'object' ? (prodData.status || 'Pending') : (prodData || 'Pending');
       const prodBadge  = prodStatus === 'Completed'
         ? '<span class="badge b-ready">✅ Done</span>'
         : prodStatus === 'In Progress'
