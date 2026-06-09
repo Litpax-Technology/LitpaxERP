@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbwsY0FRbkY8EvrxtGtuvnopRw9OzYhF1c8TrcaIOoLi8a1Xrup8WVbRPNzruNe_mKRfCA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzpXjXK6qxJyzGx6-WvcVYR1Z2tHVMs_CMw-sxJeTZCUI5xdG04WlTL3oZShGoamvTmJg/exec';
 document.getElementById('pword').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
