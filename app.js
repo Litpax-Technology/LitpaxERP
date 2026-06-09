@@ -1320,6 +1320,10 @@ function renderAccounts(data, prodMap, orderValMap) {
       const borderTop = isFirst && sr > 1 ? 'border-top:2px solid var(--border2);' : '';
 
       // Order-level cells sirf pehli row mein (rowspan)
+      // Charger info — order level se lo (pehle item se)
+      const chargerModel = firstItem['Charger Model'] || '';
+      const chargerQty   = firstItem['Charger Qty'] || '';
+
       const orderCells = isFirst ? `
         <td class="td-id" rowspan="${count}" style="vertical-align:middle;${borderTop}">${orderID}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${fmtDisplayDate(a['Order Date']||'')}</td>
@@ -1329,6 +1333,8 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td rowspan="${count}" style="font-weight:600;color:var(--accent);vertical-align:middle;${borderTop}">₹${fmt(orderVal)}</td>
         <td rowspan="${count}" style="font-weight:600;color:var(--success);vertical-align:middle;${borderTop}">₹${fmt(received)}</td>
         <td rowspan="${count}" style="font-weight:700;color:${balColor};vertical-align:middle;${borderTop}">₹${fmt(balance)}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerModel || '—'}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerQty || '—'}</td>
       ` : '';
 
       rows += `<tr style="${borderTop}">
@@ -1338,8 +1344,6 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td style="${borderTop}">${a['Product Model']||''}</td>
         <td style="${borderTop}">${a['Battery Type']||''}</td>
         <td style="${borderTop}">${a['Qty']||''}</td>
-        <td style="${borderTop}">${a['Charger Model']||''}</td>
-        <td style="${borderTop}">${a['Charger Qty']||''}</td>
         <td style="${borderTop}">${prodBadge}</td>
       </tr>`;
     });
