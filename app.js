@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbwsY0FRbkY8EvrxtGtuvnopRw9OzYhF1c8TrcaIOoLi8a1Xrup8WVbRPNzruNe_mKRfCA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzpXjXK6qxJyzGx6-WvcVYR1Z2tHVMs_CMw-sxJeTZCUI5xdG04WlTL3oZShGoamvTmJg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -781,15 +781,27 @@ function resetOrderForm() {
 
 // ========== CRM ==========
 let allCRM = [];
+let crmBilledMap = {};
+
 function loadCRM() {
   api({ action: 'getCRM' }, r => {
-    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="32"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
+    if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="33"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
     allCRM = r.data || [];
     document.getElementById('crm-total').textContent = allCRM.length;
     document.getElementById('crm-prod').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('production')).length;
     document.getElementById('crm-dispatch').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('dispatch')).length;
     document.getElementById('crm-paid').textContent = allCRM.filter(c => c['Payment Received Actual']).length;
-    renderCRM(allCRM);
+
+    // Billings fetch karo
+    api({ action: 'getAllBillings' }, br => {
+      crmBilledMap = {};
+      (br.data || []).forEach(b => {
+        const iid = b['Item ID'] || '';
+        if (!crmBilledMap[iid]) crmBilledMap[iid] = 0;
+        crmBilledMap[iid] += parseFloat(b['Billed Qty']) || 0;
+      });
+      renderCRM(allCRM);
+    });
   });
 }
 
@@ -838,6 +850,7 @@ function renderCRM(data) {
         <td style="${bt}">${c['Product Type']||''}</td>
         <td style="${bt}">${c['Product Model']||''}</td>
         <td style="${bt}">${c['Qty']||''}</td>
+        <td style="${bt}">${crmBilledMap[c['Item ID']] ? `<span style="color:var(--purple);font-weight:600;">🧾 ${crmBilledMap[c['Item ID']]}</span>` : '—'}</td>
         <td style="${bt}">${fmtDisplayDate(c['Production Start Plan']||'')}</td>
         <td style="${bt}">${fmtDisplayDate(c['Production Start Actual']||'')}</td>
         <td style="${bt}">${fmtDisplayDate(c['Production Complete Plan']||'')}</td>
@@ -1078,14 +1091,29 @@ function uploadPmSlipNow() {
 let allProd = [];
 function loadProduction() {
   api({ action: 'getProduction' }, r => {
-    if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="21"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
+    if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
     allProd = r.data || [];
     document.getElementById('prod-total').textContent = allProd.length;
     document.getElementById('prod-inprog').textContent = allProd.filter(p => p['Status'] === 'In Progress').length;
     document.getElementById('prod-done').textContent = allProd.filter(p => p['Status'] === 'Completed').length;
     document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Status'] === 'Delayed').length;
-    if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="21"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
+    if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
 
+    // Billings fetch karo — item level pe billed qty
+    api({ action: 'getAllBillings' }, br => {
+      const billedMap = {};
+      (br.data || []).forEach(b => {
+        const iid = b['Item ID'] || '';
+        if (!billedMap[iid]) billedMap[iid] = 0;
+        billedMap[iid] += parseFloat(b['Billed Qty']) || 0;
+      });
+      renderProduction(billedMap);
+    });
+  });
+}
+
+function renderProduction(billedMap) {
+    billedMap = billedMap || {};
     const prodGroups = {};
     const prodSeq = [];
     allProd.forEach(p => {
@@ -1120,12 +1148,16 @@ function loadProduction() {
         const producedQty = parseFloat(p['Produced Qty']) || 0;
         const totalQty    = parseFloat(p['Qty']) || 0;
         const pendingQty  = parseFloat(p['Pending Qty']) || (totalQty - producedQty);
+        const billedQty   = billedMap[p['Item ID']] || 0;
         const qtyDisplay  = producedQty > 0
           ? `<span style="color:var(--success);font-weight:600;">${producedQty}</span>/<span style="font-weight:600;">${totalQty}</span>`
           : `${totalQty}`;
         const pendDisplay = pendingQty > 0
           ? `<span style="color:var(--warning);font-weight:600;">${pendingQty}</span>`
           : `<span style="color:var(--success);font-weight:600;">0 ✅</span>`;
+        const billedDisplay = billedQty > 0
+          ? `<span style="color:var(--purple);font-weight:600;">🧾 ${billedQty}</span>`
+          : `<span style="color:var(--text3);">—</span>`;
 
         prodRows += `<tr>
           <td style="${bt}">${prodSr++}</td>
@@ -1136,6 +1168,7 @@ function loadProduction() {
           <td style="${bt}">${p['Battery Type']||''}</td>
           <td style="${bt}">${qtyDisplay}</td>
           <td style="${bt}">${pendDisplay}</td>
+          <td style="${bt}">${billedDisplay}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Start Plan']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Start Actual']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
