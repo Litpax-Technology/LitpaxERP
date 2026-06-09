@@ -979,11 +979,80 @@ function submitPayment() {
       document.getElementById('pm-amount').value = '';
       document.getElementById('pm-ref').value = '';
       document.getElementById('pm-remarks').value = '';
-      loadPaymentsList(currentPaymentOrderID);
+      // Agar screenshot select hai to upload karo
+      const slipFile = document.getElementById('pm-slip-input').files[0];
+      if (slipFile) {
+        uploadPaymentSlip(slipFile, currentPaymentOrderID, currentPaymentCustName, () => {
+          loadPaymentsList(currentPaymentOrderID);
+        });
+      } else {
+        loadPaymentsList(currentPaymentOrderID);
+      }
     } else {
       toast(r.message || 'Failed', 'e');
     }
   });
+}
+
+function uploadPaymentSlip(file, orderID, custName, cb) {
+  const status = document.getElementById('pm-slip-status');
+  const zone   = document.getElementById('pm-slip-zone');
+  if (status) { status.style.display = 'block'; status.style.color = 'var(--warning)'; status.textContent = 'Uploading screenshot...'; }
+  const ext      = file.name.split('.').pop();
+  const fileName = orderID + '_' + (custName||'').replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '.' + ext;
+  const mimeType = file.type || 'image/jpeg';
+  api({ action: 'getAccessToken' }, tokenRes => {
+    const token = tokenRes?.token || '';
+    if (!token) { if (status) { status.style.color = 'var(--error)'; status.textContent = 'Auth error'; } if (cb) cb(); return; }
+    api({ action: 'getUploadUrl', orderID, fileName, mimeType }, folderRes => {
+      if (!folderRes.success) { if (status) { status.style.color = 'var(--error)'; status.textContent = 'Folder error'; } if (cb) cb(); return; }
+      const folderId = folderRes.folderId;
+      const meta = JSON.stringify({ name: fileName, parents: [folderId] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', new Blob([file], { type: mimeType }));
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: form
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) {
+          fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', {
+            method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          });
+          if (status) { status.style.color = 'var(--success)'; status.textContent = 'Screenshot uploaded!'; }
+          // Reset upload zone
+          document.getElementById('pm-slip-input').value = '';
+          if (zone) zone.classList.remove('has-file');
+          document.getElementById('pm-slip-prompt').style.display = 'block';
+          document.getElementById('pm-slip-preview').style.display = 'none';
+        } else {
+          if (status) { status.style.color = 'var(--error)'; status.textContent = 'Upload failed'; }
+        }
+        if (cb) cb();
+      })
+      .catch(err => { if (status) { status.style.color = 'var(--error)'; status.textContent = err.message; } if (cb) cb(); });
+    });
+  });
+}
+
+function onPmSlipSelect() {
+  const file = document.getElementById('pm-slip-input').files[0];
+  if (!file) return;
+  const zone = document.getElementById('pm-slip-zone');
+  if (zone) zone.classList.add('has-file');
+  document.getElementById('pm-slip-prompt').style.display = 'none';
+  document.getElementById('pm-slip-preview').style.display = 'block';
+  document.getElementById('pm-slip-name').textContent = file.name;
+  const thumb = document.getElementById('pm-slip-thumb');
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => { thumb.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:80px;border-radius:6px;">'; };
+    reader.readAsDataURL(file);
+  } else {
+    thumb.innerHTML = '<div style="font-size:28px;text-align:center;">📄</div>';
+  }
 }
 
 // ========== PRODUCTION ==========
