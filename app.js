@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbzNj0Zh5h0xCqg_3fJt-pQw02_889sj4BTNp_QzqlSt60VRKUToPcgwHj8bOL-3hejOXQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwgO-9LKq0uuO_Cpk05S2MrQXebi85f_sz2LhKCErl49CYewvSlpCFnLO8jw0MGO8u9eg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1117,6 +1117,16 @@ function loadProduction() {
           <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Assigned CRM']||''}</td>
         ` : '';
 
+        const producedQty = parseFloat(p['Produced Qty']) || 0;
+        const totalQty    = parseFloat(p['Qty']) || 0;
+        const pendingQty  = parseFloat(p['Pending Qty']) || (totalQty - producedQty);
+        const qtyDisplay  = producedQty > 0
+          ? `<span style="color:var(--success);font-weight:600;">${producedQty}</span>/<span style="font-weight:600;">${totalQty}</span>`
+          : `${totalQty}`;
+        const pendDisplay = pendingQty > 0
+          ? `<span style="color:var(--warning);font-weight:600;">${pendingQty}</span>`
+          : `<span style="color:var(--success);font-weight:600;">0 ✅</span>`;
+
         prodRows += `<tr>
           <td style="${bt}">${prodSr++}</td>
           <td class="td-id" style="${bt}">${p['Item ID']||''}</td>
@@ -1124,7 +1134,8 @@ function loadProduction() {
           <td style="${bt}">${p['Sales Remarks']||''}</td>
           <td style="${bt}">${p['Product Model']||''}</td>
           <td style="${bt}">${p['Battery Type']||''}</td>
-          <td style="${bt}">${p['Qty']||''}</td>
+          <td style="${bt}">${qtyDisplay}</td>
+          <td style="${bt}">${pendDisplay}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Start Plan']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Start Actual']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
@@ -1152,6 +1163,14 @@ function openProdUpdate(p) {
   document.getElementById('pu-ca').value = toInputDate(p['Production Complete Actual']||'');
   document.getElementById('pu-delay').value = p['Production Delay']||'';
   document.getElementById('pu-remarks').value = p['Remarks']||'';
+  // Produced Qty info
+  const totalQty    = parseFloat(p['Qty']) || 0;
+  const producedQty = parseFloat(p['Produced Qty']) || 0;
+  const pendingQty  = parseFloat(p['Pending Qty']) || (totalQty - producedQty);
+  document.getElementById('pu-total-qty').textContent   = totalQty;
+  document.getElementById('pu-produced-qty').textContent = producedQty;
+  document.getElementById('pu-pending-qty').textContent  = pendingQty > 0 ? pendingQty : 0;
+  document.getElementById('pu-produced').value = producedQty || '';
   openModal('prodUpdateModal');
 }
 
@@ -1169,7 +1188,8 @@ function submitProdUpdate() {
     ['Product Model','pu-model'],['Battery Type','pu-btype'],['Status','pu-status'],
     ['Production Start Plan','pu-sp'],['Production Start Actual','pu-sa'],
     ['Production Complete Plan','pu-cp'],['Production Complete Actual','pu-ca'],
-    ['Production Delay','pu-delay'],['Remarks','pu-remarks']
+    ['Production Delay','pu-delay'],['Remarks','pu-remarks'],
+    ['Produced Qty','pu-produced']
   ];
   fields.forEach(([key, id]) => {
     var el = document.getElementById(id);
@@ -1394,13 +1414,24 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerQty || '—'}</td>
       ` : '';
 
+      const aProd    = parseFloat(a['Produced Qty']) || 0;
+      const aTotal   = parseFloat(a['Qty']) || 0;
+      const aPending = parseFloat(a['Pending Qty']) || (aTotal - aProd);
+      const aQtyDisp = aProd > 0
+        ? `<span style="color:var(--success);font-weight:600;">${aProd}</span>/<span style="font-weight:600;">${aTotal}</span>`
+        : `${aTotal}`;
+      const aPendDisp = aPending > 0
+        ? `<span style="color:var(--warning);font-weight:600;">${aPending}</span>`
+        : `<span style="color:var(--success);font-weight:600;">0 ✅</span>`;
+
       rows += `<tr style="${borderTop}">
         <td style="${borderTop}">${sr++}</td>
         <td class="td-id" style="${borderTop}">${a['Item ID']||''}</td>
         ${orderCells}
         <td style="${borderTop}">${a['Product Model']||''}</td>
         <td style="${borderTop}">${a['Battery Type']||''}</td>
-        <td style="${borderTop}">${a['Qty']||''}</td>
+        <td style="${borderTop}">${aQtyDisp}</td>
+        <td style="${borderTop}">${aPendDisp}</td>
         <td style="${borderTop}">${prodBadge}</td>
       </tr>`;
     });
