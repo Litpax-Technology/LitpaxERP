@@ -1057,29 +1057,58 @@ function loadProduction() {
     document.getElementById('prod-done').textContent = allProd.filter(p => p['Status'] === 'Completed').length;
     document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Status'] === 'Delayed').length;
     if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="21"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
-    document.getElementById('prodTable').innerHTML = allProd.map(p => `<tr>
-      <td>${p['Sr No']||''}</td>
-      <td class="td-id">${p['Item ID']||''}</td>
-      <td class="td-id">${p['Order ID']||''}</td>
-      <td>${fmtDisplayDate(p['Order Date']||'')}</td>
-      <td class="td-bold">${p['Customer Name']||''}</td>
-      <td>${p['Product Model']||''}</td>
-      <td>${p['Battery Type']||''}</td>
-      <td>${p['Qty']||''}</td>
-      <td>${p['Charger Model']||''}</td>
-      <td>${p['Charger Qty']||''}</td>
-      <td>${p['Sales Person']||''}</td>
-      <td>${p['Assigned CRM']||''}</td>
-      <td>${p['Sales Remarks']||''}</td>
-      <td>${fmtDisplayDate(p['Production Start Plan']||'')}</td>
-      <td>${fmtDisplayDate(p['Production Start Actual']||'')}</td>
-      <td>${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
-      <td>${fmtDisplayDate(p['Production Complete Actual']||'')}</td>
-      <td>${p['Production Delay']?`<span class="badge b-delay">${p['Production Delay']}</span>`:''}</td>
-      <td><span class="badge ${p['Status']==='Completed'?'b-ready':p['Status']==='In Progress'?'b-processing':p['Status']==='Delayed'?'b-delay':'b-pending'}">${p['Status']||'Pending'}</span></td>
-      <td>${p['Remarks']||''}</td>
-      <td><button class="btn btn-sm btn-warning" onclick='openProdUpdate(${JSON.stringify(p)})'>Update</button></td>
-    </tr>`).join('');
+
+    const prodGroups = {};
+    const prodSeq = [];
+    allProd.forEach(p => {
+      const oid = p['Order ID'] || '';
+      if (!prodGroups[oid]) { prodGroups[oid] = []; prodSeq.push(oid); }
+      prodGroups[oid].push(p);
+    });
+
+    let prodRows = '';
+    let prodSr = 1;
+    prodSeq.forEach(orderID => {
+      const items = prodGroups[orderID];
+      const count = items.length;
+      const first = items[0];
+
+      items.forEach((p, idx) => {
+        const isFirst = idx === 0;
+        const bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
+        const statusBadge = `<span class="badge ${p['Status']==='Completed'?'b-ready':p['Status']==='In Progress'?'b-processing':p['Status']==='Delayed'?'b-delay':'b-pending'}">${p['Status']||'Pending'}</span>`;
+        const delayBadge  = p['Production Delay'] ? `<span class="badge b-delay">${p['Production Delay']}</span>` : '';
+
+        const orderCells = isFirst ? `
+          <td class="td-id" rowspan="${count}" style="vertical-align:middle;${bt}">${orderID}</td>
+          <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Order Date']||'')}</td>
+          <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer Name']||''}</td>
+          <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Model']||'—'}</td>
+          <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Qty']||'—'}</td>
+          <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Sales Person']||''}</td>
+          <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Assigned CRM']||''}</td>
+        ` : '';
+
+        prodRows += `<tr>
+          <td style="${bt}">${prodSr++}</td>
+          <td class="td-id" style="${bt}">${p['Item ID']||''}</td>
+          ${orderCells}
+          <td style="${bt}">${p['Sales Remarks']||''}</td>
+          <td style="${bt}">${p['Product Model']||''}</td>
+          <td style="${bt}">${p['Battery Type']||''}</td>
+          <td style="${bt}">${p['Qty']||''}</td>
+          <td style="${bt}">${fmtDisplayDate(p['Production Start Plan']||'')}</td>
+          <td style="${bt}">${fmtDisplayDate(p['Production Start Actual']||'')}</td>
+          <td style="${bt}">${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
+          <td style="${bt}">${fmtDisplayDate(p['Production Complete Actual']||'')}</td>
+          <td style="${bt}">${delayBadge}</td>
+          <td style="${bt}">${statusBadge}</td>
+          <td style="${bt}">${p['Remarks']||''}</td>
+          <td style="${bt}"><button class="btn btn-sm btn-warning" onclick='openProdUpdate(${JSON.stringify(p)})'>Update</button></td>
+        </tr>`;
+      });
+    });
+    document.getElementById('prodTable').innerHTML = prodRows;
   });
 }
 
