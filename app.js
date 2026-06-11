@@ -324,9 +324,13 @@ function saveAndAddMore() {
   const id   = card.id.replace('item-row-', '');
 
   const model = document.getElementById(`im-model-${id}`)?.value?.trim();
-  if (!model) { toast('Product Model bharo pehle', 'e'); return; }
+  if (!model) { toast('Product Model bharo pehle (Voltage + Ampere bharo)', 'e'); return; }
+
+  const btype = document.getElementById(`im-btype-${id}`)?.value || '';
+  if (!btype) { toast('Battery Type select karo', 'e'); return; }
 
   const pt      = document.getElementById(`im-pricetype-${id}`)?.value || '';
+  if (!pt) { toast('Price Type select karo', 'e'); return; }
   const perWatt = pt === 'Per Watt';
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
@@ -508,14 +512,11 @@ function calcItemTotal(id) {
 }
 
 // ========== CHARGER ==========
+let savedChargersData = [];
+
 function toggleCharger() {
   const checked = document.getElementById('chargerCheck').checked;
   document.getElementById('chargerFields').style.display = checked ? 'block' : 'none';
-  if (!checked) {
-    document.getElementById('charger-qty').value = '';
-    document.getElementById('charger-price').value = '';
-    document.getElementById('charger-total').value = '';
-  }
 }
 
 function calcCharger() {
@@ -526,13 +527,60 @@ function calcCharger() {
   if (el) el.value = total ? total.toFixed(2) : '';
 }
 
+function saveAndAddMoreCharger() {
+  const model = document.getElementById('charger-model')?.value?.trim();
+  if (!model) { toast('Charger Model bharo', 'e'); return; }
+  const qty   = parseFloat(document.getElementById('charger-qty')?.value) || 0;
+  if (!qty) { toast('Charger Qty bharo', 'e'); return; }
+  const price = parseFloat(document.getElementById('charger-price')?.value) || 0;
+  if (!price) { toast('Charger Price bharo', 'e'); return; }
+  const total = parseFloat((qty * price * 1.05).toFixed(2));
+
+  savedChargersData.push({ model, qty, price, total });
+  renderSavedChargers();
+
+  // Reset fields
+  document.getElementById('charger-model').value = '';
+  document.getElementById('charger-qty').value   = '';
+  document.getElementById('charger-price').value = '';
+  document.getElementById('charger-total').value = '';
+  toast('Charger saved!');
+}
+
+function renderSavedChargers() {
+  const list = document.getElementById('savedChargersList');
+  if (!list) return;
+  if (!savedChargersData.length) { list.style.display = 'none'; return; }
+  list.style.display = 'block';
+  list.innerHTML = '<div style="padding:6px 14px;background:var(--warning-dim);border-bottom:1px solid var(--warning-b);font-size:11px;font-weight:600;color:var(--warning);text-transform:uppercase;">⚡ Saved Chargers</div>' +
+    savedChargersData.map((c, i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--border);">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:var(--warning);background:var(--warning-dim);padding:2px 7px;border-radius:10px;">#${i+1}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px;">${c.model}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px;">Qty: ${c.qty} | ₹${fmt(c.total)}</span>
+        </div>
+        <span style="font-size:11px;color:var(--success);">✓ Saved</span>
+      </div>`).join('') +
+    `<div style="padding:5px 14px;font-size:11px;color:var(--text3);">Total ${savedChargersData.length} charger(s)</div>`;
+}
+
 function getChargerData() {
-  if (!document.getElementById('chargerCheck')?.checked) return null;
+  // Abhi current form ka data lo agar kuch fill hai
+  const model = document.getElementById('charger-model')?.value?.trim();
   const qty   = parseFloat(document.getElementById('charger-qty')?.value) || 0;
   const price = parseFloat(document.getElementById('charger-price')?.value) || 0;
-  const model = document.getElementById('charger-model')?.value?.trim() || 'Charger';
-  if (!qty || !price) return null;
-  return { qty, price, model, total: parseFloat((qty * price * 1.05).toFixed(2)) };
+  if (model && qty && price) {
+    return { model, qty, price, total: parseFloat((qty * price * 1.05).toFixed(2)) };
+  }
+  return null;
+}
+
+function getAllChargersData() {
+  const allChargers = [...savedChargersData];
+  const current = getChargerData();
+  if (current) allChargers.push(current);
+  return allChargers;
 }
 
 function onItemPriceTypeChange(id) {
@@ -645,11 +693,17 @@ function submitOrder() {
     if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
     const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
     const finishOrder = () => {
-      const charger = getChargerData();
-      if (charger) {
-        api({ action: 'addChargerItem', 'Order ID': currentOrderID, 'Charger Model': charger.model, 'Qty': charger.qty, 'Price/Unit': charger.price, 'Total': charger.total }, () => {
-          toast('Order complete: ' + currentOrderID);
-          currentOrderID = null; closeModal('orderModal'); resetOrderForm(); loadOrders();
+      const chargers = getAllChargersData();
+      if (chargers.length) {
+        let pendingC = chargers.length;
+        chargers.forEach(charger => {
+          api({ action: 'addChargerItem', 'Order ID': currentOrderID, 'Charger Model': charger.model, 'Qty': charger.qty, 'Price/Unit': charger.price, 'Total': charger.total }, () => {
+            pendingC--;
+            if (pendingC === 0) {
+              toast('Order complete: ' + currentOrderID);
+              currentOrderID = null; closeModal('orderModal'); resetOrderForm(); loadOrders();
+            }
+          });
         });
       } else {
         toast('Order complete: ' + currentOrderID);
@@ -766,6 +820,9 @@ function resetOrderForm() {
     if (el) el.disabled = false;
   });
   document.getElementById('perWattField').style.display = 'none';
+  savedChargersData = [];
+  const savedChargersList = document.getElementById('savedChargersList');
+  if (savedChargersList) savedChargersList.style.display = 'none';
   const chargerCheck = document.getElementById('chargerCheck');
   if (chargerCheck) chargerCheck.checked = false;
   document.getElementById('chargerFields').style.display = 'none';
