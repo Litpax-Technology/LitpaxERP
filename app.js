@@ -1977,34 +1977,66 @@ function loadMyDashboard() {
 let currentEditOrder = null;
 let editItemRowCount = 0;
 
-function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false, itemID='') {
+function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false, itemID='', volt='', amp='', priceType='', warranty='') {
   editItemRowCount++;
-  const id = 'e' + editItemRowCount;
+  const id     = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
-  const tbody = document.getElementById('editItemsBody');
-  const tr = document.createElement('tr');
-  tr.id = `edit-item-row-${id}`;
-  tr.dataset.existing = isExisting ? 'true' : 'false';
-  tr.dataset.itemid = itemID;
-  tr.innerHTML = `
-    <td><input id="eim-model-${id}" value="${model}" placeholder="Product model"></td>
-    <td><select id="eim-btype-${id}">
-      <option value="">Battery Type</option>
-      <option ${btype==='2 Wheeler Battery'?'selected':''}>2 Wheeler Battery</option>
-      <option ${btype==='3 Wheeler Battery'?'selected':''}>3 Wheeler Battery</option>
-      <option ${btype==='Inverter Battery'?'selected':''}>Inverter Battery</option>
-      <option ${btype==='Solar Battery'?'selected':''}>Solar Battery</option>
-      <option ${btype==='E-Rikshaw Battery'?'selected':''}>E-Rikshaw Battery</option>
-      <option ${btype==='Charger'?'selected':''}>Charger</option>
-      <option ${btype==='BMS'?'selected':''}>BMS</option>
-    </select></td>
-    <td><input id="eim-qty-${id}" type="number" value="${qty}" placeholder="0" oninput="calcEditItemTotal('${id}')"></td>
-    <td><input id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemTotal('${id}')"></td>
-    <td><input id="eim-total-${id}" readonly value="${total}" placeholder="Auto"></td>
-    <td><input id="eim-crm-${id}" value="${crmVal}" placeholder="CRM name"></td>
-    <td><input id="eim-remarks-${id}" value="${remarks}" placeholder="Remarks"></td>
-    <td><button class="btn btn-sm btn-danger" onclick="removeEditItemRow('${id}')">✕</button></td>`;
-  tbody.appendChild(tr);
+
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','Charger','BMS']
+    .map(o => `<option ${btype===o?'selected':''}>${o}</option>`).join('');
+
+  const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
+
+  const div = document.createElement('div');
+  div.id = `edit-item-row-${id}`;
+  div.dataset.existing = isExisting ? 'true' : 'false';
+  div.dataset.itemid   = itemID;
+  div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative;';
+
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span style="font-size:11px;font-weight:600;color:${isExisting?'var(--success)':'var(--accent)'};">${isExisting?'✏️ Existing Item':'New Item'}</span>
+      <button class="btn btn-sm btn-danger" onclick="removeEditItemRow('${id}')">✕ Remove</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>${lbl('Product Model')}<input class="form-control" id="eim-model-${id}" value="${model}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Battery Type')}<select class="form-control" id="eim-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>${lbl('Price Type')}
+        <select class="form-control" id="eim-pricetype-${id}" style="font-size:13px;" onchange="onEditItemPriceTypeChange('${id}')">
+          <option value="">Select</option>
+          <option ${priceType==='Absolute'?'selected':''}>Absolute</option>
+          <option ${priceType==='Per Watt'?'selected':''}>Per Watt</option>
+          <option ${priceType==='Last Price'?'selected':''}>Last Price</option>
+        </select>
+      </div>
+      <div>${lbl('Voltage (V)')}<input class="form-control" id="eim-volt-${id}" type="number" value="${volt}" placeholder="48" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="eim-amp-${id}" type="number" value="${amp}" placeholder="20" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
+      <div>${lbl('Qty')}<input class="form-control" id="eim-qty-${id}" type="number" value="${qty}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
+      <div id="eim-pricefield-${id}">
+        ${lbl('Rate/Unit (₹)')}<input class="form-control" id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
+      </div>
+      <div id="eim-pwfield-${id}" style="display:none;">
+        ${lbl('Per Watt Price (₹)')}<input class="form-control" id="eim-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>${lbl('Total (₹)')}<input class="form-control" id="eim-total-${id}" readonly value="${total}" placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Warranty')}<input class="form-control" id="eim-warranty-${id}" value="${warranty}" placeholder="e.g. 1 Year" style="font-size:13px;"></div>
+      <div>${lbl('Assigned CRM')}<input class="form-control" id="eim-crm-${id}" value="${crmVal}" placeholder="CRM name" style="font-size:13px;"></div>
+      <div>${lbl('Remarks')}<input class="form-control" id="eim-remarks-${id}" value="${remarks}" placeholder="Remarks..." style="font-size:13px;"></div>
+    </div>`;
+
+  document.getElementById('editItemsBody').appendChild(div);
+
+  // Agar priceType set hai to show/hide fields
+  if (priceType === 'Per Watt') {
+    document.getElementById(`eim-pwfield-${id}`).style.display = 'block';
+    document.getElementById(`eim-pricefield-${id}`).style.display = 'none';
+  }
 }
 
 function removeEditItemRow(id) {
@@ -2012,11 +2044,43 @@ function removeEditItemRow(id) {
   if (row) row.remove();
 }
 
+function onEditItemPriceTypeChange(id) {
+  const pt = document.getElementById(`eim-pricetype-${id}`)?.value || '';
+  const pwField = document.getElementById(`eim-pwfield-${id}`);
+  const prField = document.getElementById(`eim-pricefield-${id}`);
+  if (pt === 'Per Watt') {
+    if (pwField) pwField.style.display = 'block';
+    if (prField) prField.style.display = 'none';
+  } else {
+    if (pwField) pwField.style.display = 'none';
+    if (prField) prField.style.display = 'block';
+  }
+  calcEditItemAuto(id);
+}
+
+function calcEditItemAuto(id) {
+  const pt   = document.getElementById(`eim-pricetype-${id}`)?.value || '';
+  const volt = parseFloat(document.getElementById(`eim-volt-${id}`)?.value) || 0;
+  const amp  = parseFloat(document.getElementById(`eim-amp-${id}`)?.value) || 0;
+  const qty  = parseFloat(document.getElementById(`eim-qty-${id}`)?.value) || 0;
+
+  const modelEl = document.getElementById(`eim-model-${id}`);
+  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+
+  let total = 0;
+  if (pt === 'Per Watt') {
+    const pw = parseFloat(document.getElementById(`eim-perwatt-${id}`)?.value) || 0;
+    total = volt * amp * qty * pw;
+  } else {
+    const rate = parseFloat(document.getElementById(`eim-price-${id}`)?.value) || 0;
+    total = qty * rate;
+  }
+  const totalEl = document.getElementById(`eim-total-${id}`);
+  if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+}
+
 function calcEditItemTotal(id) {
-  const qty = parseFloat(document.getElementById(`eim-qty-${id}`)?.value) || 0;
-  const price = parseFloat(document.getElementById(`eim-price-${id}`)?.value) || 0;
-  const el = document.getElementById(`eim-total-${id}`);
-  if (el) el.value = qty && price ? (qty * price).toFixed(2) : '';
+  calcEditItemAuto(id);
 }
 
 function openEditOrder() {
@@ -2043,7 +2107,21 @@ function openEditOrder() {
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (r.success && r.data.length) {
       r.data.forEach(item => {
-        addEditItemRow(item['Product Model']||'', item['Battery Type']||'', item['Qty']||'', item['Price Unit (Excluding GST)']||'', item['Total']||'', item['Assigned CRM']||'', item['Remarks']||'', true, item['Item ID']||'');
+        addEditItemRow(
+          item['Product Model']||'',
+          item['Battery Type']||'',
+          item['Qty']||'',
+          item['Price Unit (Excluding GST)']||'',
+          item['Total']||'',
+          item['Assigned CRM']||'',
+          item['Remarks']||'',
+          true,
+          item['Item ID']||'',
+          item['Voltage']||'',
+          item['Ampere']||'',
+          item['Price Type']||'',
+          item['Warranty']||''
+        );
       });
     }
     addEditItemRow('','','','','','','', false, '');
@@ -2080,14 +2158,25 @@ function submitEditOrder() {
       const id = row.id.replace('edit-item-row-', '');
       const model = document.getElementById(`eim-model-${id}`)?.value?.trim();
       if (!model) return;
+      const ePT   = document.getElementById(`eim-pricetype-${id}`)?.value || '';
+      const eVolt = parseFloat(document.getElementById(`eim-volt-${id}`)?.value) || 0;
+      const eAmp  = parseFloat(document.getElementById(`eim-amp-${id}`)?.value) || 0;
+      let ePricePerUnit = ePT === 'Per Watt'
+        ? eVolt * eAmp * (parseFloat(document.getElementById(`eim-perwatt-${id}`)?.value) || 0)
+        : parseFloat(document.getElementById(`eim-price-${id}`)?.value) || 0;
+
       const itemData = {
         'Product Model': model,
         'Battery Type': document.getElementById(`eim-btype-${id}`)?.value || '',
         'Qty': document.getElementById(`eim-qty-${id}`)?.value || 0,
-        'Price Unit (Excluding GST)': document.getElementById(`eim-price-${id}`)?.value || 0,
+        'Price Unit (Excluding GST)': ePricePerUnit ? ePricePerUnit.toFixed(2) : (document.getElementById(`eim-price-${id}`)?.value || 0),
         'Total': document.getElementById(`eim-total-${id}`)?.value || 0,
         'Assigned CRM': document.getElementById(`eim-crm-${id}`)?.value || '',
-        'Remarks': document.getElementById(`eim-remarks-${id}`)?.value || ''
+        'Remarks': document.getElementById(`eim-remarks-${id}`)?.value || '',
+        'Voltage': eVolt || '',
+        'Ampere': eAmp || '',
+        'Price Type': ePT,
+        'Warranty': document.getElementById(`eim-warranty-${id}`)?.value || ''
       };
       if (row.dataset.existing === 'true' && row.dataset.itemid) updateTasks.push({ ...itemData, 'Item ID': row.dataset.itemid, 'Order ID': orderID });
       else addTasks.push({ ...itemData, 'Order ID': orderID });
