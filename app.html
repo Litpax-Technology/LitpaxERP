@@ -706,20 +706,12 @@
         <div class="form-group form-full"><label class="form-label">Order Remarks</label><textarea class="form-control" id="e-remarks"></textarea></div>
       </div>
       <div style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">Order Items</div>
-          <button class="btn btn-sm btn-info" onclick="addEditItemRow()">+ Add Item</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">📦 Order Items</div>
+          <button class="btn btn-sm btn-primary" onclick="addEditItemRow()">+ Add Item</button>
         </div>
-        <div style="overflow-x:auto;">
-          <table class="items-table">
-            <thead><tr>
-              <th>Product Model</th><th>Battery Type</th><th>Qty</th>
-              <th>Price/Unit (Ex GST)</th><th>Total</th><th>Assigned CRM</th><th>Remarks</th><th></th>
-            </tr></thead>
-            <tbody id="editItemsBody"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:8px;font-size:12px;color:var(--text3);">* Existing items save hain — naye items add karo ya existing delete karo</div>
+        <div id="editItemsBody"></div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text3);">* Existing items edit karo ya naye add karo</div>
       </div>
     </div>
     <div class="modal-foot">
