@@ -1519,6 +1519,9 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td rowspan="${count}" style="font-weight:700;color:${balColor};vertical-align:middle;${borderTop}">₹${fmt(balance)}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerModel || '—'}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerQty || '—'}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">
+          <button class="btn btn-sm btn-info" onclick='openAccSlipsDrawer("${orderID}","${a['Customer Name']||''}")'>📎 Slips</button>
+        </td>
       ` : '';
 
       const aProd      = parseFloat(a['Produced Qty']) || 0;
@@ -1690,6 +1693,29 @@ function loadSlips(orderID) {
         <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;">View</a>
       </div>`).join('');
   });
+}
+
+// ========== ACCOUNTS SLIPS DRAWER ==========
+function openAccSlipsDrawer(orderID, custName) {
+  document.getElementById('payDrawerTitle').textContent = '📎 ' + orderID + ' Slips';
+  document.getElementById('payDrawerSub').textContent   = custName;
+  // Hide upload section for accounts role
+  const uploadSection = document.getElementById('payUploadZone');
+  const uploadStatus  = document.getElementById('payUploadStatus');
+  const uploadBtn     = document.getElementById('payUploadBtn');
+  const uploadLabel   = uploadBtn ? uploadBtn.parentElement.querySelector('[style*="Upload"]') : null;
+  if (user.role === 'Accounts') {
+    if (uploadSection) uploadSection.style.display = 'none';
+    if (uploadBtn) uploadBtn.style.display = 'none';
+    if (uploadStatus) uploadStatus.style.display = 'none';
+    // Hide "Upload New Proof" label
+    document.querySelectorAll('.pay-drawer-body > div[style*="font-size:11px"]').forEach(el => {
+      if (el.textContent.includes('Upload New Proof')) el.style.display = 'none';
+    });
+  }
+  loadPaySlips(orderID, custName);
+  document.getElementById('payDrawer').classList.add('open');
+  document.getElementById('payDrawerOverlay').classList.add('show');
 }
 
 // ========== PAYMENT DRAWER ==========
