@@ -1105,3 +1105,22 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* ── 26. FORM VALIDATION (ERROR STATES) ─────────────────────── */
+.form-control.field-error,
+select.field-error,
+input.field-error {
+  border-color: var(--error) !important;
+  background: var(--error-dim) !important;
+}
+.form-control.field-error:focus,
+select.field-error:focus,
+input.field-error:focus {
+  box-shadow: 0 0 0 3px var(--error-dim) !important;
+}
+.req-mark {
+  color: var(--error);
+  font-weight: 700;
+  margin-left: 2px;
+}
