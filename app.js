@@ -2288,6 +2288,88 @@ function calcEditItemTotal(id) {
   calcEditItemAuto(id);
 }
 
+// ========== EDIT ORDER — CHARGER SECTION (dynamically injected) ==========
+function ensureEditChargerSection() {
+  if (document.getElementById('edit-charger-section')) return;
+  const itemsBody = document.getElementById('editItemsBody');
+  if (!itemsBody) return;
+  const html = `
+    <div id="edit-charger-section" style="margin-top:16px;">
+      <div style="font-size:11px;font-weight:650;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚡ Charger</div>
+      <div id="edit-existing-chargers" style="margin-bottom:10px;"></div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:10px;">+ Add New Charger</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div><label class="form-label">Charger Model</label><input class="form-control" id="ec-model" placeholder="e.g. 48V 5A Charger" style="font-size:13px;margin-top:5px;"></div>
+          <div><label class="form-label">Qty</label><input class="form-control" id="ec-qty" type="number" placeholder="0" oninput="calcEditCharger()" style="font-size:13px;margin-top:5px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label class="form-label">Price/Unit (₹)</label><input class="form-control" id="ec-price" type="number" placeholder="0" oninput="calcEditCharger()" style="font-size:13px;margin-top:5px;"></div>
+          <div><label class="form-label">Total incl. 5% GST (₹)</label><input class="form-control" id="ec-total" readonly placeholder="Auto" style="background:var(--success-dim);color:var(--success);font-weight:600;font-size:13px;margin-top:5px;"></div>
+        </div>
+        <button class="btn btn-sm btn-primary" id="ec-save-btn" style="margin-top:10px;" onclick="saveEditCharger()">+ Add Charger to Order</button>
+      </div>
+    </div>`;
+  itemsBody.insertAdjacentHTML('afterend', html);
+}
+
+function calcEditCharger() {
+  const qty   = parseFloat(document.getElementById('ec-qty')?.value) || 0;
+  const price = parseFloat(document.getElementById('ec-price')?.value) || 0;
+  const total = qty * price * 1.05;
+  const el = document.getElementById('ec-total');
+  if (el) el.value = total ? total.toFixed(2) : '';
+}
+
+function renderEditChargers(chargers) {
+  const el = document.getElementById('edit-existing-chargers');
+  if (!el) return;
+  if (!chargers.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 2px;">Koi charger nahi hai is order mein abhi</div>'; return; }
+  el.innerHTML = chargers.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface2);">
+      <div>
+        <span style="font-size:12px;font-weight:600;color:var(--text);">${c['Charger Model']||'—'}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:8px;">Qty: ${c['Qty']||0} · ₹${fmt(c['Price/Unit']||0)}/unit · Total ₹${fmt(c['Total']||0)}</span>
+      </div>
+      <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${c['Charger ID']||''}</span>
+    </div>`).join('');
+}
+
+function loadEditChargers(orderID) {
+  api({ action: 'getChargersByOrder', 'Order ID': orderID }, r => {
+    renderEditChargers(r.success ? (r.data || []) : []);
+  });
+}
+
+function saveEditCharger() {
+  const orderID = document.getElementById('e-orderid').value;
+  if (!orderID) return;
+  const modelEl = document.getElementById('ec-model');
+  const qtyEl   = document.getElementById('ec-qty');
+  const priceEl = document.getElementById('ec-price');
+  const model = modelEl?.value?.trim();
+  clearErr(modelEl); clearErr(qtyEl); clearErr(priceEl);
+  if (!model) { markErr(modelEl); toast('Charger Model bharo', 'e'); return; }
+  const qty = parseFloat(qtyEl?.value) || 0;
+  if (qty <= 0) { markErr(qtyEl); toast('Charger Qty 0 se zyada honi chahiye', 'e'); return; }
+  const price = parseFloat(priceEl?.value) || 0;
+  if (price <= 0) { markErr(priceEl); toast('Charger Price 0 se zyada honi chahiye', 'e'); return; }
+  const total = parseFloat((qty * price * 1.05).toFixed(2));
+  const btn = document.getElementById('ec-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({ action: 'addChargerItem', 'Order ID': orderID, 'Charger Model': model, 'Qty': qty, 'Price/Unit': price, 'Total': total }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '+ Add Charger to Order'; }
+    if (r.success) {
+      toast('Charger order mein add ho gaya!');
+      modelEl.value = ''; qtyEl.value = ''; priceEl.value = '';
+      document.getElementById('ec-total').value = '';
+      loadEditChargers(orderID);
+    } else {
+      toast(r.message || 'Charger add nahi hua', 'e');
+    }
+  });
+}
+
 function openEditOrder() {
   if (!currentEditOrder) return;
   const o = currentEditOrder;
@@ -2308,6 +2390,10 @@ function openEditOrder() {
   document.getElementById('e-remarks').value = o['Order Remarks'] || '';
   closeModal('orderDetailModal');
   openModal('editOrderModal');
+  ensureEditChargerSection();
+  ['ec-model','ec-qty','ec-price','ec-total'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['ec-model','ec-qty','ec-price'].forEach(id => clearErr(document.getElementById(id)));
+  loadEditChargers(o['Order ID']);
   editItemRowCount = 0;
   document.getElementById('editItemsBody').innerHTML = '';
   api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
