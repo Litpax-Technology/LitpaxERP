@@ -312,6 +312,102 @@ let itemRowCount = 1;
 function isPerWattMode() { return false; }
 function isVAMode() { return true; }
 
+// ========== VALIDATION ==========
+function markErr(el) { if (el) el.classList.add('field-error'); }
+function clearErr(el) { if (el) el.classList.remove('field-error'); }
+function clearErrIds(ids) { ids.forEach(id => clearErr(document.getElementById(id))); }
+function isValidPhone(v) { return /^[6-9]\d{9}$/.test((v||'').trim()); }
+
+// Order-level required fields check (Date, Sales Person, Customer Name/Phone/City, Payment Mode, Order Status, Payment Status)
+function validateOrderMeta() {
+  const fields = [
+    ['o-date','Date'],
+    ['o-sales','Sales Person'],
+    ['o-cust','Customer Name'],
+    ['o-phone','Customer Phone'],
+    ['o-city','City'],
+    ['o-paymode','Payment Mode'],
+    ['o-status','Order Status'],
+    ['o-paystatus','Payment Status']
+  ];
+  clearErrIds(fields.map(f => f[0]));
+  clearErr(document.getElementById('o-plandispatch'));
+  let firstBad = null;
+  fields.forEach(([id, label]) => {
+    const el = document.getElementById(id);
+    const val = (el?.value || '').trim();
+    if (!val) { markErr(el); if (!firstBad) firstBad = { el, msg: label + ' zaroori hai' }; }
+  });
+  const phoneEl  = document.getElementById('o-phone');
+  const phoneVal = (phoneEl?.value || '').trim();
+  if (phoneVal && !isValidPhone(phoneVal)) {
+    markErr(phoneEl);
+    if (!firstBad) firstBad = { el: phoneEl, msg: 'Phone number sahi 10-digit number daalo (6-9 se start)' };
+  }
+  const dateVal     = document.getElementById('o-date')?.value;
+  const dispatchVal = document.getElementById('o-plandispatch')?.value;
+  if (dateVal && dispatchVal && dispatchVal < dateVal) {
+    markErr(document.getElementById('o-plandispatch'));
+    if (!firstBad) firstBad = { el: document.getElementById('o-plandispatch'), msg: 'Plan Dispatch Date, Order Date se pehle nahi ho sakti' };
+  }
+  if (firstBad) { toast(firstBad.msg, 'e'); firstBad.el?.focus(); return false; }
+  return true;
+}
+
+// Item card-level validation used in saveAndAddMore() and submitOrder() last-card flow
+function validateItemCard(id, prefix) {
+  prefix = prefix || 'im';
+  const qtyEl = document.getElementById(`${prefix}-qty-${id}`);
+  const qty   = parseFloat(qtyEl?.value) || 0;
+  clearErr(qtyEl);
+  if (qty <= 0) { markErr(qtyEl); toast('Qty 0 se zyada honi chahiye', 'e'); qtyEl?.focus(); return false; }
+
+  const ptEl = document.getElementById(`${prefix}-pricetype-${id}`);
+  const pt   = ptEl?.value || '';
+  if (pt === 'Per Watt') {
+    const pwEl = document.getElementById(`${prefix}-perwatt-${id}`);
+    clearErr(pwEl);
+    if ((parseFloat(pwEl?.value)||0) <= 0) { markErr(pwEl); toast('Per Watt Price 0 se zyada honi chahiye', 'e'); pwEl?.focus(); return false; }
+  } else {
+    const priceEl = document.getElementById(`${prefix}-price-${id}`);
+    clearErr(priceEl);
+    if ((parseFloat(priceEl?.value)||0) <= 0) { markErr(priceEl); toast('Rate/Unit 0 se zyada hona chahiye', 'e'); priceEl?.focus(); return false; }
+  }
+  return true;
+}
+
+// Charger fields - agar checkbox ticked hai to model+qty+price sab bharna zaroori hai
+function validateChargerFields() {
+  const checkEl = document.getElementById('chargerCheck');
+  if (!checkEl || !checkEl.checked) return true;
+  const modelEl = document.getElementById('charger-model');
+  const qtyEl   = document.getElementById('charger-qty');
+  const priceEl = document.getElementById('charger-price');
+  const model = modelEl?.value?.trim();
+  const qty   = parseFloat(qtyEl?.value) || 0;
+  const price = parseFloat(priceEl?.value) || 0;
+  const anyFilled  = model || qty || price;
+  const allFilled  = model && qty > 0 && price > 0;
+  if (anyFilled && !allFilled) {
+    if (!model) markErr(modelEl); else clearErr(modelEl);
+    if (qty <= 0) markErr(qtyEl); else clearErr(qtyEl);
+    if (price <= 0) markErr(priceEl); else clearErr(priceEl);
+    toast('Charger ki saari details bharo (Model, Qty, Price) ya checkbox hata do', 'e');
+    return false;
+  }
+  return true;
+}
+
+function markRequired(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const grp = el.closest('.form-group');
+    const lbl = grp ? grp.querySelector('.form-label') : null;
+    if (lbl && !lbl.querySelector('.req-mark')) lbl.innerHTML += ' <span class="req-mark">*</span>';
+  });
+}
+
 // ========== SAVE + ADD MORE ==========
 let currentOrderID = null;
 let savedItemsData = [];
@@ -331,6 +427,7 @@ function saveAndAddMore() {
 
   const pt      = document.getElementById(`im-pricetype-${id}`)?.value || '';
   if (!pt) { toast('Price Type select karo', 'e'); return; }
+  if (!validateItemCard(id, 'im')) return;
   const perWatt = pt === 'Per Watt';
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
@@ -375,8 +472,8 @@ function saveAndAddMore() {
   };
 
   if (!currentOrderID) {
+    if (!validateOrderMeta()) { if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
     const cust = document.getElementById('o-cust').value.trim();
-    if (!cust) { toast('Customer Name zaroori hai', 'e'); if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
 
     let totalQty = 0;
     savedItemsData.forEach(i => { totalQty += parseFloat(i['Qty']) || 0; });
@@ -691,6 +788,7 @@ function submitOrder() {
 
   if (currentOrderID) {
     if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+    if (!validateChargerFields()) { if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; } return; }
     const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
     const finishOrder = () => {
       const chargers = getAllChargersData();
@@ -716,6 +814,7 @@ function submitOrder() {
       const id = card.id.replace('item-row-', '');
       const model = document.getElementById(`im-model-${id}`)?.value?.trim();
       if (model) {
+        if (!validateItemCard(id, 'im')) { if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; } return; }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
         const pt = document.getElementById(`im-pricetype-${id}`)?.value || '';
         const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
@@ -746,8 +845,17 @@ function submitOrder() {
     return;
   }
 
+  if (!validateOrderMeta()) return;
+  if (!validateChargerFields()) return;
   const cust = document.getElementById('o-cust').value.trim();
-  if (!cust) { toast('Customer Name zaroori hai', 'e'); return; }
+  let itemsValid = true;
+  document.querySelectorAll('[id^="item-row-"]').forEach(row => {
+    if (!row.id.startsWith('item-row-') || !itemsValid) return;
+    const id = row.id.replace('item-row-', '');
+    const model = document.getElementById(`im-model-${id}`)?.value?.trim();
+    if (model && !validateItemCard(id, 'im')) itemsValid = false;
+  });
+  if (!itemsValid) return;
   const items = getItemRows();
   if (items.length === 0) { toast('Pehle koi item save karo', 'e'); return; }
 
@@ -809,6 +917,7 @@ function submitOrder() {
 function resetOrderForm() {
   currentOrderID = null;
   savedItemsData = [];
+  document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
   const badge = document.getElementById('currentOrderBadge');
   if (badge) badge.style.display = 'none';
   const savedList = document.getElementById('savedItemsList');
@@ -2275,6 +2384,18 @@ document.querySelectorAll('.nav-item').forEach(el => {
 
 // ========== INIT ==========
 document.getElementById('o-date').value = new Date().toISOString().split('T')[0];
+
+markRequired(['o-date','o-sales','o-cust','o-phone','o-city','o-paymode','o-status','o-paystatus']);
+
+// Field-error class ko auto-clear karo jab user field fix kare
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.classList && t.classList.contains('field-error') && t.value && String(t.value).trim()) t.classList.remove('field-error');
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList && t.classList.contains('field-error') && t.value) t.classList.remove('field-error');
+});
 
 if (user.role === 'Sales' && user.salesName) {
   const sel = document.getElementById('o-sales');
