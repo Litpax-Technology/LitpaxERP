@@ -549,7 +549,7 @@ function addItemRow() {
   div.id = `item-row-${id}`;
   div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px 14px 14px;position:relative;transition:border-color 0.15s;overflow:hidden;';
 
-  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','Charger','BMS']
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
     .map(o => `<option>${o}</option>`).join('');
 
   const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
@@ -2117,7 +2117,7 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
   const id     = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
 
-  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','Charger','BMS']
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
     .map(o => `<option ${btype===o?'selected':''}>${o}</option>`).join('');
 
   const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
