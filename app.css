@@ -349,14 +349,31 @@ button { font-family: inherit; }
   background: var(--bg);
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
-}
-/* When the active page has a scrollable table, let the table own vertical scroll
-   instead of double-scrolling with .main (fixes overlapping scrollbars). */
-.main:has(.page.active .table-wrap) {
-  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .page { display: none; }
-.page.active { display: block; }
+.page.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+/* Pipeline / stats row above a table keep their natural height */
+.page.active > .pipeline,
+.page.active > .stats-row {
+  flex-shrink: 0;
+}
+/* The card holding a table grows to fill exactly the remaining space,
+   so the table (and its scrollbar) is always within the viewport —
+   no fixed-pixel guessing, works regardless of page chrome height. */
+.page.active > .card:has(.table-wrap) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.card-head { flex-shrink: 0; }
 
 
 /* ── 7. STATS CARDS ─────────────────────────────────────────── */
@@ -514,9 +531,10 @@ button { font-family: inherit; }
 
 /* ── 10. TABLE ──────────────────────────────────────────────── */
 .table-wrap {
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 260px);
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
 }
@@ -1071,7 +1089,7 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
   .card-actions { width: 100%; justify-content: space-between; }
   .card-actions .search-input { flex: 1; width: auto !important; }
 
-  .table-wrap { -webkit-overflow-scrolling: touch; max-height: calc(100vh - 220px); }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
   table { min-width: 600px; }
   th, td { padding: 8px 10px; }
 
