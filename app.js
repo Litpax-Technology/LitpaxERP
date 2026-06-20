@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbwfyt4u-vITQ38Z3vUA_lNw7rSXbbTI7l4ZPq-GRA8HpWtnMPwWpRABTdxt9hmzkELx5w/exec';
+const API = 'https://script.google.com/macros/s/AKfycbznpMhhwdsc8_0BLigkjxKTdg-69wMdmxMBxi03kI8UIHqOWggUaRU3OMRuE20N-cP38A/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -24,7 +24,7 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
-  if (user.role === 'Sales') {
+  if (user.role === 'Sales' || user.role === 'Admin') {
     const pipeline = document.getElementById('ordersPipeline');
     if (pipeline) pipeline.style.display = 'none';
   }
