@@ -350,6 +350,11 @@ button { font-family: inherit; }
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
 }
+/* When the active page has a scrollable table, let the table own vertical scroll
+   instead of double-scrolling with .main (fixes overlapping scrollbars). */
+.main:has(.page.active .table-wrap) {
+  overflow-y: hidden;
+}
 .page { display: none; }
 .page.active { display: block; }
 
