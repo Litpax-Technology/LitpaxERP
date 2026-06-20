@@ -39,6 +39,7 @@
 <!-- SIDEBAR -->
 <div class="sidebar">
   <div class="nav-sec" id="sec-sales">Sales</div>
+  <div class="nav-item" onclick="nav('admindashboard',this)" id="nav-admindashboard"><span class="nav-icon">🧭</span>Dashboard</div>
   <div class="nav-item active" onclick="nav('orders',this)" id="nav-orders"><span class="nav-icon">📋</span>Orders</div>
   <div class="nav-item" onclick="nav('mydashboard',this)" id="nav-mydashboard"><span class="nav-icon">📊</span>My Dashboard</div>
   <div class="nav-sec" id="sec-tracking">Tracking</div>
@@ -60,6 +61,47 @@
 
 <!-- MAIN -->
 <div class="main">
+
+<!-- ===== ADMIN DASHBOARD PAGE ===== -->
+<div class="page" id="page-admindashboard">
+  <div style="font-size:11px;font-weight:650;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Sales Overview</div>
+  <div class="stats-row">
+    <div class="stat c-blue"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="ad-orders">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Total Order Value</div><div class="stat-val" id="ad-value" style="font-size:16px;">₹0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">Total Qty</div><div class="stat-val" id="ad-qty">0</div></div>
+    <div class="stat c-purple"><div class="stat-lbl">Avg Order Value</div><div class="stat-val" id="ad-avg" style="font-size:16px;">₹0</div></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:650;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;">Production Status</div>
+  <div class="stats-row">
+    <div class="stat c-blue"><div class="stat-lbl">Pending</div><div class="stat-val" id="ad-prod-pending">0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">In Progress</div><div class="stat-val" id="ad-prod-inprog">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Completed</div><div class="stat-val" id="ad-prod-done">0</div></div>
+    <div class="stat c-red"><div class="stat-lbl">Delayed</div><div class="stat-val" id="ad-prod-delayed">0</div></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:650;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;">Finance Overview</div>
+  <div class="stats-row">
+    <div class="stat c-green"><div class="stat-lbl">Total Received</div><div class="stat-val" id="ad-received" style="font-size:16px;">₹0</div></div>
+    <div class="stat c-red"><div class="stat-lbl">Balance Due</div><div class="stat-val" id="ad-balance" style="font-size:16px;">₹0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">Payment Pending Orders</div><div class="stat-val" id="ad-paypending">0</div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">Sales Person Performance</div></div>
+    <div id="ad-salesperson-list" style="padding:4px 0;"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">Recent Orders</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Order ID</th><th>Date</th><th>Customer</th><th>Sales Person</th><th>Value</th><th>Order Status</th><th>Payment Status</th></tr></thead>
+        <tbody id="ad-recent-orders"><tr><td colspan="7"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <!-- ===== ORDERS PAGE ===== -->
 <div class="page active" id="page-orders">
