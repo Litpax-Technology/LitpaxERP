@@ -64,6 +64,22 @@
 
 <!-- ===== ADMIN DASHBOARD PAGE ===== -->
 <div class="page" id="page-admindashboard">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-head" style="flex-wrap:wrap;gap:10px;">
+      <div class="card-title">📅 Date Range</div>
+      <div class="card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
+        <button class="btn btn-sm ad-range-btn" id="ad-range-today-btn" onclick="setAdDateRange('today')">Today</button>
+        <button class="btn btn-sm ad-range-btn" id="ad-range-thismonth-btn" onclick="setAdDateRange('thismonth')">This Month</button>
+        <button class="btn btn-sm ad-range-btn" id="ad-range-lastmonth-btn" onclick="setAdDateRange('lastmonth')">Last Month</button>
+        <button class="btn btn-sm ad-range-btn" id="ad-range-thisyear-btn" onclick="setAdDateRange('thisyear')">This Year</button>
+        <button class="btn btn-sm btn-primary ad-range-btn" id="ad-range-all-btn" onclick="setAdDateRange('all')">All Time</button>
+        <span style="width:1px;height:20px;background:var(--border);margin:0 2px;"></span>
+        <input class="form-control" type="date" id="ad-from-date" style="width:140px;padding:6px 8px;font-size:12px;" onchange="applyAdDateFilter()">
+        <span style="color:var(--text3);font-size:12px;">to</span>
+        <input class="form-control" type="date" id="ad-to-date" style="width:140px;padding:6px 8px;font-size:12px;" onchange="applyAdDateFilter()">
+      </div>
+    </div>
+  </div>
   <div style="font-size:11px;font-weight:650;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Sales Overview</div>
   <div class="stats-row">
     <div class="stat c-blue"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="ad-orders">0</div></div>
