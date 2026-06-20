@@ -510,6 +510,8 @@ button { font-family: inherit; }
 /* ── 10. TABLE ──────────────────────────────────────────────── */
 .table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 260px);
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
 }
@@ -1064,7 +1066,7 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
   .card-actions { width: 100%; justify-content: space-between; }
   .card-actions .search-input { flex: 1; width: auto !important; }
 
-  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .table-wrap { -webkit-overflow-scrolling: touch; max-height: calc(100vh - 220px); }
   table { min-width: 600px; }
   th, td { padding: 8px 10px; }
 
