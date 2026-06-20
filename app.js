@@ -98,6 +98,8 @@ function loadPage(id) {
 }
 
 // ========== ADMIN DASHBOARD ==========
+let adAllOrders = [], adAllProd = [], adAllAcc = [];
+
 function parseDMY(s) {
   if (!s) return 0;
   const parts = String(s).split('/');
@@ -107,59 +109,117 @@ function parseDMY(s) {
 }
 
 function loadAdminDashboard() {
+  const fromEl = document.getElementById('ad-from-date');
+  const toEl   = document.getElementById('ad-to-date');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value   = '';
+  setAdRangeActiveBtn('all');
   api({ action: 'getOrders' }, or => {
-    const orders = (or.success && or.data) ? or.data : [];
-    const totalOrders = orders.length;
-    const totalValue  = orders.reduce((s,o) => s + (parseFloat(o['Total Order Value']) || 0), 0);
-    const totalQty    = orders.reduce((s,o) => s + (parseFloat(o['Total Qty']) || 0), 0);
-    const avgValue    = totalOrders ? totalValue / totalOrders : 0;
-    const pendingStatuses = ['Advance Pending','Pending','Request Full Payment','Credit'];
-    const paymentPendingCount = orders.filter(o => pendingStatuses.includes(o['Payment Status']||'')).length;
-
-    setText('ad-orders', totalOrders);
-    setText('ad-value', '₹' + fmt(Math.round(totalValue)));
-    setText('ad-qty', totalQty);
-    setText('ad-avg', '₹' + fmt(Math.round(avgValue)));
-    setText('ad-paypending', paymentPendingCount);
-
-    const spMap = {};
-    orders.forEach(o => {
-      const sp = o['Sales Person Name'] || 'Unknown';
-      if (!spMap[sp]) spMap[sp] = { name: sp, orders: 0, qty: 0, value: 0 };
-      spMap[sp].orders++;
-      spMap[sp].qty   += parseFloat(o['Total Qty']) || 0;
-      spMap[sp].value += parseFloat(o['Total Order Value']) || 0;
+    adAllOrders = (or.success && or.data) ? or.data : [];
+    api({ action: 'getProduction' }, pr => {
+      adAllProd = (pr.success && pr.data) ? pr.data : [];
+      api({ action: 'getAccounts' }, ar => {
+        adAllAcc = (ar.success && ar.data) ? ar.data : [];
+        renderAdminDashboard();
+      });
     });
-    renderSalesPersonPerf(Object.values(spMap).sort((a,b) => b.value - a.value));
-
-    const sorted = [...orders].sort((a,b) => parseDMY(b['Date']) - parseDMY(a['Date']));
-    renderRecentOrders(sorted.slice(0, 10));
   });
+}
 
-  api({ action: 'getProduction' }, pr => {
-    const prod = (pr.success && pr.data) ? pr.data : [];
-    setText('ad-prod-pending',  prod.filter(p => (p['Status']||'Pending') === 'Pending').length);
-    setText('ad-prod-inprog',   prod.filter(p => p['Status'] === 'In Progress').length);
-    setText('ad-prod-done',     prod.filter(p => p['Status'] === 'Completed').length);
-    setText('ad-prod-delayed',  prod.filter(p => p['Status'] === 'Delayed').length);
-  });
+function toInputDateStr(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-  api({ action: 'getAccounts' }, ar => {
-    const acc = (ar.success && ar.data) ? ar.data : [];
-    // Accounts sheet is item-level (one row per item), Order ID repeats — dedupe before summing
-    const seen = {};
-    let totalReceived = 0, totalBalance = 0;
-    acc.forEach(a => {
-      const oid = a['Order ID'];
-      if (oid && !seen[oid]) {
-        seen[oid] = true;
-        totalReceived += parseFloat(a['Total Received']) || parseFloat(a['Received']) || 0;
-        totalBalance  += parseFloat(a['Balance']) || 0;
-      }
-    });
-    setText('ad-received', '₹' + fmt(Math.round(totalReceived)));
-    setText('ad-balance', '₹' + fmt(Math.round(totalBalance)));
+function setAdDateRange(preset) {
+  const today = new Date();
+  let from = null, to = null;
+  if (preset === 'today') { from = today; to = today; }
+  else if (preset === 'thismonth') { from = new Date(today.getFullYear(), today.getMonth(), 1); to = today; }
+  else if (preset === 'lastmonth') {
+    from = new Date(today.getFullYear(), today.getMonth()-1, 1);
+    to   = new Date(today.getFullYear(), today.getMonth(), 0);
+  } else if (preset === 'thisyear') { from = new Date(today.getFullYear(), 0, 1); to = today; }
+  // 'all' → from/to stay null
+
+  document.getElementById('ad-from-date').value = from ? toInputDateStr(from) : '';
+  document.getElementById('ad-to-date').value   = to   ? toInputDateStr(to)   : '';
+  setAdRangeActiveBtn(preset);
+  renderAdminDashboard();
+}
+
+function setAdRangeActiveBtn(preset) {
+  document.querySelectorAll('.ad-range-btn').forEach(b => b.classList.remove('btn-primary'));
+  const btn = document.getElementById('ad-range-' + preset + '-btn');
+  if (btn) btn.classList.add('btn-primary');
+}
+
+function applyAdDateFilter() {
+  setAdRangeActiveBtn('custom'); // no matching button → just clears preset highlight
+  renderAdminDashboard();
+}
+
+function renderAdminDashboard() {
+  const fromVal = document.getElementById('ad-from-date')?.value;
+  const toVal   = document.getElementById('ad-to-date')?.value;
+  const fromTs  = fromVal ? new Date(fromVal).getTime() : null;
+  const toTs    = toVal ? (new Date(toVal).getTime() + 24*60*60*1000 - 1) : null;
+
+  const orders = adAllOrders.filter(o => {
+    const t = parseDMY(o['Date']);
+    if (fromTs !== null && t < fromTs) return false;
+    if (toTs !== null && t > toTs) return false;
+    return true;
   });
+  const orderIDs = new Set(orders.map(o => o['Order ID']));
+
+  const totalOrders = orders.length;
+  const totalValue  = orders.reduce((s,o) => s + (parseFloat(o['Total Order Value']) || 0), 0);
+  const totalQty    = orders.reduce((s,o) => s + (parseFloat(o['Total Qty']) || 0), 0);
+  const avgValue    = totalOrders ? totalValue / totalOrders : 0;
+  const pendingStatuses = ['Advance Pending','Pending','Request Full Payment','Credit'];
+  const paymentPendingCount = orders.filter(o => pendingStatuses.includes(o['Payment Status']||'')).length;
+
+  setText('ad-orders', totalOrders);
+  setText('ad-value', '₹' + fmt(Math.round(totalValue)));
+  setText('ad-qty', totalQty);
+  setText('ad-avg', '₹' + fmt(Math.round(avgValue)));
+  setText('ad-paypending', paymentPendingCount);
+
+  const spMap = {};
+  orders.forEach(o => {
+    const sp = o['Sales Person Name'] || 'Unknown';
+    if (!spMap[sp]) spMap[sp] = { name: sp, orders: 0, qty: 0, value: 0 };
+    spMap[sp].orders++;
+    spMap[sp].qty   += parseFloat(o['Total Qty']) || 0;
+    spMap[sp].value += parseFloat(o['Total Order Value']) || 0;
+  });
+  renderSalesPersonPerf(Object.values(spMap).sort((a,b) => b.value - a.value));
+
+  const sorted = [...orders].sort((a,b) => parseDMY(b['Date']) - parseDMY(a['Date']));
+  renderRecentOrders(sorted.slice(0, 10));
+
+  // Production/Accounts are linked via Order ID — scope them to the filtered order set
+  const prod = adAllProd.filter(p => orderIDs.has(p['Order ID']));
+  setText('ad-prod-pending',  prod.filter(p => (p['Status']||'Pending') === 'Pending').length);
+  setText('ad-prod-inprog',   prod.filter(p => p['Status'] === 'In Progress').length);
+  setText('ad-prod-done',     prod.filter(p => p['Status'] === 'Completed').length);
+  setText('ad-prod-delayed',  prod.filter(p => p['Status'] === 'Delayed').length);
+
+  const seen = {};
+  let totalReceived = 0, totalBalance = 0;
+  adAllAcc.forEach(a => {
+    const oid = a['Order ID'];
+    if (oid && orderIDs.has(oid) && !seen[oid]) {
+      seen[oid] = true;
+      totalReceived += parseFloat(a['Total Received']) || parseFloat(a['Received']) || 0;
+      totalBalance  += parseFloat(a['Balance']) || 0;
+    }
+  });
+  setText('ad-received', '₹' + fmt(Math.round(totalReceived)));
+  setText('ad-balance', '₹' + fmt(Math.round(totalBalance)));
 }
 
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
