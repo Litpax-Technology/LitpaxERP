@@ -350,6 +350,58 @@ function validateOrderMeta() {
     markErr(document.getElementById('o-plandispatch'));
     if (!firstBad) firstBad = { el: document.getElementById('o-plandispatch'), msg: 'Plan Dispatch Date, Order Date se pehle nahi ho sakti' };
   }
+  const planPayVal = document.getElementById('o-planpay')?.value;
+  clearErr(document.getElementById('o-planpay'));
+  if (dateVal && planPayVal && planPayVal < dateVal) {
+    markErr(document.getElementById('o-planpay'));
+    if (!firstBad) firstBad = { el: document.getElementById('o-planpay'), msg: 'Plan Payment Date, Order Date se pehle nahi ho sakti' };
+  }
+  const transEl  = document.getElementById('o-transchg');
+  clearErr(transEl);
+  if (transEl && transEl.value !== '' && (parseFloat(transEl.value) < 0)) {
+    markErr(transEl);
+    if (!firstBad) firstBad = { el: transEl, msg: 'Transportation Charges negative nahi ho sakti' };
+  }
+  if (firstBad) { toast(firstBad.msg, 'e'); firstBad.el?.focus(); return false; }
+  return true;
+}
+
+// Edit Order modal validation (Customer Name/Phone/City, Payment Mode, Order/Payment Status, dispatch date, transport charges)
+function validateEditOrderMeta() {
+  const fields = [
+    ['e-cust','Customer Name'],
+    ['e-phone','Customer Phone'],
+    ['e-city','City'],
+    ['e-paymode','Payment Mode'],
+    ['e-status','Order Status'],
+    ['e-paystatus','Payment Status']
+  ];
+  clearErrIds(fields.map(f => f[0]));
+  clearErr(document.getElementById('e-plandispatch'));
+  clearErr(document.getElementById('e-transchg'));
+  let firstBad = null;
+  fields.forEach(([id, label]) => {
+    const el = document.getElementById(id);
+    const val = (el?.value || '').trim();
+    if (!val) { markErr(el); if (!firstBad) firstBad = { el, msg: label + ' zaroori hai' }; }
+  });
+  const phoneEl  = document.getElementById('e-phone');
+  const phoneVal = (phoneEl?.value || '').trim();
+  if (phoneVal && !isValidPhone(phoneVal)) {
+    markErr(phoneEl);
+    if (!firstBad) firstBad = { el: phoneEl, msg: 'Phone number sahi 10-digit number daalo (6-9 se start)' };
+  }
+  const origDate    = currentEditOrder ? toInputDate(currentEditOrder['Date'] || '') : '';
+  const dispatchVal = document.getElementById('e-plandispatch')?.value;
+  if (origDate && dispatchVal && dispatchVal < origDate) {
+    markErr(document.getElementById('e-plandispatch'));
+    if (!firstBad) firstBad = { el: document.getElementById('e-plandispatch'), msg: 'Plan Dispatch Date, Order Date se pehle nahi ho sakti' };
+  }
+  const transEl = document.getElementById('e-transchg');
+  if (transEl && transEl.value !== '' && (parseFloat(transEl.value) < 0)) {
+    markErr(transEl);
+    if (!firstBad) firstBad = { el: transEl, msg: 'Transportation Charges negative nahi ho sakti' };
+  }
   if (firstBad) { toast(firstBad.msg, 'e'); firstBad.el?.focus(); return false; }
   return true;
 }
@@ -428,6 +480,8 @@ function saveAndAddMore() {
   const pt      = document.getElementById(`im-pricetype-${id}`)?.value || '';
   if (!pt) { toast('Price Type select karo', 'e'); return; }
   if (!validateItemCard(id, 'im')) return;
+  const isDup = savedItemsData.some(it => (it['Product Model']||'').trim().toLowerCase() === model.toLowerCase() && (it['Battery Type']||'') === btype);
+  if (isDup) { toast('Yeh item (Model + Battery Type) order mein already add ho chuka hai — Qty badha do uske jagah', 'e'); return; }
   const perWatt = pt === 'Per Watt';
   const volt    = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp     = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
@@ -474,6 +528,9 @@ function saveAndAddMore() {
   if (!currentOrderID) {
     if (!validateOrderMeta()) { if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
     const cust = document.getElementById('o-cust').value.trim();
+    const todayVal = document.getElementById('o-date')?.value;
+    const possibleDup = (allOrders||[]).find(o => (o['Customer Name']||'').trim().toLowerCase() === cust.toLowerCase() && toInputDate(o['Date']||'') === todayVal);
+    if (possibleDup) toast(`⚠ ${cust} ka order aaj already hai (${possibleDup['Order ID']}) — duplicate check kar lo`, 'w');
 
     let totalQty = 0;
     savedItemsData.forEach(i => { totalQty += parseFloat(i['Qty']) || 0; });
@@ -552,7 +609,7 @@ function addItemRow() {
   const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
     .map(o => `<option>${o}</option>`).join('');
 
-  const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
+  const lbl = (t, req) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}${req ? ' <span class="req-mark">*</span>' : ''}</label>`;
 
   div.innerHTML = `
     <div style="margin-bottom:10px;">
@@ -560,10 +617,10 @@ function addItemRow() {
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>${lbl('Product Model')}<input class="form-control" id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
-      <div>${lbl('Battery Type')}<select class="form-control" id="im-btype-${id}" style="font-size:13px;" onchange="autoGST(${id})"><option value="">Select type</option>${btypeOptions}</select></div>
+      <div>${lbl('Battery Type', true)}<select class="form-control" id="im-btype-${id}" style="font-size:13px;" onchange="autoGST(${id})"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>${lbl('Price Type')}
+      <div>${lbl('Price Type', true)}
         <select class="form-control" id="im-pricetype-${id}" style="font-size:13px;" onchange="onItemPriceTypeChange(${id})">
           <option value="">Select</option>
           <option>Absolute</option>
@@ -575,12 +632,12 @@ function addItemRow() {
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px;">
       <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
-      <div>${lbl('Qty')}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+      <div>${lbl('Qty', true)}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
       <div id="im-pricefield-${id}">
-        ${lbl('Rate/Unit (₹)')}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;">
+        ${lbl('Rate/Unit (₹)', true)}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;">
       </div>
       <div id="im-pwfield-${id}" style="display:none;">
-        ${lbl('Per Watt Price (₹)')}<input class="form-control" id="im-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcItemAuto(${id})" style="font-size:13px;">
+        ${lbl('Per Watt Price (₹)', true)}<input class="form-control" id="im-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcItemAuto(${id})" style="font-size:13px;">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
@@ -815,6 +872,9 @@ function submitOrder() {
       const model = document.getElementById(`im-model-${id}`)?.value?.trim();
       if (model) {
         if (!validateItemCard(id, 'im')) { if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; } return; }
+        const btypeChk = document.getElementById(`im-btype-${id}`)?.value || '';
+        const isDup = savedItemsData.some(it => (it['Product Model']||'').trim().toLowerCase() === model.toLowerCase() && (it['Battery Type']||'') === btypeChk);
+        if (isDup) { toast('Yeh item (Model + Battery Type) order mein already add ho chuka hai — Qty badha do uske jagah', 'e'); if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; } return; }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
         const pt = document.getElementById(`im-pricetype-${id}`)?.value || '';
         const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
@@ -849,13 +909,23 @@ function submitOrder() {
   if (!validateChargerFields()) return;
   const cust = document.getElementById('o-cust').value.trim();
   let itemsValid = true;
+  const seenCombos = [];
   document.querySelectorAll('[id^="item-row-"]').forEach(row => {
     if (!row.id.startsWith('item-row-') || !itemsValid) return;
     const id = row.id.replace('item-row-', '');
     const model = document.getElementById(`im-model-${id}`)?.value?.trim();
-    if (model && !validateItemCard(id, 'im')) itemsValid = false;
+    if (model && !validateItemCard(id, 'im')) { itemsValid = false; return; }
+    if (model) {
+      const btypeChk = document.getElementById(`im-btype-${id}`)?.value || '';
+      const comboKey = model.toLowerCase() + '|' + btypeChk;
+      if (seenCombos.includes(comboKey)) { toast('Yeh item (Model + Battery Type) order mein already hai — Qty badha do uske jagah', 'e'); itemsValid = false; return; }
+      seenCombos.push(comboKey);
+    }
   });
   if (!itemsValid) return;
+  const todayVal2 = document.getElementById('o-date')?.value;
+  const possibleDup2 = (allOrders||[]).find(o => (o['Customer Name']||'').trim().toLowerCase() === cust.toLowerCase() && toInputDate(o['Date']||'') === todayVal2);
+  if (possibleDup2) toast(`⚠ ${cust} ka order aaj already hai (${possibleDup2['Order ID']}) — duplicate check kar lo`, 'w');
   const items = getItemRows();
   if (items.length === 0) { toast('Pehle koi item save karo', 'e'); return; }
 
@@ -2120,7 +2190,7 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
   const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
     .map(o => `<option ${btype===o?'selected':''}>${o}</option>`).join('');
 
-  const lbl = (t) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}</label>`;
+  const lbl = (t, req) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}${req ? ' <span class="req-mark">*</span>' : ''}</label>`;
 
   const div = document.createElement('div');
   div.id = `edit-item-row-${id}`;
@@ -2135,10 +2205,10 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>${lbl('Product Model')}<input class="form-control" id="eim-model-${id}" value="${model}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
-      <div>${lbl('Battery Type')}<select class="form-control" id="eim-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
+      <div>${lbl('Battery Type', true)}<select class="form-control" id="eim-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>${lbl('Price Type')}
+      <div>${lbl('Price Type', true)}
         <select class="form-control" id="eim-pricetype-${id}" style="font-size:13px;" onchange="onEditItemPriceTypeChange('${id}')">
           <option value="">Select</option>
           <option ${priceType==='Absolute'?'selected':''}>Absolute</option>
@@ -2150,12 +2220,12 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>${lbl('Ampere (Ah)')}<input class="form-control" id="eim-amp-${id}" type="number" value="${amp}" placeholder="20" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
-      <div>${lbl('Qty')}<input class="form-control" id="eim-qty-${id}" type="number" value="${qty}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
+      <div>${lbl('Qty', true)}<input class="form-control" id="eim-qty-${id}" type="number" value="${qty}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;"></div>
       <div id="eim-pricefield-${id}">
-        ${lbl('Rate/Unit (₹)')}<input class="form-control" id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
+        ${lbl('Rate/Unit (₹)', true)}<input class="form-control" id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
       </div>
       <div id="eim-pwfield-${id}" style="display:none;">
-        ${lbl('Per Watt Price (₹)')}<input class="form-control" id="eim-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
+        ${lbl('Per Watt Price (₹)', true)}<input class="form-control" id="eim-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2221,6 +2291,7 @@ function calcEditItemTotal(id) {
 function openEditOrder() {
   if (!currentEditOrder) return;
   const o = currentEditOrder;
+  ['e-cust','e-phone','e-city','e-paymode','e-status','e-paystatus','e-plandispatch','e-transchg'].forEach(id => clearErr(document.getElementById(id)));
   document.getElementById('e-orderid').value = o['Order ID'] || '';
   document.getElementById('e-cust').value = o['Customer Name'] || '';
   document.getElementById('e-phone').value = o['Customer Phone'] || '';
@@ -2266,6 +2337,27 @@ function openEditOrder() {
 function submitEditOrder() {
   const orderID = document.getElementById('e-orderid').value;
   if (!orderID) return;
+  if (!validateEditOrderMeta()) return;
+
+  const preRows = document.querySelectorAll('[id^="edit-item-row-"]');
+  let editItemsValid = true;
+  const editSeenCombos = [];
+  preRows.forEach(row => {
+    if (!editItemsValid) return;
+    const id = row.id.replace('edit-item-row-', '');
+    const model = document.getElementById(`eim-model-${id}`)?.value?.trim();
+    if (!model) return;
+    if (!validateItemCard(id, 'eim')) { editItemsValid = false; return; }
+    const btypeChk = document.getElementById(`eim-btype-${id}`)?.value || '';
+    const comboKey = model.toLowerCase() + '|' + btypeChk;
+    if (editSeenCombos.includes(comboKey)) {
+      toast('Yeh item (Model + Battery Type) order mein already hai — Qty badha do uske jagah', 'e');
+      editItemsValid = false; return;
+    }
+    editSeenCombos.push(comboKey);
+  });
+  if (!editItemsValid) return;
+
   const params = {
     action: 'updateOrder', 'Order ID': orderID,
     'Customer Name': document.getElementById('e-cust').value,
@@ -2386,6 +2478,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 document.getElementById('o-date').value = new Date().toISOString().split('T')[0];
 
 markRequired(['o-date','o-sales','o-cust','o-phone','o-city','o-paymode','o-status','o-paystatus']);
+markRequired(['e-cust','e-phone','e-city','e-paymode','e-status','e-paystatus']);
 
 // Field-error class ko auto-clear karo jab user field fix kare
 document.addEventListener('input', e => {
