@@ -10,7 +10,7 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin:      ['orders','crm','production','accounts','customers','products','suppliers','users'],
+  Admin:      ['admindashboard','orders','crm','production','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','customers','mydashboard'],
   Accounts:   ['accounts'],
   Production: ['production'],
@@ -61,6 +61,7 @@ const roleAccess = {
 
 // PAGE META
 const pageMeta = {
+  admindashboard:{title:'Dashboard',sub:'Admin overview & analytics'},
   orders:{title:'Sales Orders',sub:'Manage all customer orders'},
   crm:{title:'CRM Tracker',sub:'Order lifecycle tracking'},
   production:{title:'Production',sub:'Production status & updates'},
@@ -84,7 +85,8 @@ function nav(id, el) {
 }
 
 function loadPage(id) {
-  if (id === 'orders') loadOrders();
+  if (id === 'admindashboard') loadAdminDashboard();
+  else if (id === 'orders') loadOrders();
   else if (id === 'crm') loadCRM();
   else if (id === 'production') loadProduction();
   else if (id === 'mydashboard') loadMyDashboard();
@@ -93,6 +95,104 @@ function loadPage(id) {
   else if (id === 'suppliers') loadSuppliers();
   else if (id === 'users') loadUsers();
   else if (id === 'accounts') loadAccounts();
+}
+
+// ========== ADMIN DASHBOARD ==========
+function parseDMY(s) {
+  if (!s) return 0;
+  const parts = String(s).split('/');
+  if (parts.length !== 3) return 0;
+  const d = new Date(parts[2], parseInt(parts[1],10) - 1, parts[0]);
+  return d.getTime() || 0;
+}
+
+function loadAdminDashboard() {
+  api({ action: 'getOrders' }, or => {
+    const orders = (or.success && or.data) ? or.data : [];
+    const totalOrders = orders.length;
+    const totalValue  = orders.reduce((s,o) => s + (parseFloat(o['Total Order Value']) || 0), 0);
+    const totalQty    = orders.reduce((s,o) => s + (parseFloat(o['Total Qty']) || 0), 0);
+    const avgValue    = totalOrders ? totalValue / totalOrders : 0;
+    const pendingStatuses = ['Advance Pending','Pending','Request Full Payment','Credit'];
+    const paymentPendingCount = orders.filter(o => pendingStatuses.includes(o['Payment Status']||'')).length;
+
+    setText('ad-orders', totalOrders);
+    setText('ad-value', '₹' + fmt(Math.round(totalValue)));
+    setText('ad-qty', totalQty);
+    setText('ad-avg', '₹' + fmt(Math.round(avgValue)));
+    setText('ad-paypending', paymentPendingCount);
+
+    const spMap = {};
+    orders.forEach(o => {
+      const sp = o['Sales Person Name'] || 'Unknown';
+      if (!spMap[sp]) spMap[sp] = { name: sp, orders: 0, qty: 0, value: 0 };
+      spMap[sp].orders++;
+      spMap[sp].qty   += parseFloat(o['Total Qty']) || 0;
+      spMap[sp].value += parseFloat(o['Total Order Value']) || 0;
+    });
+    renderSalesPersonPerf(Object.values(spMap).sort((a,b) => b.value - a.value));
+
+    const sorted = [...orders].sort((a,b) => parseDMY(b['Date']) - parseDMY(a['Date']));
+    renderRecentOrders(sorted.slice(0, 10));
+  });
+
+  api({ action: 'getProduction' }, pr => {
+    const prod = (pr.success && pr.data) ? pr.data : [];
+    setText('ad-prod-pending',  prod.filter(p => (p['Status']||'Pending') === 'Pending').length);
+    setText('ad-prod-inprog',   prod.filter(p => p['Status'] === 'In Progress').length);
+    setText('ad-prod-done',     prod.filter(p => p['Status'] === 'Completed').length);
+    setText('ad-prod-delayed',  prod.filter(p => p['Status'] === 'Delayed').length);
+  });
+
+  api({ action: 'getAccounts' }, ar => {
+    const acc = (ar.success && ar.data) ? ar.data : [];
+    // Accounts sheet is item-level (one row per item), Order ID repeats — dedupe before summing
+    const seen = {};
+    let totalReceived = 0, totalBalance = 0;
+    acc.forEach(a => {
+      const oid = a['Order ID'];
+      if (oid && !seen[oid]) {
+        seen[oid] = true;
+        totalReceived += parseFloat(a['Total Received']) || parseFloat(a['Received']) || 0;
+        totalBalance  += parseFloat(a['Balance']) || 0;
+      }
+    });
+    setText('ad-received', '₹' + fmt(Math.round(totalReceived)));
+    setText('ad-balance', '₹' + fmt(Math.round(totalBalance)));
+  });
+}
+
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+function renderSalesPersonPerf(list) {
+  const el = document.getElementById('ad-salesperson-list');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-txt">Koi data nahi hai</div></div>'; return; }
+  el.innerHTML = list.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">${s.name}</div>
+      <div style="display:flex;gap:18px;align-items:center;">
+        <span style="font-size:12px;color:var(--text3);">${s.orders} orders</span>
+        <span style="font-size:12px;color:var(--text3);">Qty: ${s.qty}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--accent);">₹${fmt(Math.round(s.value))}</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderRecentOrders(list) {
+  const el = document.getElementById('ad-recent-orders');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-txt">Koi order nahi hai</div></div></td></tr>'; return; }
+  el.innerHTML = list.map(o => `
+    <tr>
+      <td class="td-id">${o['Order ID']||''}</td>
+      <td>${o['Date']||''}</td>
+      <td class="td-bold">${o['Customer Name']||''}</td>
+      <td>${o['Sales Person Name']||''}</td>
+      <td style="font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</td>
+      <td>${orderStatusBadge(o['Order Status'])}</td>
+      <td>${payStatusBadge(o['Payment Status'])}</td>
+    </tr>`).join('');
 }
 
 // API
