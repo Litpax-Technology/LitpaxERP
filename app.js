@@ -1567,11 +1567,121 @@ function renderProduction(billedMap) {
           <td style="${bt}">${delayBadge}</td>
           <td style="${bt}">${statusBadge}</td>
           <td style="${bt}">${p['Remarks']||''}</td>
-          <td style="${bt}"><button class="btn btn-sm btn-warning" onclick='openProdUpdate(${JSON.stringify(p)})'>Update</button></td>
+          <td style="${bt};white-space:nowrap;">
+            <button class="btn btn-sm btn-warning" onclick='openProdUpdate(${JSON.stringify(p)})'>Update</button>
+            <button class="btn btn-sm" style="margin-left:6px;background:var(--surface2);border-color:var(--border2);color:var(--text2);" onclick='printProdSlip(${JSON.stringify(p)},${JSON.stringify(first)})'>🖨️ Print</button>
+          </td>
         </tr>`;
       });
     });
     document.getElementById('prodTable').innerHTML = prodRows;
+}
+
+function openPrintSlip() {
+  if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
+
+  const todayObj = new Date();
+  const dd = String(todayObj.getDate()).padStart(2,'0');
+  const mm = String(todayObj.getMonth()+1).padStart(2,'0');
+  const yyyy = todayObj.getFullYear();
+  const todayDMY = `${dd}/${mm}/${yyyy}`;   // match sheet format dd/mm/yyyy
+  const todayDisp = `${dd}-${mm}-${yyyy}`;  // display format
+
+  // Filter items where Prod Start Actual == today
+  const todayItems = allProd.filter(p => {
+    const sa = (p['Production Start Actual'] || '').trim();
+    return sa === todayDMY;
+  });
+
+  if (!todayItems.length) {
+    toast(`Aaj (${todayDisp}) ki koi Production Start Actual nahi mili`, 'w');
+    return;
+  }
+
+  const rows = todayItems.map((p, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${p['Order ID'] || '—'}</td>
+      <td>${p['Item ID'] || '—'}</td>
+      <td>${p['Customer Name'] || '—'}</td>
+      <td>${p['Product Model'] || '—'}</td>
+      <td>${p['Battery Type'] || '—'}</td>
+      <td style="text-align:center;font-weight:700;">${p['Qty'] || '—'}</td>
+      <td>${p['Production Start Plan'] || '—'}</td>
+      <td>${p['Production Complete Plan'] || '—'}</td>
+      <td>${p['Sales Remarks'] || ''}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Production Slip — ${todayDisp}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; border-bottom:3px solid #1e1b4b; padding-bottom:12px; }
+    .brand { font-size:22px; font-weight:800; color:#1e1b4b; letter-spacing:-0.5px; }
+    .brand span { color:#6366f1; }
+    .slip-title { font-size:13px; color:#555; margin-top:3px; }
+    .meta { text-align:right; font-size:12px; color:#444; line-height:1.7; }
+    .meta strong { color:#1e1b4b; font-size:14px; }
+    table { width:100%; border-collapse:collapse; margin-top:4px; font-size:12px; }
+    thead tr { background:#1e1b4b; color:#fff; }
+    thead th { padding:9px 8px; text-align:left; font-size:11px; font-weight:600; letter-spacing:0.3px; }
+    tbody tr:nth-child(even) { background:#f5f5fb; }
+    tbody td { padding:9px 8px; border-bottom:1px solid #e2e2ef; vertical-align:middle; }
+    tbody td:nth-child(7) { background:#fffbeb; color:#b45309; font-size:14px; }
+    .footer { margin-top:20px; display:flex; justify-content:space-between; font-size:11px; color:#888; border-top:1px solid #ddd; padding-top:10px; }
+    .count-badge { display:inline-block; background:#ede9fe; color:#5b21b6; font-weight:700; padding:4px 12px; border-radius:20px; font-size:13px; margin-bottom:14px; }
+    @media print {
+      .no-print { display:none !important; }
+      body { padding:10px; }
+    }
+  </style></head><body>
+  <div class="header">
+    <div>
+      <div class="brand">Litpax<span>ERP</span></div>
+      <div class="slip-title">Production Work Order Slip</div>
+    </div>
+    <div class="meta">
+      <strong>📅 Date: ${todayDisp}</strong><br>
+      Generated: ${new Date().toLocaleTimeString('en-IN')}<br>
+      Total Items: <strong>${todayItems.length}</strong>
+    </div>
+  </div>
+
+  <div class="no-print" style="margin-bottom:14px;">
+    <button onclick="window.print()" style="background:#1e1b4b;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:10px;">🖨️ Print</button>
+    <button onclick="window.close()" style="background:#f5f5f5;color:#333;border:1px solid #ddd;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;">✕ Close</button>
+  </div>
+
+  <div class="count-badge">🔧 Aaj Production mein: ${todayItems.length} items</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Order ID</th>
+        <th>Item ID</th>
+        <th>Customer</th>
+        <th>Product Model</th>
+        <th>Battery Type</th>
+        <th>Qty</th>
+        <th>Start Plan</th>
+        <th>Complete Plan</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="footer">
+    <span>Litpax Technology Pvt. Ltd.</span>
+    <span>Printed on ${todayDisp} — LitpaxERP v3.0</span>
+  </div>
+  </body></html>`;
+
+  const win = window.open('', '_blank', 'width=1000,height=700');
+  win.document.write(html);
+  win.document.close();
 }
 
 function calcProdQty() {
