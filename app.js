@@ -1581,16 +1581,17 @@ function openPrintSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
 
   const todayObj = new Date();
-  const dd = String(todayObj.getDate()).padStart(2,'0');
-  const mm = String(todayObj.getMonth()+1).padStart(2,'0');
   const yyyy = todayObj.getFullYear();
-  const todayDMY = `${dd}/${mm}/${yyyy}`;   // match sheet format dd/mm/yyyy
-  const todayDisp = `${dd}-${mm}-${yyyy}`;  // display format
+  const mm = String(todayObj.getMonth()+1).padStart(2,'0');
+  const dd = String(todayObj.getDate()).padStart(2,'0');
+  const todayISO  = `${yyyy}-${mm}-${dd}`;   // compare format
+  const todayDisp = `${dd}-${mm}-${yyyy}`;   // display format
 
   // Filter items where Prod Start Actual == today
+  // Sheet stores dates as ISO (2026-06-22T...) — toInputDate() normalizes to yyyy-mm-dd
   const todayItems = allProd.filter(p => {
-    const sa = (p['Production Start Actual'] || '').trim();
-    return sa === todayDMY;
+    const sa = toInputDate(p['Production Start Actual'] || '');
+    return sa === todayISO;
   });
 
   if (!todayItems.length) {
