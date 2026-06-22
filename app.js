@@ -1584,11 +1584,9 @@ function openPrintSlip() {
   const yyyy = todayObj.getFullYear();
   const mm = String(todayObj.getMonth()+1).padStart(2,'0');
   const dd = String(todayObj.getDate()).padStart(2,'0');
-  const todayISO  = `${yyyy}-${mm}-${dd}`;   // compare format
-  const todayDisp = `${dd}-${mm}-${yyyy}`;   // display format
+  const todayISO  = `${yyyy}-${mm}-${dd}`;
+  const todayDisp = `${dd}-${mm}-${yyyy}`;
 
-  // Filter items where Prod Start Actual == today
-  // Sheet stores dates as ISO (2026-06-22T...) — toInputDate() normalizes to yyyy-mm-dd
   const todayItems = allProd.filter(p => {
     const sa = toInputDate(p['Production Start Actual'] || '');
     return sa === todayISO;
@@ -1599,88 +1597,83 @@ function openPrintSlip() {
     return;
   }
 
-  const rows = todayItems.map((p, i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td>${p['Order ID'] || '—'}</td>
-      <td>${p['Item ID'] || '—'}</td>
-      <td>${p['Customer Name'] || '—'}</td>
-      <td>${p['Product Model'] || '—'}</td>
-      <td>${p['Battery Type'] || '—'}</td>
-      <td style="text-align:center;font-weight:700;">${p['Qty'] || '—'}</td>
-      <td>${p['Production Start Plan'] || '—'}</td>
-      <td>${p['Production Complete Plan'] || '—'}</td>
-      <td>${p['Sales Remarks'] || ''}</td>
-    </tr>`).join('');
+  const twoWheeler = todayItems.filter(p => (p['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  const others     = todayItems.filter(p => !(p['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+
+  function buildTable(items, label) {
+    if (!items.length) return '';
+    const rows = items.map((p, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td>${p['Order ID']||'—'}</td>
+        <td>${p['Item ID']||'—'}</td>
+        <td>${p['Product Model']||'—'}</td>
+        <td>${p['Battery Type']||'—'}</td>
+        <td>${p['Qty']||'—'}</td>
+      </tr>`).join('');
+    return `
+      <div class="section">
+        <div class="section-title">${label} <span class="count">${items.length} items</span></div>
+        <table>
+          <thead><tr><th>#</th><th>Order ID</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Production Slip — ${todayDisp}</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
-    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; border-bottom:3px solid #1e1b4b; padding-bottom:12px; }
-    .brand { font-size:22px; font-weight:800; color:#1e1b4b; letter-spacing:-0.5px; }
-    .brand span { color:#6366f1; }
-    .slip-title { font-size:13px; color:#555; margin-top:3px; }
-    .meta { text-align:right; font-size:12px; color:#444; line-height:1.7; }
-    .meta strong { color:#1e1b4b; font-size:14px; }
-    table { width:100%; border-collapse:collapse; margin-top:4px; font-size:12px; }
-    thead tr { background:#1e1b4b; color:#fff; }
-    thead th { padding:9px 8px; text-align:left; font-size:11px; font-weight:600; letter-spacing:0.3px; }
-    tbody tr:nth-child(even) { background:#f5f5fb; }
-    tbody td { padding:9px 8px; border-bottom:1px solid #e2e2ef; vertical-align:middle; }
-    tbody td:nth-child(7) { background:#fffbeb; color:#b45309; font-size:14px; }
-    .footer { margin-top:20px; display:flex; justify-content:space-between; font-size:11px; color:#888; border-top:1px solid #ddd; padding-top:10px; }
-    .count-badge { display:inline-block; background:#ede9fe; color:#5b21b6; font-weight:700; padding:4px 12px; border-radius:20px; font-size:13px; margin-bottom:14px; }
-    @media print {
-      .no-print { display:none !important; }
-      body { padding:10px; }
-    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;padding:18px 22px;color:#111;}
+    .header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1e1b4b;padding-bottom:10px;margin-bottom:16px;}
+    .brand{font-size:20px;font-weight:800;color:#1e1b4b;}.brand span{color:#6366f1;}
+    .meta{text-align:right;font-size:12px;color:#444;line-height:1.8;}
+    .meta strong{font-size:14px;color:#1e1b4b;}
+    .no-print{margin-bottom:14px;}
+    .no-print button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px;border:none;}
+    .btn-print{background:#1e1b4b;color:#fff;}
+    .btn-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
+    .section{margin-bottom:22px;}
+    .section-title{font-size:13px;font-weight:700;color:#1e1b4b;padding:7px 12px;background:#ede9fe;border-left:4px solid #6366f1;border-radius:4px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+    .count{background:#6366f1;color:#fff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    thead tr{background:#1e1b4b;color:#fff;}
+    thead th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.3px;}
+    thead th:last-child{text-align:center;}
+    tbody tr:nth-child(even){background:#f7f7fb;}
+    tbody td{padding:8px 10px;border-bottom:1px solid #e5e5ef;}
+    tbody td:last-child{text-align:center;font-weight:700;font-size:14px;color:#1e1b4b;}
+    .footer{margin-top:16px;display:flex;justify-content:space-between;font-size:11px;color:#999;border-top:1px solid #e0e0e0;padding-top:10px;}
+    @media print{.no-print{display:none!important;}body{padding:10px 14px;}}
   </style></head><body>
+
   <div class="header">
     <div>
       <div class="brand">Litpax<span>ERP</span></div>
-      <div class="slip-title">Production Work Order Slip</div>
+      <div style="font-size:12px;color:#666;margin-top:2px;">Production Work Order Slip</div>
     </div>
     <div class="meta">
-      <strong>📅 Date: ${todayDisp}</strong><br>
-      Generated: ${new Date().toLocaleTimeString('en-IN')}<br>
+      <strong>📅 ${todayDisp}</strong><br>
       Total Items: <strong>${todayItems.length}</strong>
     </div>
   </div>
 
-  <div class="no-print" style="margin-bottom:14px;">
-    <button onclick="window.print()" style="background:#1e1b4b;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:10px;">🖨️ Print</button>
-    <button onclick="window.close()" style="background:#f5f5f5;color:#333;border:1px solid #ddd;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;">✕ Close</button>
+  <div class="no-print">
+    <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+    <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
 
-  <div class="count-badge">🔧 Aaj Production mein: ${todayItems.length} items</div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Order ID</th>
-        <th>Item ID</th>
-        <th>Customer</th>
-        <th>Product Model</th>
-        <th>Battery Type</th>
-        <th>Qty</th>
-        <th>Start Plan</th>
-        <th>Complete Plan</th>
-        <th>Remarks</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
+  ${buildTable(twoWheeler, '🛵 2 Wheeler Battery')}
+  ${buildTable(others,     '🔋 Other Batteries')}
 
   <div class="footer">
     <span>Litpax Technology Pvt. Ltd.</span>
-    <span>Printed on ${todayDisp} — LitpaxERP v3.0</span>
+    <span>LitpaxERP v3.0 — ${todayDisp}</span>
   </div>
   </body></html>`;
 
-  const win = window.open('', '_blank', 'width=1000,height=700');
+  const win = window.open('', '_blank', 'width=900,height=680');
   win.document.write(html);
   win.document.close();
 }
