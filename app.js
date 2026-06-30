@@ -2164,6 +2164,12 @@ function openAccSlipsDrawer(orderID, custName) {
 // ========== PAYMENT DRAWER ==========
 let currentPayOrder = null;
 
+function openPayDrawerFromDetail() {
+  if (!currentEditOrder) return;
+  closeModal('orderDetailModal');
+  openPayDrawer(currentEditOrder);
+}
+
 function openPayDrawer(o) {
   currentPayOrder = o;
   const orderID  = o['Order ID'] || '';
