@@ -828,6 +828,7 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
   padding: 14px 20px;
   border-top: 1px solid var(--border);
   display: flex;
+   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   background: var(--surface2);
@@ -1102,7 +1103,8 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
     overflow-y: auto;
   }
   .modal-head { position: sticky; top: 0; z-index: 1; border-radius: var(--r-lg) var(--r-lg) 0 0; }
-  .modal-foot { position: sticky; bottom: 0; }
+  .modal-foot { position: sticky; bottom: 0; flex-direction: column; }
+.modal-foot .btn { width: 100%; justify-content: center; }
   .modal-body { padding: 14px 16px; }
 
   .form-grid   { grid-template-columns: 1fr; }
