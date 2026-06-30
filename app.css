@@ -961,6 +961,7 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
   right: -420px;
   width: min(400px, 100vw);
   height: calc(100vh - var(--topbar));
+   height: calc(100dvh - var(--topbar));
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--sh-lg);
