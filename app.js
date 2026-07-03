@@ -416,14 +416,14 @@ function viewOrder(o) {
   currentEditOrder = o;
   document.getElementById('detailOrderID').textContent = 'Order: ' + (o['Order ID'] || '');
   const fields = [
-    ['Order ID', o['Order ID']], ['Date', o['Date']], ['Sales Person', o['Sales Person Name']],
+    ['Order ID', o['Order ID']], ['Date', fmtDisplayDate(o['Date']||'')], ['Sales Person', o['Sales Person Name']],
     ['Customer Name', o['Customer Name']], ['Customer Phone', o['Customer Phone']], ['City', o['City']],
     ['Total Qty', o['Total Qty']], ['Charger Qty', o['Charger Qty']||'—'],
     ['Total Order Value', o['Total Order Value'] ? '₹'+Number(o['Total Order Value']).toLocaleString('en-IN') : '—'],
     ['Payment Mode', o['Payment Mode']], ['Order Status', o['Order Status']],
-    ['Payment Status', o['Payment Status']], ['Priority', o['Priority']],
-    ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date']||'')],
+    ['Payment Status', o['Payment Status']],
     ['Corridor', o['Corridor']||o['Priority']||'—'],
+    ['Suggested Transport', o['Suggested Transport']], ['Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date']||'')],
     ['Transport Charges', o['Transportation Charges']],
     ['Assigned CRM', o['Assigned CRM']], ['Final Status', o['Final Status']], ['Remarks', o['Order Remarks']]
   ];
