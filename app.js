@@ -713,6 +713,7 @@ function saveAndAddMore() {
       'Order Remarks': document.getElementById('o-remarks').value,
       'Transportation Charges': document.getElementById('o-transchg').value,
       'Priority': document.getElementById('o-priority').value,
+      'Corridor': document.getElementById('o-priority').value,
       'Assigned CRM': document.getElementById('o-crm').value,
       'Final Status': document.getElementById('o-finalstatus').value
     };
@@ -2724,6 +2725,7 @@ function submitEditOrder() {
     'Customer Phone': document.getElementById('e-phone').value,
     'City': document.getElementById('e-city').value,
     'Priority': document.getElementById('e-priority').value,
+    'Corridor': document.getElementById('e-priority').value,
     'Payment Mode': document.getElementById('e-paymode').value,
     'Order Status': document.getElementById('e-status').value,
     'Payment Status': document.getElementById('e-paystatus').value,
