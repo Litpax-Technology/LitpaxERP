@@ -623,6 +623,7 @@ function markRequired(ids) {
 // ========== SAVE + ADD MORE ==========
 let currentOrderID = null;
 let savedItemsData = [];
+let itemSaveInProgress = false;
 
 function saveAndAddMore() {
   const btn = document.getElementById('saveAddMoreBtn');
