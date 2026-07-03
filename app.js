@@ -1000,9 +1000,38 @@ function getItemRows() {
   return items;
 }
 
+// Aakhri item card adhoora to nahi? (kuch bhara hai lekin complete nahi)
+function hasPartialItemCard() {
+  const cards = document.querySelectorAll('#itemsBody [id^="item-row-"]');
+  if (!cards.length) return false;
+  const card = cards[cards.length - 1];
+  const id   = card.id.replace('item-row-', '');
+
+  const model = document.getElementById(`im-model-${id}`)?.value?.trim() || '';
+  const btype = document.getElementById(`im-btype-${id}`)?.value || '';
+  const pt    = document.getElementById(`im-pricetype-${id}`)?.value || '';
+  const volt  = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
+  const amp   = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
+  const qty   = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
+  const price = parseFloat(document.getElementById(`im-price-${id}`)?.value) || 0;
+  const pw    = parseFloat(document.getElementById(`im-perwatt-${id}`)?.value) || 0;
+
+  const anyFilled = model || btype || pt || volt || amp || qty || price || pw;
+  if (!anyFilled) return false;   // bilkul khaali card = theek hai, skip hoga
+
+  // Kuch bhara hai — to poora complete hona chahiye
+  const complete = model && btype && pt && qty > 0 && (pt === 'Per Watt' ? pw > 0 : price > 0);
+  return !complete;
+}
+
 function submitOrder() {
   const btn = document.getElementById('submitOrderBtn');
   if (btn && btn.disabled) return;
+  if (itemSaveInProgress) { toast('Item save ho raha hai — 1 second ruko', 'w'); return; }
+  if (hasPartialItemCard()) {
+    toast('Aakhri item adhoora bhara hai — pehle poora bharo (ya khaali chhodo), fir Create Order karo', 'e');
+    return;
+  }
 
   if (currentOrderID) {
     if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
