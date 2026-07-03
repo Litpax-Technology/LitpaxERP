@@ -2178,6 +2178,7 @@ function openPayDrawer(o) {
   document.getElementById('payDrawerTitle').textContent = '💳 ' + orderID;
   document.getElementById('payDrawerSub').textContent   = custName + (total ? ' | ' + total : '');
   document.getElementById('paySlipInput').value = '';
+  document.getElementById('paySlipNote').value = '';
   document.getElementById('payUploadPrompt').style.display = 'block';
   document.getElementById('payFilePreview').style.display  = 'none';
   document.getElementById('payUploadBtn').disabled = true;
@@ -2208,6 +2209,7 @@ function loadPaySlips(orderID, custName) {
         <div class="slip-info">
           <div class="slip-name">${s.name}</div>
           <div class="slip-date">${s.date}</div>
+          ${s.note ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;padding:4px 8px;background:var(--surface2);border-radius:4px;border-left:2px solid var(--accent);">📝 ${s.note}</div>` : ''}
         </div>
         <a href="${s.url}" target="_blank" class="btn btn-sm btn-info" style="text-decoration:none;flex-shrink:0;">View</a>
       </div>`).join('');
@@ -2252,7 +2254,8 @@ function uploadPaySlip() {
     api({ action: 'getUploadUrl', orderID, fileName, mimeType }, folderRes => {
       if (!folderRes.success) { status.style.color = 'var(--error)'; status.textContent = '❌ Folder error'; btn.disabled = false; btn.textContent = '⬆ Upload Payment Proof'; return; }
       const folderId = folderRes.folderId;
-      const meta = JSON.stringify({ name: fileName, parents: [folderId] });
+      const note = (document.getElementById('paySlipNote')?.value || '').trim();
+      const meta = JSON.stringify({ name: fileName, parents: [folderId], description: note });
       const form = new FormData();
       form.append('metadata', new Blob([meta], { type: 'application/json' }));
       form.append('file', new Blob([file], { type: mimeType }));
@@ -2264,6 +2267,7 @@ function uploadPaySlip() {
           fetch('https://www.googleapis.com/drive/v3/files/' + data.id + '/permissions', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
           status.style.color = 'var(--success)'; status.textContent = '✅ Uploaded successfully!';
           document.getElementById('paySlipInput').value = '';
+          document.getElementById('paySlipNote').value = '';
           document.getElementById('payUploadPrompt').style.display = 'block';
           document.getElementById('payFilePreview').style.display  = 'none';
           document.getElementById('payUploadZone').classList.remove('has-file');
