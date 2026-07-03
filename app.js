@@ -667,6 +667,7 @@ function saveAndAddMore() {
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  itemSaveInProgress = true;
 
   const doSave = (orderID) => {
     api({ action: 'addOrderItem', 'Order ID': orderID, ...itemData }, r => {
@@ -677,9 +678,12 @@ function saveAndAddMore() {
         itemRowCount = 0;
         addItemRow();
         if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
+        itemSaveInProgress = false;
         toast('Item saved!');
+        
         setTimeout(() => { document.getElementById('itemsBody')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
       } else {
+        itemSaveInProgress = false;
         toast(r.message || 'Save failed', 'e');
         if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
       }
@@ -687,7 +691,7 @@ function saveAndAddMore() {
   };
 
   if (!currentOrderID) {
-    if (!validateOrderMeta()) { if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
+    if (!validateOrderMeta()) { itemSaveInProgress = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; } return; }
     const cust = document.getElementById('o-cust').value.trim();
     const todayVal = document.getElementById('o-date')?.value;
     const possibleDup = (allOrders||[]).find(o => (o['Customer Name']||'').trim().toLowerCase() === cust.toLowerCase() && toInputDate(o['Date']||'') === todayVal);
@@ -721,7 +725,8 @@ function saveAndAddMore() {
 
     api(orderData, r => {
       if (!r.success) {
-        toast(r.message || 'Order create failed', 'e');
+        itemSaveInProgress = false;
+        if (!r.success) { toast(r.message, 'e'); if (btn) { btn.disabled = false; btn.textContent = 'Create Order'; } return; }
         if (btn) { btn.disabled = false; btn.textContent = '✓ Save + Add More Item'; }
         return;
       }
