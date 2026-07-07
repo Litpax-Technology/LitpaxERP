@@ -351,6 +351,29 @@ function toInputDate(val) {
   return s;
 }
 
+// ========== CUSTOMER AUTOFILL (New Order) ==========
+let custCache = [];
+
+function loadCustCache() {
+  api({ action: 'getCustomers' }, r => {
+    custCache = (r.success && r.data) ? r.data : [];
+    const dl = document.getElementById('custSuggestions');
+    if (dl) dl.innerHTML = custCache.map(c => `<option value="${(c.CompanyName||'').replace(/"/g,'&quot;')}">`).join('');
+  });
+}
+
+function onCustNameInput() {
+  const val = (document.getElementById('o-cust')?.value || '').trim().toLowerCase();
+  if (!val) return;
+  const match = custCache.find(c => (c.CompanyName||'').trim().toLowerCase() === val);
+  if (!match) return;
+  const phoneEl = document.getElementById('o-phone');
+  const cityEl  = document.getElementById('o-city');
+  if (phoneEl && match.Phone) { phoneEl.value = match.Phone; clearErr(phoneEl); }
+  if (cityEl && match.City)   { cityEl.value  = match.City;  clearErr(cityEl); }
+  toast('Customer details autofill ho gayi ✓');
+}
+
 // ========== ORDERS ==========
 let allOrders = [], orderFilter = 'all';
 
