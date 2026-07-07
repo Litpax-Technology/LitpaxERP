@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitpaxERP — Sales Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#1e1b4b; --accent:#6366f1; --accent2:#8b5cf6; --green:#16a34a; --red:#dc2626;
+    --orange:#ea580c; --teal:#0891b2; --pink:#db2777;
+    --bg:#f4f4fb; --card:#fff; --border:#e6e6f2; --muted:#6b7280;
+    --mono:'JetBrains Mono',monospace; --display:'Sora',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);padding:20px;min-height:100vh;}
+
+  /* ── HEADER ── */
+  .top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+  .brand h1{font-family:var(--display);font-size:21px;font-weight:800;letter-spacing:-.3px;}
+  .brand h1 span{color:var(--accent);}
+  .brand p{font-size:12px;color:var(--muted);margin-top:2px;}
+  .upd{text-align:right;font-size:11px;color:var(--muted);}
+  .upd .live{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--green);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+  .dot.err{background:var(--red);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ── DATE PRESETS ── */
+  .presets{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+  .preset{background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:7px 15px;font-family:'DM Sans';font-size:12.5px;font-weight:600;color:var(--navy);cursor:pointer;transition:all .12s;}
+  .preset:hover{border-color:var(--accent);}
+  .preset.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .preset.refresh{margin-left:auto;color:var(--accent);border-color:#ddd;}
+
+  /* ── KPI GRID ── */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px;margin-bottom:18px;}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kc,var(--accent));}
+  .kpi .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .kpi .val{font-family:var(--mono);font-size:27px;font-weight:800;margin-top:8px;color:var(--kc,var(--navy));line-height:1;}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:6px;}
+
+  /* ── CHART CARD ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  .card .ch{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  .card .ch h3{font-family:var(--display);font-size:15px;font-weight:700;}
+  .card .ch .meta{font-size:11px;color:var(--muted);}
+  .card .cb{padding:20px;}
+  canvas{max-height:420px;}
+
+  .empty{text-align:center;padding:50px 10px;color:var(--muted);font-size:14px;}
+  .empty .ei{font-size:30px;margin-bottom:8px;}
+  .loader{display:inline-block;width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .foot{text-align:center;font-size:11px;color:var(--muted);margin-top:22px;padding-bottom:8px;}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+  @media(max-width:560px){body{padding:12px;}.kpi .val{font-size:23px;}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <h1>Litpax<span>ERP</span> — Sales Dashboard</h1>
+    <p id="range-label">Loading…</p>
+  </div>
+  <div class="upd">
+    <div class="live"><span class="dot" id="dot"></span><span id="dot-lbl">Connecting…</span></div>
+    <div id="last-upd" style="margin-top:4px;">—</div>
+  </div>
+</div>
+
+<div class="presets">
+  <button class="preset" id="p-today"     onclick="setRange('today',this)">Today</button>
+  <button class="preset active" id="p-thismonth" onclick="setRange('thismonth',this)">This Month</button>
+  <button class="preset" id="p-lastmonth" onclick="setRange('lastmonth',this)">Last Month</button>
+  <button class="preset" id="p-thisyear"  onclick="setRange('thisyear',this)">This Year</button>
+  <button class="preset" id="p-all"       onclick="setRange('all',this)">All Time</button>
+  <button class="preset refresh" onclick="loadData()">↻ Refresh</button>
+</div>
+
+<!-- KPI CARDS -->
+<div class="kpis">
+  <div class="kpi" style="--kc:var(--accent)"><div class="lbl">📋 Total Orders</div><div class="val" id="k-orders">—</div><div class="sub" id="k-orders-sub">in period</div></div>
+  <div class="kpi" style="--kc:var(--green)"><div class="lbl">💰 Total Order Value</div><div class="val" id="k-value">—</div><div class="sub">₹ (incl. GST)</div></div>
+  <div class="kpi" style="--kc:var(--teal)"><div class="lbl">🔋 Total Battery Qty</div><div class="val" id="k-battery">—</div><div class="sub">units</div></div>
+  <div class="kpi" style="--kc:var(--orange)"><div class="lbl">🔌 Total Chargers Qty</div><div class="val" id="k-charger">—</div><div class="sub">units</div></div>
+  <div class="kpi" style="--kc:var(--accent2)"><div class="lbl">📊 Avg Order Value</div><div class="val" id="k-avg">—</div><div class="sub">₹ per order</div></div>
+  <div class="kpi" style="--kc:var(--pink)"><div class="lbl">📅 Aaj Ke Orders</div><div class="val" id="k-today">—</div><div class="sub" id="k-today-sub">today</div></div>
+  <div class="kpi" style="--kc:var(--navy)"><div class="lbl">🗓 This Month Orders</div><div class="val" id="k-month">—</div><div class="sub" id="k-month-sub">this month</div></div>
+  <div class="kpi" style="--kc:var(--green)"><div class="lbl">🗓 This Month Value</div><div class="val" id="k-monthval">—</div><div class="sub">₹ this month</div></div>
+</div>
+
+<!-- SALESPERSON PERFORMANCE -->
+<div class="card">
+  <div class="ch">
+    <h3>👤 Sales Person Performance</h3>
+    <span class="meta" id="sp-meta"></span>
+  </div>
+  <div class="cb" id="sp-wrap"><div class="empty"><span class="loader"></span></div></div>
+</div>
+
+<div class="foot">Litpax Technology Pvt. Ltd. — LitpaxERP Sales Dashboard · read-only · auto-refresh har 5 min</div>
+
+<script>
+// ═══ Same GAS URL as ERP app.js ═══
+const API = 'https://script.google.com/macros/s/AKfycbxlYHhH5z00MDCCBV8hDUiqgAGDCmxGocYoyOTq_EYDsa9tfnn9ay2mQvWFdlOYKQQp8w/exec';
+
+let _allOrders = [];
+let _range = 'thismonth';
+let _spChart = null;
+
+// ── JSONP (ERP app.js jaisa) ──
+function api(params, cb){
+  const key = 'cb_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+  window[key] = function(res){ cb(res); delete window[key]; try{ s.remove(); }catch(e){} };
+  const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  const s = document.createElement('script');
+  s.src = `${API}?${qs}&callback=${key}`;
+  s.onerror = () => { cb({ success:false, message:'Network error' }); };
+  document.body.appendChild(s);
+}
+
+function fmt(n){ return Number(n||0).toLocaleString('en-IN'); }
+
+// DD/MM/YYYY → timestamp
+function parseDMY(s){
+  if(!s) return 0;
+  const p = String(s).split('/');
+  if(p.length !== 3) return 0;
+  return new Date(p[2], parseInt(p[1],10)-1, p[0]).getTime() || 0;
+}
+
+function setDot(ok, lbl){
+  document.getElementById('dot').className = 'dot' + (ok?'':' err');
+  document.getElementById('dot-lbl').textContent = lbl;
+}
+
+// ── RANGE ──
+function rangeBounds(preset){
+  const now = new Date();
+  let from = null, to = null, label = 'All Time';
+  if(preset==='today'){ from = new Date(now.getFullYear(),now.getMonth(),now.getDate()); to = new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999); label='Today'; }
+  else if(preset==='thismonth'){ from = new Date(now.getFullYear(),now.getMonth(),1); to = now; label='This Month'; }
+  else if(preset==='lastmonth'){ from = new Date(now.getFullYear(),now.getMonth()-1,1); to = new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999); label='Last Month'; }
+  else if(preset==='thisyear'){ from = new Date(now.getFullYear(),0,1); to = now; label='This Year'; }
+  return { from: from?from.getTime():null, to: to?to.getTime():null, label };
+}
+
+function setRange(preset, btn){
+  _range = preset;
+  document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  render();
+}
+
+// ── LOAD ──
+function loadData(){
+  setDot(true,'Refreshing…');
+  api({ action:'getOrders' }, r => {
+    if(!r || !r.success){ setDot(false,'Error'); document.getElementById('sp-wrap').innerHTML = `<div class="empty"><div class="ei">❌</div>${(r&&r.message)||'Data load nahi hua'}</div>`; return; }
+    _allOrders = r.data || [];
+    render();
+    setDot(true,'Live');
+    document.getElementById('last-upd').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  });
+}
+
+// ── RENDER ──
+function render(){
+  const { from, to, label } = rangeBounds(_range);
+  document.getElementById('range-label').textContent = label + ' · ' + _allOrders.length + ' total orders in system';
+
+  const orders = _allOrders.filter(o => {
+    if(from===null && to===null) return true;
+    const t = parseDMY(o['Date']);
+    if(from!==null && t < from) return false;
+    if(to!==null   && t > to)   return false;
+    return true;
+  });
+
+  const totalOrders = orders.length;
+  const totalValue  = orders.reduce((s,o)=> s + (parseFloat(o['Total Order Value'])||0), 0);
+  const totalBattery= orders.reduce((s,o)=> s + (parseFloat(o['Total Qty'])||0), 0);
+  const totalCharger= orders.reduce((s,o)=> s + (parseFloat(o['Charger Qty'])||0), 0);
+  const avgValue    = totalOrders ? totalValue/totalOrders : 0;
+
+  // Today & This month (period se independent — hamesha actual today/month)
+  const now = new Date();
+  const todayFrom = new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  const monthFrom = new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const todayOrders = _allOrders.filter(o => parseDMY(o['Date']) >= todayFrom);
+  const monthOrders = _allOrders.filter(o => parseDMY(o['Date']) >= monthFrom);
+  const monthValue  = monthOrders.reduce((s,o)=> s + (parseFloat(o['Total Order Value'])||0), 0);
+
+  setText('k-orders', totalOrders);
+  setText('k-orders-sub', label.toLowerCase());
+  setText('k-value', '₹' + fmt(Math.round(totalValue)));
+  setText('k-battery', fmt(totalBattery));
+  setText('k-charger', fmt(totalCharger));
+  setText('k-avg', '₹' + fmt(Math.round(avgValue)));
+  setText('k-today', todayOrders.length);
+  setText('k-month', monthOrders.length);
+  setText('k-monthval', '₹' + fmt(Math.round(monthValue)));
+
+  renderSalesPerf(orders);
+}
+
+function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+
+// ── SALESPERSON PERFORMANCE (Value + Qty) ──
+function renderSalesPerf(orders){
+  const wrap = document.getElementById('sp-wrap');
+  const map = {};
+  orders.forEach(o => {
+    const sp = o['Sales Person Name'] || 'Unknown';
+    if(!map[sp]) map[sp] = { name:sp, orders:0, qty:0, value:0 };
+    map[sp].orders++;
+    map[sp].qty   += parseFloat(o['Total Qty'])||0;
+    map[sp].value += parseFloat(o['Total Order Value'])||0;
+  });
+  const list = Object.values(map).sort((a,b)=> b.value - a.value);
+  document.getElementById('sp-meta').textContent = list.length ? list.length + ' sales persons' : '';
+
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty"><div class="ei">📭</div>Is period koi order nahi mila</div>`;
+    return;
+  }
+
+  wrap.innerHTML = '<canvas id="spChart"></canvas>';
+  const cv = document.getElementById('spChart');
+  if(_spChart) _spChart.destroy();
+  _spChart = new Chart(cv, {
+    type:'bar',
+    data:{
+      labels: list.map(s=>s.name),
+      datasets:[
+        {
+          label:'Order Value (₹)',
+          data: list.map(s=>Math.round(s.value)),
+          backgroundColor:'rgba(99,102,241,.85)',
+          borderRadius:6, borderSkipped:false,
+          yAxisID:'y'
+        },
+        {
+          label:'Battery Qty',
+          data: list.map(s=>s.qty),
+          backgroundColor:'rgba(234,88,12,.85)',
+          borderRadius:6, borderSkipped:false,
+          yAxisID:'y1'
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ position:'top', labels:{ font:{size:12,family:'DM Sans'}, boxWidth:13, padding:14 } },
+        tooltip:{
+          callbacks:{
+            label:(ctx)=>{
+              const s = list[ctx.dataIndex];
+              if(ctx.datasetIndex===0) return `  Value: ₹${fmt(Math.round(s.value))}`;
+              return `  Qty: ${fmt(s.qty)}  ·  ${s.orders} orders`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ font:{size:11,family:'DM Sans',weight:'600'} } },
+        y:{  type:'linear', position:'left',  beginAtZero:true,
+             title:{ display:true, text:'Order Value (₹)', font:{size:10} },
+             ticks:{ font:{size:10}, callback:v=>'₹'+(v>=100000?(v/100000).toFixed(1)+'L':v>=1000?(v/1000).toFixed(0)+'k':v) },
+             grid:{ color:'rgba(0,0,0,.04)' } },
+        y1:{ type:'linear', position:'right', beginAtZero:true,
+             title:{ display:true, text:'Battery Qty', font:{size:10} },
+             ticks:{ font:{size:10} },
+             grid:{ drawOnChartArea:false } }
+      }
+    }
+  });
+}
+
+// ── INIT ──
+loadData();
+setInterval(loadData, 5*60*1000);
+</script>
+</body>
+</html>
