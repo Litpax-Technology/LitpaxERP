@@ -281,6 +281,7 @@ function toast(msg, type='s') {
 function openModal(id) {
   document.getElementById(id).classList.add('show');
   if (id === 'orderModal') {
+    if (!custCache.length) loadCustCache();
     const body = document.getElementById('itemsBody');
     if (body && body.children.length === 0) {
       itemRowCount = 0;
