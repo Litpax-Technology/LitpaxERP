@@ -290,7 +290,10 @@ function openModal(id) {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+  m.addEventListener('click', e => {
+    if (m.id === 'orderModal') return;   // sirf ✕ ya Create Order se band hoga
+    if (e.target === m) m.classList.remove('show');
+  });
 });
 
 // BADGE HELPERS
