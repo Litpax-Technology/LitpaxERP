@@ -322,7 +322,7 @@
             <option>Mohit</option><option>Vijay</option><option>Sahil</option><option>Sneha</option>
           </select>
         </div>
-        <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="o-cust" placeholder="Customer name"></div>
+        <div class="form-group"><label class="form-label">Customer Name</label><input class="form-control" id="o-cust" placeholder="Customer name" list="custSuggestions" oninput="onCustNameInput()" autocomplete="off"><datalist id="custSuggestions"></datalist></div>
         <div class="form-group"><label class="form-label">Customer Phone</label><input class="form-control" id="o-phone" placeholder="Phone number"></div>
         <div class="form-group"><label class="form-label">City</label><input class="form-control" id="o-city" placeholder="City"></div>
         <div class="form-group"><label class="form-label">Corridor</label>
