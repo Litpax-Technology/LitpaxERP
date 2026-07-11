@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbyH7n2EfZVM6SUMsGJc9ZwEc2z6l5MushTO9vLjJVlOnne6Y1w0Yi7_gFLVBm--CXvkBg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzjWVqAVOxLNpyiVIJUltqhMC1PxM3nt9u75PPkMhsyrVsqHvCd3n03QOIQLH4ry7ziEQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2592,7 +2592,21 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
 
 function removeEditItemRow(id) {
   const row = document.getElementById(`edit-item-row-${id}`);
-  if (row) row.remove();
+  if (!row) return;
+  const itemID  = row.dataset.itemid;
+  const isExist = row.dataset.existing === 'true';
+  const orderID = document.getElementById('e-orderid')?.value || '';
+
+  // Naya (abhi tak save nahi hua) item — sirf screen se hatao
+  if (!isExist || !itemID) { row.remove(); return; }
+
+  // Existing item — backend se bhi delete karo
+  if (!confirm('Yeh item order se hata dein? (Production/Accounts se bhi hat jayega)')) return;
+  row.remove();
+  api({ action: 'deleteOrderItem', 'Item ID': itemID, 'Order ID': orderID }, r => {
+    if (r.success) toast('Item removed');
+    else toast(r.message || 'Delete failed', 'e');
+  });
 }
 
 function onEditItemPriceTypeChange(id) {
