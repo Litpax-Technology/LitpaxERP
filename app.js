@@ -2519,7 +2519,7 @@ function loadMyDashboard() {
 let currentEditOrder = null;
 let editItemRowCount = 0;
 
-function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false, itemID='', volt='', amp='', priceType='', warranty='') {
+function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', remarks='', isExisting=false, itemID='', volt='', amp='', priceType='', warranty='', perwatt='') {
   editItemRowCount++;
   const id     = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
@@ -2562,7 +2562,7 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
         ${lbl('Rate/Unit (₹)', true)}<input class="form-control" id="eim-price-${id}" type="number" value="${price}" placeholder="0" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
       </div>
       <div id="eim-pwfield-${id}" style="display:none;">
-        ${lbl('Per Watt Price (₹)', true)}<input class="form-control" id="eim-perwatt-${id}" type="number" placeholder="e.g. 12" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
+        ${lbl('Per Watt Price (₹)', true)}<input class="form-control" id="eim-perwatt-${id}" type="number" value="${perwatt}" placeholder="e.g. 12" oninput="calcEditItemAuto('${id}')" style="font-size:13px;">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2749,7 +2749,8 @@ function openEditOrder() {
           item['Voltage']||'',
           item['Ampere']||'',
           item['Price Type']||'',
-          item['Warranty']||''
+          item['Warranty']||'',
+          item['Per Watt Price']||''
         );
       });
     }
