@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbxSgkGJNqOM9KLCvNo-0-FUHq4CTN3_8LZxLDsO_Yo8hdyeR5YxIcaYk3UPgbbF5tJeJA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyH7n2EfZVM6SUMsGJc9ZwEc2z6l5MushTO9vLjJVlOnne6Y1w0Yi7_gFLVBm--CXvkBg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2671,14 +2671,70 @@ function renderEditChargers(chargers) {
   const el = document.getElementById('edit-existing-chargers');
   if (!el) return;
   if (!chargers.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 2px;">Koi charger nahi hai is order mein abhi</div>'; return; }
-  el.innerHTML = chargers.map(c => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface2);">
-      <div>
-        <span style="font-size:12px;font-weight:600;color:var(--text);">${c['Charger Model']||'—'}</span>
-        <span style="font-size:11px;color:var(--text3);margin-left:8px;">Qty: ${c['Qty']||0} · ₹${fmt(c['Price/Unit']||0)}/unit · Total ₹${fmt(c['Total']||0)}</span>
+  el.innerHTML = chargers.map(c => {
+    const cid = c['Charger ID'] || '';
+    return `
+    <div id="echg-row-${cid}" style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface2);padding:8px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:var(--text);">${c['Charger Model']||'—'}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px;">Qty: ${c['Qty']||0} · ₹${fmt(c['Price/Unit']||0)}/unit · Total ₹${fmt(c['Total']||0)}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-sm btn-warning" onclick="toggleChargerEdit('${cid}')">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEditCharger('${cid}')">🗑️</button>
+        </div>
       </div>
-      <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${c['Charger ID']||''}</span>
-    </div>`).join('');
+      <div id="echg-edit-${cid}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div><label style="font-size:10px;color:var(--text3);">Model</label><input class="form-control" id="echg-model-${cid}" value="${(c['Charger Model']||'').replace(/"/g,'&quot;')}" style="font-size:12px;margin-top:3px;"></div>
+          <div><label style="font-size:10px;color:var(--text3);">Qty</label><input class="form-control" id="echg-qty-${cid}" type="number" value="${c['Qty']||0}" oninput="calcEditChargerRow('${cid}')" style="font-size:12px;margin-top:3px;"></div>
+          <div><label style="font-size:10px;color:var(--text3);">Price/Unit (₹)</label><input class="form-control" id="echg-price-${cid}" type="number" value="${c['Price/Unit']||0}" oninput="calcEditChargerRow('${cid}')" style="font-size:12px;margin-top:3px;"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+          <span style="font-size:11px;color:var(--text3);">Total incl. 5% GST: <b id="echg-total-${cid}" style="color:var(--success);">₹${fmt(c['Total']||0)}</b></span>
+          <button class="btn btn-sm btn-primary" onclick="saveEditChargerRow('${cid}')">💾 Save</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleChargerEdit(cid) {
+  const el = document.getElementById(`echg-edit-${cid}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function calcEditChargerRow(cid) {
+  const qty   = parseFloat(document.getElementById(`echg-qty-${cid}`)?.value) || 0;
+  const price = parseFloat(document.getElementById(`echg-price-${cid}`)?.value) || 0;
+  const total = qty * price * 1.05;
+  const el = document.getElementById(`echg-total-${cid}`);
+  if (el) el.textContent = '₹' + fmt(total.toFixed(2));
+}
+
+function saveEditChargerRow(cid) {
+  const orderID = document.getElementById('e-orderid').value;
+  const model = document.getElementById(`echg-model-${cid}`)?.value?.trim();
+  const qty   = parseFloat(document.getElementById(`echg-qty-${cid}`)?.value) || 0;
+  const price = parseFloat(document.getElementById(`echg-price-${cid}`)?.value) || 0;
+  if (!model) { toast('Charger Model bharo', 'e'); return; }
+  if (qty <= 0) { toast('Qty 0 se zyada honi chahiye', 'e'); return; }
+  if (price <= 0) { toast('Price 0 se zyada honi chahiye', 'e'); return; }
+  const total = parseFloat((qty * price * 1.05).toFixed(2));
+  api({ action: 'updateChargerItem', 'Charger ID': cid, 'Order ID': orderID, 'Charger Model': model, 'Qty': qty, 'Price/Unit': price, 'Total': total }, r => {
+    if (r.success) { toast('Charger updated!'); loadEditChargers(orderID); }
+    else toast(r.message || 'Update failed', 'e');
+  });
+}
+
+function deleteEditCharger(cid) {
+  const orderID = document.getElementById('e-orderid').value;
+  if (!confirm('Yeh charger delete karein?')) return;
+  api({ action: 'deleteChargerItem', 'Charger ID': cid, 'Order ID': orderID }, r => {
+    if (r.success) { toast('Charger deleted'); loadEditChargers(orderID); }
+    else toast(r.message || 'Delete failed', 'e');
+  });
 }
 
 function loadEditChargers(orderID) {
