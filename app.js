@@ -289,7 +289,14 @@ function openModal(id) {
     }
   }
 }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function closeModal(id) {
+  if (id === 'orderModal' && currentOrderID) {
+    const ok = confirm(`Order ${currentOrderID} already ban chuka hai (items save ho gaye). Band karoge to order rahega hi — sirf naya item add karna ruk jayega. Band karein?`);
+    if (!ok) return;
+  }
+  document.getElementById(id).classList.remove('show');
+  if (id === 'orderModal') resetOrderForm();
+}
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => {
     if (m.id === 'orderModal') return;   // sirf ✕ ya Create Order se band hoga
@@ -2575,10 +2582,12 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
   document.getElementById('editItemsBody').appendChild(div);
 
   // Agar priceType set hai to show/hide fields
+  // Agar priceType set hai to show/hide fields
   if (priceType === 'Per Watt') {
     document.getElementById(`eim-pwfield-${id}`).style.display = 'block';
     document.getElementById(`eim-pricefield-${id}`).style.display = 'none';
   }
+  calcEditItemAuto(id);
 }
 
 function removeEditItemRow(id) {
