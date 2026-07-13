@@ -14,7 +14,8 @@ const roleAccess = {
   Sales:      ['orders','customers','mydashboard'],
   Accounts:   ['accounts'],
   Production: ['production'],
-  CRM:        ['crm','orders']
+  CRM:        ['crm','orders'],
+  Dispatch:   ['dispatch']
 };
 (function applyRole(){
   const allowed = roleAccess[user.role] || roleAccess['Admin'];
@@ -40,7 +41,7 @@ const roleAccess = {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
-  } else if (user.role === 'Production' || user.role === 'CRM') {
+  } else if (user.role === 'Production' || user.role === 'CRM' || user.role === 'Dispatch') {
     document.querySelector('.sidebar').style.display = 'flex';
     // Sirf relevant section dikhao
     ['sec-sales','sec-master','sec-admin','sec-finance'].forEach(id => {
@@ -56,6 +57,8 @@ const roleAccess = {
     setTimeout(() => nav('crm', document.getElementById('nav-crm')), 100);
   } else if (user.role === 'Accounts') {
     setTimeout(() => nav('accounts', document.getElementById('nav-accounts')), 100);
+  } else if (user.role === 'Dispatch') {
+    setTimeout(() => nav('dispatch', document.getElementById('nav-dispatch')), 100);
   }
 })();
 
@@ -65,6 +68,7 @@ const pageMeta = {
   orders:{title:'Sales Orders',sub:'Manage all customer orders'},
   crm:{title:'CRM Tracker',sub:'Order lifecycle tracking'},
   production:{title:'Production',sub:'Production status & updates'},
+  dispatch:{title:'Dispatch',sub:'Dispatch queue & delivery tracking'},
   mydashboard:{title:'My Dashboard',sub:'Your orders & production updates'},
   customers:{title:'Customers',sub:'Customer master data'},
   products:{title:'Products',sub:'Product master data'},
@@ -89,6 +93,7 @@ function loadPage(id) {
   else if (id === 'orders') loadOrders();
   else if (id === 'crm') loadCRM();
   else if (id === 'production') loadProduction();
+  else if (id === 'dispatch') loadDispatch();
   else if (id === 'mydashboard') loadMyDashboard();
   else if (id === 'customers') loadCustomers();
   else if (id === 'products') loadProducts();
@@ -1819,12 +1824,243 @@ function submitProdUpdate() {
       if (params['Production Complete Plan'])   crmParams['Production Complete Plan']   = params['Production Complete Plan'];
       if (params['Production Complete Actual']) crmParams['Production Complete Actual'] = params['Production Complete Actual'];
       if (params['Production Delay'])           crmParams['Production Delay']           = params['Production Delay'];
-      if (params['Status'] === 'Completed')     crmParams['Current Stage']              = 'Production Complete';
+      if (params['Status'] === 'Completed') {
+        // Sirf tab jab is order ke SAARE items Completed hon
+        const orderItems = allProd.filter(x => x['Order ID'] === orderID);
+        const allDone = orderItems.every(x =>
+          (x['Item ID'] === itemID) ? true : (x['Status'] === 'Completed')
+        );
+        if (allDone) crmParams['Current Stage'] = 'Production Complete';
+      }
       if (Object.keys(crmParams).length > 2) api(crmParams, () => {});
       toast('Production updated!');
       closeModal('prodUpdateModal');
       loadProduction();
     } else toast(r.message, 'e');
+  });
+}
+
+// ========== DISPATCH ==========
+let allDspItems = [], dspTotals = {}, dspBilled = {}, dspPayMap = {}, dspOrderMap = {};
+let currentDispatchData = null;
+
+function loadDispatch() {
+  document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
+  api({ action: 'getProduction' }, pr => {
+    allDspItems = pr.data || [];
+    api({ action: 'getOrders' }, or => {
+      dspOrderMap = {};
+      (or.data || []).forEach(o => dspOrderMap[o['Order ID']] = o);
+      api({ action: 'getAllDispatches' }, dr => {
+        dspTotals = {};
+        (dr.data || []).forEach(d => {
+          const iid = d['Item ID'] || '';
+          dspTotals[iid] = (dspTotals[iid]||0) + (parseFloat(d['Dispatch Qty'])||0);
+        });
+        api({ action: 'getAllBillings' }, br => {
+          dspBilled = {};
+          (br.data || []).forEach(b => {
+            const iid = b['Item ID'] || '';
+            dspBilled[iid] = (dspBilled[iid]||0) + (parseFloat(b['Billed Qty'])||0);
+          });
+          const uniq = [...new Set(allDspItems.map(p => p['Order ID']))];
+          dspPayMap = {};
+          let pending = uniq.length;
+          if (!pending) { renderDispatch(); return; }
+          uniq.forEach(oid => {
+            api({ action: 'getPayments', 'Order ID': oid }, pr2 => {
+              const ov = parseFloat(dspOrderMap[oid]?.['Total Order Value']) || 0;
+              dspPayMap[oid] = { received: pr2.totalReceived||0, orderVal: ov, balance: ov - (pr2.totalReceived||0) };
+              if (--pending === 0) renderDispatch();
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+function renderDispatch() {
+  const q = (document.getElementById('dspSearch')?.value||'').toLowerCase();
+  let data = allDspItems;
+  if (q) data = data.filter(p => (p['Order ID']||'').toLowerCase().includes(q) || (p['Customer Name']||'').toLowerCase().includes(q));
+
+  // Stats
+  let ready = 0, partial = 0, done = 0;
+  allDspItems.forEach(p => {
+    const qty  = parseFloat(p['Qty'])||0;
+    const disp = dspTotals[p['Item ID']]||0;
+    if (disp >= qty && qty > 0) done++;
+    else if (disp > 0) partial++;
+    else if ((parseFloat(p['Produced Qty'])||0) > 0) ready++;
+  });
+  setText('dsp-total', allDspItems.length);
+  setText('dsp-ready', ready);
+  setText('dsp-partial', partial);
+  setText('dsp-done', done);
+
+  if (!data.length) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="empty"><div class="empty-ico">🚚</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
+
+  // Order-wise grouping (Production jaisa)
+  const groups = {}, seq = [];
+  data.forEach(p => {
+    const oid = p['Order ID']||'';
+    if (!groups[oid]) { groups[oid] = []; seq.push(oid); }
+    groups[oid].push(p);
+  });
+
+  let rows = '', sr = 1;
+  seq.forEach(orderID => {
+    const items = groups[orderID];
+    const count = items.length;
+    const first = items[0];
+    const o = dspOrderMap[orderID] || {};
+    const pay = dspPayMap[orderID] || {};
+    const bal = pay.balance || 0;
+    const payCell = pay.orderVal
+      ? `<div style="font-size:11px;">Rcvd: <b style="color:var(--success);">₹${fmt(pay.received)}</b></div>
+         <div style="font-size:11px;">Bal: <b style="color:${bal<=0?'var(--success)':'var(--error)'};">₹${fmt(bal)}</b></div>`
+      : '—';
+
+    items.forEach((p, idx) => {
+      const isFirst = idx === 0;
+      const bt = (isFirst && sr > 1) ? 'border-top:2px solid var(--border2);' : '';
+      const qty      = parseFloat(p['Qty'])||0;
+      const produced = parseFloat(p['Produced Qty'])||0;
+      const billed   = dspBilled[p['Item ID']]||0;
+      const disp     = dspTotals[p['Item ID']]||0;
+      const pend     = qty - disp;
+      const statusBadge = disp >= qty && qty > 0
+        ? '<span class="badge b-dispatched">🚚 Dispatched</span>'
+        : disp > 0
+        ? '<span class="badge b-processing">Partial</span>'
+        : produced > 0
+        ? '<span class="badge b-ready">Ready</span>'
+        : '<span class="badge b-pending">Waiting</span>';
+
+      const orderCells = isFirst ? `
+        <td class="td-id" rowspan="${count}" style="vertical-align:middle;${bt}">${orderID}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Order Date']||'')}</td>
+        <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer Name']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${o['City']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${payCell}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(o['Plan Dispatch Date']||'') || '—'}</td>
+      ` : '';
+
+      rows += `<tr>
+        <td style="${bt}">${sr++}</td>
+        <td class="td-id" style="${bt}">${p['Item ID']||''}</td>
+        ${orderCells}
+        <td style="${bt}">${p['Product Model']||''}</td>
+        <td style="${bt}">${p['Battery Type']||''}</td>
+        <td style="${bt}">${qty}</td>
+        <td style="${bt};color:var(--success);font-weight:600;">${produced}</td>
+        <td style="${bt};color:var(--purple);font-weight:600;">${billed || '—'}</td>
+        <td style="${bt};color:var(--warning);font-weight:600;">${disp || '—'}</td>
+        <td style="${bt};font-weight:600;color:${pend<=0?'var(--success)':'var(--warning)'};">${pend<=0?'0 ✅':pend}</td>
+        <td style="${bt}">${statusBadge}</td>
+        <td style="${bt}"><button class="btn btn-sm btn-primary" onclick='openDispatchModal(${JSON.stringify(p)})'>🚚 Dispatch</button></td>
+      </tr>`;
+    });
+  });
+  document.getElementById('dispatchTable').innerHTML = rows;
+}
+
+function searchDispatch() { renderDispatch(); }
+
+function openDispatchModal(p) {
+  const oid  = p['Order ID']||'';
+  const iid  = p['Item ID']||'';
+  const qty      = parseFloat(p['Qty'])||0;
+  const produced = parseFloat(p['Produced Qty'])||0;
+  const billed   = dspBilled[iid]||0;
+  const disp     = dspTotals[iid]||0;
+  const pay      = dspPayMap[oid]||{};
+  currentDispatchData = { p, oid, iid, qty, produced, billed, disp, balance: pay.balance||0 };
+
+  document.getElementById('dsp-orderid-display').textContent = oid;
+  document.getElementById('dsp-itemid-display').textContent  = iid;
+  document.getElementById('dsp-product-display').textContent = p['Product Model']||'';
+  document.getElementById('dsp-m-total').textContent      = qty;
+  document.getElementById('dsp-m-produced').textContent   = produced;
+  document.getElementById('dsp-m-billed').textContent     = billed;
+  document.getElementById('dsp-m-dispatched').textContent = disp;
+
+  const warnEl = document.getElementById('dsp-pay-warning');
+  if ((pay.balance||0) > 0) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = '⚠ Payment pending: ₹' + fmt(pay.balance) + ' balance hai is order ka';
+  } else warnEl.style.display = 'none';
+
+  document.getElementById('dsp-qty').value      = (qty - disp) > 0 ? (qty - disp) : '';
+  document.getElementById('dsp-date').value     = new Date().toISOString().split('T')[0];
+  document.getElementById('dsp-transport').value= dspOrderMap[oid]?.['Suggested Transport'] || '';
+  document.getElementById('dsp-vehicle').value  = '';
+  document.getElementById('dsp-lr').value       = '';
+  document.getElementById('dsp-driver').value   = '';
+  document.getElementById('dsp-remarks').value  = '';
+  openModal('dispatchModal');
+  loadDispatchHistory(oid, iid);
+}
+
+function loadDispatchHistory(orderID, itemID) {
+  const el = document.getElementById('dsp-history');
+  el.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  api({ action: 'getAllDispatches' }, r => {
+    const list = (r.data||[]).filter(d => d['Order ID'] === orderID && d['Item ID'] === itemID);
+    if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:8px;color:var(--text3);font-size:12px;">Koi dispatch entry nahi abhi</div>'; return; }
+    el.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Previous Dispatches</div>' +
+      list.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface);">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">Qty: ${d['Dispatch Qty']||0} &nbsp;|&nbsp; ${d['Transport Name']||'—'} ${d['LR No']?'· LR: '+d['LR No']:''}</div>
+            <div style="font-size:11px;color:var(--text3);">${fmtDisplayDate(d['Dispatch Date']||'')} ${d['Vehicle No']?'· '+d['Vehicle No']:''} ${d['Remarks']?'· '+d['Remarks']:''}</div>
+          </div>
+          <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${d['Dispatch ID']||''}</span>
+        </div>`).join('');
+  });
+}
+
+function submitDispatch() {
+  const c = currentDispatchData;
+  if (!c) return;
+  const btn = document.getElementById('dsp-submit-btn');
+  const dq  = parseFloat(document.getElementById('dsp-qty').value) || 0;
+  if (dq <= 0) { toast('Dispatch Qty 0 se zyada bharo', 'e'); return; }
+  const transport = document.getElementById('dsp-transport').value.trim();
+  if (!transport) { toast('Transport Name bharo', 'e'); return; }
+
+  // ⚠ WARNINGS — block kuch nahi, sirf confirm
+  const warn = [];
+  if (c.balance > 0) warn.push('Payment pending hai — Balance ₹' + fmt(c.balance));
+  if (dq + c.disp > c.billed)   warn.push('Billed qty (' + c.billed + ') se zyada dispatch ho raha hai');
+  if (dq + c.disp > c.produced) warn.push('Produced qty (' + c.produced + ') se zyada dispatch ho raha hai');
+  if (dq + c.disp > c.qty)      warn.push('Order qty (' + c.qty + ') se zyada dispatch ho raha hai');
+  if (warn.length) {
+    const ok = confirm('⚠ Dhyan do:\n\n• ' + warn.join('\n• ') + '\n\nFir bhi dispatch karein?');
+    if (!ok) return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({
+    action: 'addDispatch',
+    'Order ID': c.oid,
+    'Item ID': c.iid,
+    'Dispatch Qty': dq,
+    'Dispatch Date': fmtDisplayDate(document.getElementById('dsp-date').value),
+    'Transport Name': transport,
+    'Vehicle No': document.getElementById('dsp-vehicle').value,
+    'LR No': document.getElementById('dsp-lr').value,
+    'Driver No': document.getElementById('dsp-driver').value,
+    'Remarks': document.getElementById('dsp-remarks').value,
+    'Added By': user.name || ''
+  }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '🚚 Save Dispatch'; }
+    if (r.success) {
+      toast('Dispatch saved! ' + r.dispatchID + (r.orderDispatched ? ' — 🎉 Pura order Dispatched ho gaya!' : ''));
+      closeModal('dispatchModal');
+      loadDispatch();
+    } else toast(r.message || 'Failed', 'e');
   });
 }
 
