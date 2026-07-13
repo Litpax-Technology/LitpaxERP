@@ -1204,7 +1204,6 @@ function submitOrder() {
         pending--;
         if (firstItem && ir.success) {
           firstItem = false;
-          api({ action: 'updateProdItems', 'Order ID': orderID, 'Product Model': item['Product Model'] || '', 'Battery Type': item['Battery Type'] || '' }, () => {});
         }
         if (pending === 0) {
           const charger = getChargerData();
@@ -3190,9 +3189,6 @@ function submitEditOrder() {
     updateTasks.forEach(item => { api({ action: 'updateOrderItem', ...item }, finish); });
     addTasks.forEach(item => {
       api({ action: 'addOrderItem', ...item }, ir => {
-        if (ir.success && currentEditOrder) {
-          api({ action: 'updateProdItems', 'Order ID': orderID, 'Product Model': item['Product Model']||'', 'Battery Type': item['Battery Type']||'' }, () => {});
-        }
         finish();
       });
     });
