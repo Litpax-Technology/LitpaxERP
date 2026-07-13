@@ -45,6 +45,7 @@
   <div class="nav-sec" id="sec-tracking">Tracking</div>
   <div class="nav-item" onclick="nav('crm',this)" id="nav-crm"><span class="nav-icon">🎯</span>CRM Tracker</div>
   <div class="nav-item" onclick="nav('production',this)" id="nav-production"><span class="nav-icon">⚙️</span>Production</div>
+  <div class="nav-item" onclick="nav('dispatch',this)" id="nav-dispatch"><span class="nav-icon">🚚</span>Dispatch</div>
   <div class="nav-sec" id="sec-master">Master Data</div>
   <div class="nav-item" onclick="nav('customers',this)" id="nav-customers"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="nav('products',this)" id="nav-products"><span class="nav-icon">⚡</span>Products</div>
@@ -208,6 +209,35 @@
           <th>Status</th><th>Remarks</th><th>Action</th>
         </tr></thead>
         <tbody id="prodTable"><tr><td colspan="21"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <!-- ===== DISPATCH PAGE ===== -->
+<div class="page" id="page-dispatch">
+  <div class="stats-row">
+    <div class="stat c-blue"><div class="stat-lbl">Total Items</div><div class="stat-val" id="dsp-total">0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">Ready to Dispatch</div><div class="stat-val" id="dsp-ready">0</div></div>
+    <div class="stat c-purple"><div class="stat-lbl">Partial Dispatched</div><div class="stat-val" id="dsp-partial">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Fully Dispatched</div><div class="stat-val" id="dsp-done">0</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Dispatch Queue</div>
+      <div class="card-actions">
+        <input class="search-input" id="dspSearch" placeholder="Search order / customer..." oninput="searchDispatch()" style="width:200px;padding:6px 10px;font-size:12px;">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th><th>City</th>
+          <th>💰 Payment</th><th>Plan Dispatch</th>
+          <th>Product Model</th><th>Battery Type</th><th>Qty</th><th>Produced</th><th>Billed</th>
+          <th>Dispatched</th><th>Pending</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="dispatchTable"><tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -941,6 +971,68 @@
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('billingModal')">Close</button>
       <button class="btn btn-primary" id="bl-submit-btn" onclick="submitBilling()">🧾 Save Billing</button>
+    </div>
+  </div>
+</div>
+
+  <!-- ===== DISPATCH MODAL ===== -->
+<div class="modal-overlay" id="dispatchModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">🚚 Dispatch Entry</div>
+      <button class="modal-close" onclick="closeModal('dispatchModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="background:var(--accent-dim);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Order ID</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;" id="dsp-orderid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Item ID</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;" id="dsp-itemid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Product</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);" id="dsp-product-display"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        <div style="background:var(--info-dim);border:1px solid var(--info-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--info);text-transform:uppercase;font-weight:600;">Total Qty</div>
+          <div style="font-size:16px;font-weight:700;color:var(--info);" id="dsp-m-total">0</div>
+        </div>
+        <div style="background:var(--success-dim);border:1px solid var(--success-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--success);text-transform:uppercase;font-weight:600;">Produced</div>
+          <div style="font-size:16px;font-weight:700;color:var(--success);" id="dsp-m-produced">0</div>
+        </div>
+        <div style="background:var(--purple-dim);border:1px solid var(--purple-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--purple);text-transform:uppercase;font-weight:600;">Billed</div>
+          <div style="font-size:16px;font-weight:700;color:var(--purple);" id="dsp-m-billed">0</div>
+        </div>
+        <div style="background:var(--warning-dim);border:1px solid var(--warning-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--warning);text-transform:uppercase;font-weight:600;">Dispatched</div>
+          <div style="font-size:16px;font-weight:700;color:var(--warning);" id="dsp-m-dispatched">0</div>
+        </div>
+      </div>
+      <div id="dsp-pay-warning" style="display:none;margin-bottom:12px;padding:9px 12px;background:var(--error-dim);border:1px solid var(--error-b);border-radius:8px;font-size:12px;color:var(--error);font-weight:500;"></div>
+      <div id="dsp-history" style="margin-bottom:12px;max-height:150px;overflow-y:auto;"></div>
+      <div style="border-top:2px solid var(--border);padding-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">+ New Dispatch Entry</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Dispatch Qty <span class="req-mark">*</span></label><input class="form-control" type="number" id="dsp-qty" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Dispatch Date <span class="req-mark">*</span></label><input class="form-control" type="date" id="dsp-date"></div>
+          <div class="form-group"><label class="form-label">Transport Name <span class="req-mark">*</span></label><input class="form-control" id="dsp-transport" placeholder="Transport name"></div>
+          <div class="form-group"><label class="form-label">Vehicle No</label><input class="form-control" id="dsp-vehicle" placeholder="HR-XX-XXXX"></div>
+          <div class="form-group"><label class="form-label">LR / Bilty No</label><input class="form-control" id="dsp-lr" placeholder="LR number"></div>
+          <div class="form-group"><label class="form-label">Driver No</label><input class="form-control" id="dsp-driver" placeholder="Phone"></div>
+          <div class="form-group form-full"><label class="form-label">Remarks</label><input class="form-control" id="dsp-remarks" placeholder="Optional"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('dispatchModal')">Close</button>
+      <button class="btn btn-primary" id="dsp-submit-btn" onclick="submitDispatch()">🚚 Save Dispatch</button>
     </div>
   </div>
 </div>
