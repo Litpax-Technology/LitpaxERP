@@ -437,7 +437,8 @@ function renderOrders() {
       <td>${o['Final Status'] ? `<span class="badge b-processing">${o['Final Status']}</span>` : '—'}</td>
       <td style="display:flex;gap:4px;">
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
-        <button class="btn btn-sm btn-success" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
+        <button class="btn btn-sm btn-success" onclick='openPaymentModal("${o['Order ID']||''}","${(o['Customer Name']||'').replace(/"/g,'&quot;')}")' title="Payment Entry">💰</button>
+        <button class="btn btn-sm" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
       </td>
     </tr>`).join('');
 }
