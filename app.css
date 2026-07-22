@@ -825,6 +825,9 @@ textarea.form-control      { resize: vertical; min-height: 72px; }
 .modal-close:hover { background: var(--surface3); color: var(--text); }
 .modal-body { padding: 20px; }
 .modal-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
   display: flex;
