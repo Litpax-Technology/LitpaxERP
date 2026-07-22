@@ -1758,14 +1758,18 @@ function printOrder() {
   if (!currentEditOrder) { toast('Order data nahi mila', 'e'); return; }
   const o   = currentEditOrder;
   const oid = o['Order ID'] || '';
-  const btn = document.getElementById('detailPrintBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Ready ho raha...'; }
+
+  // Window CLICK ke saath hi kholni hai — async callback se kholi to browser block kar deta hai
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { toast('Popup block ho gaya — address bar ke popup icon se allow karo', 'e'); return; }
+  win.document.write('<p style="font-family:Arial;padding:24px;color:#555;">Order data load ho raha hai...</p>');
 
   api({ action: 'getItemsByOrder', 'Order ID': oid }, ir => {
     const items = (ir.data || []).filter(i => (i['Battery Type'] || '') !== 'Charger');
     api({ action: 'getChargersByOrder', 'Order ID': oid }, cr => {
-      if (btn) { btn.disabled = false; btn.textContent = '🖨️ Print / PDF'; }
-      buildOrderPrint(o, items, cr.data || []);
+      win.document.open();
+      win.document.write(buildOrderPrint(o, items, cr.data || []));
+      win.document.close();
     });
   });
 }
@@ -1894,10 +1898,7 @@ ${o['Order Remarks'] ? `<div class="rem"><b>Remarks:</b> ${esc(o['Order Remarks'
 <div class="foot"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0</span></div>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'width=960,height=720');
-  if (!win) { toast('Popup block ho gaya — browser mein popup allow karo', 'e'); return; }
-  win.document.write(html);
-  win.document.close();
+  return html;
 }
 
 function calcProdQty() {
