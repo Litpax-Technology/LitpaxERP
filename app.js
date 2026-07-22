@@ -1753,6 +1753,153 @@ function openPrintSlip() {
   win.document.close();
 }
 
+// ========== ORDER PRINT / PDF ==========
+function printOrder() {
+  if (!currentEditOrder) { toast('Order data nahi mila', 'e'); return; }
+  const o   = currentEditOrder;
+  const oid = o['Order ID'] || '';
+  const btn = document.getElementById('detailPrintBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ready ho raha...'; }
+
+  api({ action: 'getItemsByOrder', 'Order ID': oid }, ir => {
+    const items = (ir.data || []).filter(i => (i['Battery Type'] || '') !== 'Charger');
+    api({ action: 'getChargersByOrder', 'Order ID': oid }, cr => {
+      if (btn) { btn.disabled = false; btn.textContent = '🖨️ Print / PDF'; }
+      buildOrderPrint(o, items, cr.data || []);
+    });
+  });
+}
+
+function buildOrderPrint(o, items, chargers) {
+  const oid = o['Order ID'] || '';
+  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+  const info = (l, v) => `<div class="cell"><span class="lbl">${l}</span><span class="val">${esc(v) || '—'}</span></div>`;
+
+  const itemRows = items.map((i, n) => `
+    <tr>
+      <td>${n + 1}</td>
+      <td>${esc(i['Item ID'])}</td>
+      <td>${esc(i['Product Model'])}</td>
+      <td>${esc(i['Battery Type'])}</td>
+      <td>${esc(i['Warranty']) || '—'}</td>
+      <td class="r">${esc(i['Qty'])}</td>
+      <td class="r">₹${fmt(i['Price Unit (Excluding GST)'])}</td>
+      <td class="r b">₹${fmt(Math.round(parseFloat(i['Total'] || 0) * 1.18))}</td>
+    </tr>`).join('');
+
+  const chargerBlock = chargers.length ? `
+    <div class="sec-t">⚡ Charger</div>
+    <table>
+      <thead><tr><th>#</th><th>Charger ID</th><th>Model</th><th class="r">Qty</th><th class="r">Rate/Unit</th><th class="r">Total (incl. 5% GST)</th></tr></thead>
+      <tbody>${chargers.map((c, n) => `
+        <tr>
+          <td>${n + 1}</td>
+          <td>${esc(c['Charger ID'])}</td>
+          <td>${esc(c['Charger Model'])}</td>
+          <td class="r">${esc(c['Qty'])}</td>
+          <td class="r">₹${fmt(c['Price/Unit'] || 0)}</td>
+          <td class="r b">₹${fmt(c['Total'] || 0)}</td>
+        </tr>`).join('')}</tbody>
+    </table>` : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(oid)} — ${esc(o['Customer Name'])}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:#1A2333;font-size:12px;}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0D1F3C;padding-bottom:10px;margin-bottom:14px;}
+  .brand{font-size:20px;font-weight:800;color:#0D1F3C;}
+  .brand span{color:#157A5C;}
+  .sub{font-size:11px;color:#666;margin-top:2px;}
+  .meta{text-align:right;font-size:11px;color:#444;line-height:1.7;}
+  .meta .oid{font-size:15px;font-weight:700;color:#157A5C;}
+  .no-print{margin-bottom:14px;}
+  .no-print button{padding:9px 20px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-right:8px;border:none;}
+  .b-print{background:#157A5C;color:#fff;}
+  .b-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
+  .sec-t{font-size:11px;font-weight:700;color:#0D1F3C;background:#EEF5F2;border-left:4px solid #157A5C;padding:6px 11px;border-radius:3px;margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.4px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid #E4E6EA;border-radius:4px;overflow:hidden;}
+  .cell{padding:7px 11px;border-right:1px solid #E4E6EA;border-bottom:1px solid #E4E6EA;}
+  .lbl{display:block;font-size:9px;color:#828A98;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;}
+  .val{display:block;font-size:12px;font-weight:600;margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  thead tr{background:#0D1F3C;color:#fff;}
+  th{padding:7px 9px;text-align:left;font-size:10px;font-weight:600;letter-spacing:0.3px;}
+  td{padding:7px 9px;border-bottom:1px solid #E4E6EA;}
+  tbody tr:nth-child(even){background:#FAFAFB;}
+  .r{text-align:right;}
+  .b{font-weight:700;color:#0D1F3C;}
+  .tot{display:flex;justify-content:flex-end;gap:26px;margin-top:12px;padding:11px 14px;background:#EEF5F2;border:1px solid #C7DED6;border-radius:5px;}
+  .tot div{text-align:right;}
+  .tot .lbl{font-size:9px;}
+  .tot .amt{font-size:17px;font-weight:800;color:#157A5C;}
+  .rem{margin-top:12px;padding:9px 12px;border:1px solid #E4E6EA;border-radius:4px;font-size:11.5px;}
+  .sign{display:flex;justify-content:space-between;margin-top:44px;font-size:11px;color:#666;}
+  .sign div{border-top:1px solid #999;padding-top:5px;width:180px;text-align:center;}
+  .foot{margin-top:20px;display:flex;justify-content:space-between;font-size:10px;color:#999;border-top:1px solid #E4E6EA;padding-top:8px;}
+  @media print{.no-print{display:none!important;}body{padding:12px 16px;}}
+</style></head><body>
+
+<div class="head">
+  <div>
+    <div class="brand">Litpax<span>ERP</span></div>
+    <div class="sub">Sales Order Confirmation</div>
+  </div>
+  <div class="meta">
+    <div class="oid">${esc(oid)}</div>
+    Order Date: <b>${esc(fmtDisplayDate(o['Date'] || ''))}</b><br>
+    Printed: ${new Date().toLocaleDateString('en-IN')}
+  </div>
+</div>
+
+<div class="no-print">
+  <button class="b-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  <button class="b-close" onclick="window.close()">✕ Close</button>
+</div>
+
+<div class="sec-t">Customer &amp; Order Details</div>
+<div class="grid">
+  ${info('Customer Name', o['Customer Name'])}
+  ${info('Phone', o['Customer Phone'])}
+  ${info('City', o['City'])}
+  ${info('Sales Person', o['Sales Person Name'])}
+  ${info('Assigned CRM', o['Assigned CRM'])}
+  ${info('Corridor', o['Corridor'] || o['Priority'])}
+  ${info('Payment Mode', o['Payment Mode'])}
+  ${info('Payment Status', o['Payment Status'])}
+  ${info('Order Status', o['Order Status'])}
+  ${info('Plan Payment Date', fmtDisplayDate(o['Plan Payment Date'] || ''))}
+  ${info('Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date'] || ''))}
+  ${info('Suggested Transport', o['Suggested Transport'])}
+</div>
+
+<div class="sec-t">📦 Order Items</div>
+<table>
+  <thead><tr><th>#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Warranty</th><th class="r">Qty</th><th class="r">Rate/Unit (Ex GST)</th><th class="r">Total (incl. 18% GST)</th></tr></thead>
+  <tbody>${itemRows || '<tr><td colspan="8" style="text-align:center;color:#888;">Koi item nahi</td></tr>'}</tbody>
+</table>
+
+${chargerBlock}
+
+<div class="tot">
+  <div><span class="lbl">Total Qty</span><span class="amt" style="color:#0D1F3C;">${fmt(o['Total Qty'] || 0)}</span></div>
+  <div><span class="lbl">Transport Charges</span><span class="amt" style="color:#0D1F3C;">₹${fmt(o['Transportation Charges'] || 0)}</span></div>
+  <div><span class="lbl">Total Order Value</span><span class="amt">₹${fmt(o['Total Order Value'] || 0)}</span></div>
+</div>
+
+${o['Order Remarks'] ? `<div class="rem"><b>Remarks:</b> ${esc(o['Order Remarks'])}</div>` : ''}
+
+<div class="sign"><div>Customer Signature</div><div>For Litpax Technology Pvt. Ltd.</div></div>
+<div class="foot"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0</span></div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { toast('Popup block ho gaya — browser mein popup allow karo', 'e'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
 function calcProdQty() {
   const produced = parseFloat(document.getElementById('pu-produced-qty').value) || 0;
   const total    = parseFloat(document.getElementById('pu-total-qty').textContent) || 0;
