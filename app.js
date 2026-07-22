@@ -439,6 +439,7 @@ function renderOrders() {
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
         <button class="btn btn-sm btn-success" onclick='openPaymentModal("${o['Order ID']||''}","${(o['Customer Name']||'').replace(/"/g,'&quot;')}")' title="Payment Entry">💰</button>
         <button class="btn btn-sm" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
+        <button class="btn btn-sm" onclick='printOrderRow(${JSON.stringify(o)})' title="Print / PDF">🖨️</button>
       </td>
     </tr>`).join('');
 }
@@ -1752,6 +1753,8 @@ function openPrintSlip() {
   win.document.write(html);
   win.document.close();
 }
+
+function printOrderRow(o) { currentEditOrder = o; printOrder(); }
 
 // ========== ORDER PRINT / PDF ==========
 function printOrder() {
