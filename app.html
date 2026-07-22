@@ -479,8 +479,9 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn" onclick="closeModal('orderModal')">Cancel</button>
-      <button class="btn btn-primary" id="submitOrderBtn" onclick="submitOrder()">Create Order</button>
+      <button class="btn" onclick="closeModal('orderDetailModal')">Close</button>
+      <button class="btn btn-info" id="detailPrintBtn" onclick="printOrder()">🖨️ Print / PDF</button>
+       <button class="btn btn-success" id="detailPaySlipBtn" onclick="openPayDrawerFromDetail()">💳 Payment Slips</button>
     </div>
   </div>
 </div>
