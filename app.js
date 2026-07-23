@@ -1561,9 +1561,13 @@ function loadProduction() {
     if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
     allProd = r.data || [];
     document.getElementById('prod-total').textContent = allProd.length;
-    document.getElementById('prod-inprog').textContent = allProd.filter(p => p['Status'] === 'In Progress').length;
-    document.getElementById('prod-done').textContent = allProd.filter(p => p['Status'] === 'Completed').length;
-    document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Status'] === 'Delayed').length;
+    const _live = p => {
+      const t = parseFloat(p['Qty']) || 0, q = parseFloat(p['Produced Qty']) || 0;
+      return (t > 0 && q >= t) ? 'Completed' : (q > 0 || p['Production Start Actual']) ? 'In Progress' : 'Pending';
+    };
+    document.getElementById('prod-inprog').textContent = allProd.filter(p => _live(p) === 'In Progress').length;
+    document.getElementById('prod-done').textContent = allProd.filter(p => _live(p) === 'Completed').length;
+    document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Production Delay']).length;
     if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
 
     // Billings fetch karo — item level pe billed qty
@@ -1599,7 +1603,12 @@ function renderProduction(billedMap) {
       items.forEach((p, idx) => {
         const isFirst = idx === 0;
         const bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
-        const statusBadge = `<span class="badge ${p['Status']==='Completed'?'b-ready':p['Status']==='In Progress'?'b-processing':p['Status']==='Delayed'?'b-delay':'b-pending'}">${p['Status']||'Pending'}</span>`;
+        const _tQty = parseFloat(p['Qty']) || 0;
+        const _pQty = parseFloat(p['Produced Qty']) || 0;
+        const liveStatus = (_tQty > 0 && _pQty >= _tQty) ? 'Completed'
+                         : (_pQty > 0 || p['Production Start Actual']) ? 'In Progress'
+                         : 'Pending';
+        const statusBadge = `<span class="badge ${liveStatus==='Completed'?'b-ready':liveStatus==='In Progress'?'b-processing':'b-pending'}">${liveStatus}</span>`;
         const delayBadge  = p['Production Delay'] ? `<span class="badge b-delay">${p['Production Delay']}</span>` : '';
 
         const orderCells = isFirst ? `
