@@ -1636,9 +1636,7 @@ function renderProduction(billedMap) {
           <td style="${bt}">${qtyDisplay}</td>
           <td style="${bt}">${pendDisplay}</td>
           <td style="${bt}">${billedDisplay}</td>
-          <td style="${bt}">${fmtDisplayDate(p['Production Start Plan']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Start Actual']||'')}</td>
-          <td style="${bt}">${fmtDisplayDate(p['Production Complete Plan']||'')}</td>
           <td style="${bt}">${fmtDisplayDate(p['Production Complete Actual']||'')}</td>
           <td style="${bt}">${delayBadge}</td>
           <td style="${bt}">${statusBadge}</td>
@@ -1917,9 +1915,7 @@ function openProdUpdate(p) {
   document.getElementById('pu-model').value = p['Product Model']||'';
   document.getElementById('pu-btype').value = p['Battery Type']||'';
   document.getElementById('pu-status').value = p['Status']||'Pending';
-  document.getElementById('pu-sp').value = toInputDate(p['Production Start Plan']||'');
   document.getElementById('pu-sa').value = toInputDate(p['Production Start Actual']||'');
-  document.getElementById('pu-cp').value = toInputDate(p['Production Complete Plan']||'');
   document.getElementById('pu-ca').value = toInputDate(p['Production Complete Actual']||'');
   document.getElementById('pu-delay').value = p['Production Delay']||'';
   document.getElementById('pu-remarks').value = p['Remarks']||'';
@@ -1942,11 +1938,11 @@ function submitProdUpdate() {
   var params  = { action: 'updateProduction', 'Order ID': orderID };
   if (itemID) params['Item ID'] = itemID;
 
-  var dateIds = ['pu-sp','pu-sa','pu-cp','pu-ca'];
+  var dateIds = ['pu-sa','pu-ca'];
   var fields = [
     ['Product Model','pu-model'],['Battery Type','pu-btype'],['Status','pu-status'],
-    ['Production Start Plan','pu-sp'],['Production Start Actual','pu-sa'],
-    ['Production Complete Plan','pu-cp'],['Production Complete Actual','pu-ca'],
+    ['Production Start Actual','pu-sa'],
+    ['Production Complete Actual','pu-ca'],
     ['Production Delay','pu-delay'],['Remarks','pu-remarks'],
     ['Produced Qty','pu-produced-qty']
   ];
@@ -1958,10 +1954,12 @@ function submitProdUpdate() {
     if (dateIds.includes(id)) val = fmtDisplayDate(val);
     params[key] = val;
   });
-  var actualStart    = document.getElementById('pu-sa').value;
-  var actualComplete = document.getElementById('pu-ca').value;
-  if (actualComplete) params['Status'] = 'Completed';
-  else if (actualStart) params['Status'] = 'In Progress';
+  var actualStart  = document.getElementById('pu-sa').value;
+  var producedQty  = parseFloat(document.getElementById('pu-produced-qty').value) || 0;
+  var totalQtyVal  = parseFloat(document.getElementById('pu-total-qty').textContent) || 0;
+  if (totalQtyVal > 0 && producedQty >= totalQtyVal) params['Status'] = 'Completed';
+  else if (producedQty > 0 || actualStart)           params['Status'] = 'In Progress';
+  else                                               params['Status'] = 'Pending';
 
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Update Production'; } };
 
@@ -1970,9 +1968,7 @@ function submitProdUpdate() {
     if (r.success) {
       const crmParams = { action: 'updateCRM', 'Order ID': orderID };
       if (itemID) crmParams['Item ID'] = itemID;
-      if (params['Production Start Plan'])      crmParams['Production Start Plan']      = params['Production Start Plan'];
       if (params['Production Start Actual'])    crmParams['Production Start Actual']    = params['Production Start Actual'];
-      if (params['Production Complete Plan'])   crmParams['Production Complete Plan']   = params['Production Complete Plan'];
       if (params['Production Complete Actual']) crmParams['Production Complete Actual'] = params['Production Complete Actual'];
       if (params['Production Delay'])           crmParams['Production Delay']           = params['Production Delay'];
       if (params['Status'] === 'Completed') {
