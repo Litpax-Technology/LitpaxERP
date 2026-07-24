@@ -2302,6 +2302,9 @@ let allAccounts = [];
 // orderPayMap: { orderID: { total, balance, orderVal } }
 let orderPayMap = {};
 
+// accItemMap: { itemID: OrderItems row } — Price Type + Rate ke liye
+let accItemMap = {};
+
 function loadAccounts() {
   document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
   // Step 1: Accounts data
@@ -2345,10 +2348,15 @@ function loadAccounts() {
         });
 
         // Step 4: Payments — fetch all unique orders ke payments
+        // Step 3b: OrderItems — Price Type aur Rate
+        api({ action: 'getOrderItems' }, ir => {
+        accItemMap = {};
+        (ir.data || []).forEach(i => { if (i['Item ID']) accItemMap[i['Item ID']] = i; });
+
+        // Step 4: Payments — fetch all unique orders ke payments
         orderPayMap = {};
         let pending = uniqueOrderIDs.length;
         if (!pending) { renderAccounts(allAccounts, prodMap, orderValMap); return; }
-
         uniqueOrderIDs.forEach(orderID => {
           api({ action: 'getPayments', 'Order ID': orderID }, pr2 => {
             orderPayMap[orderID] = {
@@ -2359,6 +2367,7 @@ function loadAccounts() {
             pending--;
             if (pending === 0) renderAccounts(allAccounts, prodMap, orderValMap);
           });
+        });
         });
       });
     });
@@ -2440,12 +2449,32 @@ function renderAccounts(data, prodMap, orderValMap) {
         ? `<span style="color:var(--warning);font-weight:600;">${aPending}</span>`
         : `<span style="color:var(--success);font-weight:600;">0 ✅</span>`;
 
+      const itm      = accItemMap[a['Item ID']] || {};
+      const pType    = itm['Price Type'] || '—';
+      const rateUnit = parseFloat(itm['Price Unit (Excluding GST)']) || 0;
+      const perWatt  = parseFloat(itm['Per Watt Price']) || 0;
+      const pTypeCls = pType === 'Per Watt' ? 'b-pdc' : pType === 'Absolute' ? 'b-advance' : pType === 'Last Price' ? 'b-credit' : 'b-pending';
+
+      let rateCell;
+      if (pType === 'Per Watt') {
+        rateCell = perWatt
+          ? `<span style="font-weight:600;color:var(--purple);">₹${fmt(perWatt)}/W</span>` +
+            (rateUnit ? `<div style="font-size:10px;color:var(--text3);">= ₹${fmt(rateUnit)}/unit</div>` : '')
+          : '<span style="color:var(--text3);">—</span>';
+      } else {
+        rateCell = rateUnit
+          ? `<span style="font-weight:600;color:var(--text);">₹${fmt(rateUnit)}/unit</span>`
+          : '<span style="color:var(--text3);">—</span>';
+      }
+
       rows += `<tr style="${borderTop}">
         <td style="${borderTop}">${sr++}</td>
         <td class="td-id" style="${borderTop}">${a['Item ID']||''}</td>
         ${orderCells}
         <td style="${borderTop}">${a['Product Model']||''}</td>
         <td style="${borderTop}">${a['Battery Type']||''}</td>
+        <td style="${borderTop}">${pType !== '—' ? `<span class="badge ${pTypeCls}">${pType}</span>` : '—'}</td>
+        <td style="${borderTop}">${rateCell}</td>
         <td style="${borderTop}">${aQtyDisp}</td>
         <td style="${borderTop}">${aPendDisp}</td>
         <td style="${borderTop};font-weight:600;color:var(--purple);">${aBilledQty > 0 ? aBilledQty : '—'}</td>
