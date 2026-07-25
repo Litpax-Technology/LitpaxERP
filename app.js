@@ -1743,7 +1743,7 @@ function togglePlannedSelectAll() {
   const on = document.getElementById('ps-select-all').checked;
   plannedFiltered().forEach(p => {
     const iid = p['Item ID'] || '';
-    if (on) plannedSel[iid] = String(plannedPending(p));
+    if (on) plannedSel[iid] = '';   // select to karega, par qty khaali — user khud daalega
     else delete plannedSel[iid];
   });
   renderPlannedPicker();
