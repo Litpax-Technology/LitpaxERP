@@ -1713,7 +1713,7 @@ function renderPlannedPicker() {
       <td>${parseFloat(p['Qty'])||0}</td>
       <td style="color:var(--success);font-weight:600;">${parseFloat(p['Produced Qty'])||0}</td>
       <td style="color:var(--warning);font-weight:600;">${pend}</td>
-      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="${pend}" oninput="setPlannedQty('${iid}',this.value)" style="font-size:12px;padding:5px 8px;" ${checked?'':'disabled'}></td>
+      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="0" oninput="setPlannedQty('${iid}',this.value)" style="font-size:12px;padding:5px 8px;" ${checked?'':'disabled'}></td>
     </tr>`;
   }).join('');
   updatePlannedSummary();
@@ -1724,8 +1724,8 @@ function togglePlannedItem(iid, el) {
   if (!p) return;
   const input = el.closest('tr')?.querySelector('input[type="number"]');
   if (el.checked) {
-    plannedSel[iid] = String(plannedPending(p));
-    if (input) { input.disabled = false; input.value = plannedSel[iid]; input.focus(); input.select(); }
+    plannedSel[iid] = '';
+    if (input) { input.disabled = false; input.value = ''; input.focus(); }
   } else {
     delete plannedSel[iid];
     if (input) { input.disabled = true; input.value = ''; }
@@ -1734,6 +1734,7 @@ function togglePlannedItem(iid, el) {
 }
 
 function setPlannedQty(iid, val) {
+  if (plannedSel[iid] === undefined) return;
   plannedSel[iid] = val;
   updatePlannedSummary();
 }
