@@ -1761,14 +1761,13 @@ function confirmPlannedSlip() {
   const planDate = document.getElementById('ps-plan-date').value;
   if (!planDate) { toast('Plan Date select karo', 'e'); return; }
   const ids = Object.keys(plannedSel);
-  if (!ids.length) { toast('Kam se kam ek item select karo', 'e'); return; }
 
   const rows = [], warns = [];
   for (const iid of ids) {
     const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
     if (!p) continue;
     const planned = parseFloat(plannedSel[iid]) || 0;
-    if (planned <= 0) { toast('Har selected item ki Planned Qty 0 se zyada honi chahiye', 'e'); return; }
+    if (planned <= 0) continue;   // khaali/0 wale skip — sirf qty daale hue items lo
     const pend = plannedPending(p);
     if (planned > pend) warns.push(`${p['Product Model']||iid}: planned ${planned} > pending ${pend}`);
     rows.push({
@@ -1783,6 +1782,7 @@ function confirmPlannedSlip() {
       'Planned Qty': planned
     });
   }
+  if (!rows.length) { toast('Kam se kam ek item me Planned Qty daalo', 'e'); return; }
 
   if (warns.length) {
     const ok = confirm('⚠ Dhyan do:\n\n• ' + warns.join('\n• ') + '\n\nFir bhi slip banayein?');
