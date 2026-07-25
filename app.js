@@ -1722,13 +1722,18 @@ function renderPlannedPicker() {
 function togglePlannedItem(iid, el) {
   const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
   if (!p) return;
-  if (el.checked) plannedSel[iid] = String(plannedPending(p));
-  else delete plannedSel[iid];
-  renderPlannedPicker();
+  const input = el.closest('tr')?.querySelector('input[type="number"]');
+  if (el.checked) {
+    plannedSel[iid] = String(plannedPending(p));
+    if (input) { input.disabled = false; input.value = plannedSel[iid]; input.focus(); input.select(); }
+  } else {
+    delete plannedSel[iid];
+    if (input) { input.disabled = true; input.value = ''; }
+  }
+  updatePlannedSummary();
 }
 
 function setPlannedQty(iid, val) {
-  if (plannedSel[iid] === undefined) return;
   plannedSel[iid] = val;
   updatePlannedSummary();
 }
