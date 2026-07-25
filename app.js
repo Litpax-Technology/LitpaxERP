@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbzyK1qdq8h00CMFPAuaQiIt6fXcNHVoD5rnk-rUjE0LeJxHUnIxeFCvBT230Jo3MkSxzA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyPqf5EX408sdIZN6Wbf0OSRsy-eRQvQ6PBQgdwkL2AxplP3IhudP_tnXYwbsAXr8oFXQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -1660,107 +1660,213 @@ function renderProduction(billedMap) {
     document.getElementById('prodTable').innerHTML = prodRows;
 }
 
-function openPrintSlip() {
+// ========== PLANNED PRODUCTION SLIP ==========
+let plannedPickerItems = [];
+let plannedSel = {};   // Item ID -> planned qty (string)
+
+function plannedPending(p) {
+  const t = parseFloat(p['Qty']) || 0;
+  const pr = parseFloat(p['Produced Qty']) || 0;
+  const pend = parseFloat(p['Pending Qty']);
+  return isNaN(pend) ? (t - pr) : pend;
+}
+
+function openPlannedSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
+  plannedPickerItems = allProd.filter(p => plannedPending(p) > 0);
+  plannedSel = {};
+  const d = new Date();
+  document.getElementById('ps-plan-date').value =
+    d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  document.getElementById('ps-search').value = '';
+  const sa = document.getElementById('ps-select-all'); if (sa) sa.checked = false;
+  openModal('plannedSlipModal');
+  renderPlannedPicker();
+}
 
-  const todayObj = new Date();
-  const yyyy = todayObj.getFullYear();
-  const mm = String(todayObj.getMonth()+1).padStart(2,'0');
-  const dd = String(todayObj.getDate()).padStart(2,'0');
-  const todayISO  = `${yyyy}-${mm}-${dd}`;
-  const todayDisp = `${dd}-${mm}-${yyyy}`;
+function plannedFiltered() {
+  const q = (document.getElementById('ps-search')?.value || '').toLowerCase();
+  if (!q) return plannedPickerItems;
+  return plannedPickerItems.filter(p =>
+    (p['Order ID']||'').toLowerCase().includes(q) ||
+    (p['Customer Name']||'').toLowerCase().includes(q) ||
+    (p['Item ID']||'').toLowerCase().includes(q) ||
+    (p['Product Model']||'').toLowerCase().includes(q));
+}
 
-  const todayItems = allProd.filter(p => {
-    const sa = toInputDate(p['Production Start Actual'] || '');
-    return sa === todayISO;
+function renderPlannedPicker() {
+  const data = plannedFiltered();
+  const body = document.getElementById('ps-picker-body');
+  if (!data.length) { body.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
+  body.innerHTML = data.map(p => {
+    const iid = p['Item ID'] || '';
+    const pend = plannedPending(p);
+    const checked = plannedSel[iid] !== undefined;
+    const val = checked ? plannedSel[iid] : '';
+    return `<tr>
+      <td><input type="checkbox" ${checked?'checked':''} onchange="togglePlannedItem('${iid}',this)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"></td>
+      <td class="td-id">${p['Order ID']||''}</td>
+      <td class="td-id">${iid}</td>
+      <td class="td-bold">${p['Customer Name']||''}</td>
+      <td>${p['Product Model']||''}</td>
+      <td>${p['Battery Type']||''}</td>
+      <td>${parseFloat(p['Qty'])||0}</td>
+      <td style="color:var(--success);font-weight:600;">${parseFloat(p['Produced Qty'])||0}</td>
+      <td style="color:var(--warning);font-weight:600;">${pend}</td>
+      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="${pend}" oninput="setPlannedQty('${iid}',this.value)" style="font-size:12px;padding:5px 8px;" ${checked?'':'disabled'}></td>
+    </tr>`;
+  }).join('');
+  updatePlannedSummary();
+}
+
+function togglePlannedItem(iid, el) {
+  const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
+  if (!p) return;
+  if (el.checked) plannedSel[iid] = String(plannedPending(p));
+  else delete plannedSel[iid];
+  renderPlannedPicker();
+}
+
+function setPlannedQty(iid, val) {
+  if (plannedSel[iid] === undefined) return;
+  plannedSel[iid] = val;
+  updatePlannedSummary();
+}
+
+function togglePlannedSelectAll() {
+  const on = document.getElementById('ps-select-all').checked;
+  plannedFiltered().forEach(p => {
+    const iid = p['Item ID'] || '';
+    if (on) plannedSel[iid] = String(plannedPending(p));
+    else delete plannedSel[iid];
   });
+  renderPlannedPicker();
+}
 
-  if (!todayItems.length) {
-    toast(`Aaj (${todayDisp}) ki koi Production Start Actual nahi mili`, 'w');
-    return;
+function updatePlannedSummary() {
+  const ids = Object.keys(plannedSel);
+  let qty = 0;
+  ids.forEach(iid => { qty += parseFloat(plannedSel[iid]) || 0; });
+  document.getElementById('ps-sel-count').textContent = ids.length;
+  document.getElementById('ps-sel-qty').textContent = qty;
+}
+
+function confirmPlannedSlip() {
+  const planDate = document.getElementById('ps-plan-date').value;
+  if (!planDate) { toast('Plan Date select karo', 'e'); return; }
+  const ids = Object.keys(plannedSel);
+  if (!ids.length) { toast('Kam se kam ek item select karo', 'e'); return; }
+
+  const rows = [], warns = [];
+  for (const iid of ids) {
+    const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
+    if (!p) continue;
+    const planned = parseFloat(plannedSel[iid]) || 0;
+    if (planned <= 0) { toast('Har selected item ki Planned Qty 0 se zyada honi chahiye', 'e'); return; }
+    const pend = plannedPending(p);
+    if (planned > pend) warns.push(`${p['Product Model']||iid}: planned ${planned} > pending ${pend}`);
+    rows.push({
+      'Plan Date': fmtDisplayDate(planDate),
+      'Order ID': p['Order ID']||'',
+      'Item ID': iid,
+      'Customer Name': p['Customer Name']||'',
+      'Product Model': p['Product Model']||'',
+      'Battery Type': p['Battery Type']||'',
+      'Total Qty': parseFloat(p['Qty'])||0,
+      'Produced Qty': parseFloat(p['Produced Qty'])||0,
+      'Planned Qty': planned
+    });
   }
 
-  const twoWheeler = todayItems.filter(p => (p['Battery Type']||'').toLowerCase().includes('2 wheeler'));
-  const others     = todayItems.filter(p => !(p['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  if (warns.length) {
+    const ok = confirm('⚠ Dhyan do:\n\n• ' + warns.join('\n• ') + '\n\nFir bhi slip banayein?');
+    if (!ok) return;
+  }
 
-  function buildTable(items, label) {
+  const btn = document.getElementById('ps-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  // popup CLICK ke saath kholo — warna browser block karta hai
+  const win = window.open('', '_blank', 'width=900,height=680');
+  if (win) win.document.write('<p style="font-family:Arial;padding:24px;color:#555;">Planned slip ban rahi hai...</p>');
+
+  const planDateDisp = fmtDisplayDate(planDate);
+  let pending = rows.length, failed = 0;
+  rows.forEach(r => {
+    api({ action: 'addPlannedProduction', ...r, 'Added By': user.name || '' }, res => {
+      if (!res || !res.success) failed++;
+      if (--pending === 0) {
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm & Generate Slip'; }
+        if (failed) toast(failed + ' item save nahi hue (baaki ho gaye)', 'w');
+        else toast('Planned production saved!');
+        const html = buildPlannedSlipPrint(rows, planDateDisp);
+        if (win) { win.document.open(); win.document.write(html); win.document.close(); }
+        closeModal('plannedSlipModal');
+      }
+    });
+  });
+}
+
+function buildPlannedSlipPrint(rows, planDateDisp) {
+  const two = rows.filter(r => (r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  const oth = rows.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
+
+  function tbl(items, label) {
     if (!items.length) return '';
-    const rows = items.map((p, i) => `
+    const sub = items.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
+    const body = items.map((r,i) => `
       <tr>
-        <td>${i+1}</td>
-        <td>${p['Order ID']||'—'}</td>
-        <td>${p['Item ID']||'—'}</td>
-        <td>${p['Product Model']||'—'}</td>
-        <td>${p['Battery Type']||'—'}</td>
-        <td>${p['Qty']||'—'}</td>
+        <td>${i+1}</td><td>${r['Order ID']||'—'}</td><td>${r['Item ID']||'—'}</td>
+        <td>${r['Customer Name']||'—'}</td><td>${r['Product Model']||'—'}</td>
+        <td>${r['Battery Type']||'—'}</td><td>${r['Total Qty']||'—'}</td>
+        <td class="pq">${r['Planned Qty']||'—'}</td>
       </tr>`).join('');
-    return `
-      <div class="section">
-        <div class="section-title">${label} <span class="count">${items.length} items</span></div>
-        <table>
-          <thead><tr><th>#</th><th>Order ID</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Qty</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    return `<div class="section">
+      <div class="section-title">${label} <span class="count">${items.length} items · ${sub} planned</span></div>
+      <table>
+        <thead><tr><th>#</th><th>Order ID</th><th>Item ID</th><th>Customer</th><th>Product Model</th><th>Battery Type</th><th>Total Qty</th><th>Planned Qty</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table></div>`;
   }
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Production Slip — ${todayDisp}</title>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Planned Production Slip — ${planDateDisp}</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:Arial,sans-serif;padding:18px 22px;color:#111;}
     .header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1e1b4b;padding-bottom:10px;margin-bottom:16px;}
     .brand{font-size:20px;font-weight:800;color:#1e1b4b;}.brand span{color:#6366f1;}
-    .meta{text-align:right;font-size:12px;color:#444;line-height:1.8;}
-    .meta strong{font-size:14px;color:#1e1b4b;}
+    .meta{text-align:right;font-size:12px;color:#444;line-height:1.8;}.meta strong{font-size:14px;color:#1e1b4b;}
     .no-print{margin-bottom:14px;}
     .no-print button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px;border:none;}
-    .btn-print{background:#1e1b4b;color:#fff;}
-    .btn-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
+    .btn-print{background:#1e1b4b;color:#fff;}.btn-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
     .section{margin-bottom:22px;}
     .section-title{font-size:13px;font-weight:700;color:#1e1b4b;padding:7px 12px;background:#ede9fe;border-left:4px solid #6366f1;border-radius:4px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
     .count{background:#6366f1;color:#fff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;}
     table{width:100%;border-collapse:collapse;font-size:12px;}
-    thead tr{background:#1e1b4b;color:#fff;}
-    thead th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.3px;}
+    thead tr{background:#1e1b4b;color:#fff;}thead th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
     thead th:last-child{text-align:center;}
-    tbody tr:nth-child(even){background:#f7f7fb;}
-    tbody td{padding:8px 10px;border-bottom:1px solid #e5e5ef;}
-    tbody td:last-child{text-align:center;font-weight:700;font-size:14px;color:#1e1b4b;}
+    tbody tr:nth-child(even){background:#f7f7fb;}tbody td{padding:8px 10px;border-bottom:1px solid #e5e5ef;}
+    tbody td.pq{text-align:center;font-weight:700;font-size:14px;color:#6366f1;}
     .footer{margin-top:16px;display:flex;justify-content:space-between;font-size:11px;color:#999;border-top:1px solid #e0e0e0;padding-top:10px;}
     @media print{.no-print{display:none!important;}body{padding:10px 14px;}}
   </style></head><body>
-
   <div class="header">
-    <div>
-      <div class="brand">Litpax<span>ERP</span></div>
-      <div style="font-size:12px;color:#666;margin-top:2px;">Production Work Order Slip</div>
-    </div>
-    <div class="meta">
-      <strong>📅 ${todayDisp}</strong><br>
-      Total Items: <strong>${todayItems.length}</strong>
-    </div>
+    <div><div class="brand">Litpax<span>ERP</span></div>
+    <div style="font-size:12px;color:#666;margin-top:2px;">Planned Production Slip</div></div>
+    <div class="meta"><strong>📅 ${planDateDisp}</strong><br>
+    Items: <strong>${rows.length}</strong> · Planned Qty: <strong>${totPlanned}</strong></div>
   </div>
-
   <div class="no-print">
     <button class="btn-print" onclick="window.print()">🖨️ Print</button>
     <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
-
-  ${buildTable(twoWheeler, '🛵 2 Wheeler Battery')}
-  ${buildTable(others,     '🔋 Other Batteries')}
-
-  <div class="footer">
-    <span>Litpax Technology Pvt. Ltd.</span>
-    <span>LitpaxERP v3.0 — ${todayDisp}</span>
-  </div>
+  ${tbl(two, '🛵 2 Wheeler Battery')}
+  ${tbl(oth, '🔋 Other Batteries')}
+  <div class="footer"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0 — ${planDateDisp}</span></div>
   </body></html>`;
-
-  const win = window.open('', '_blank', 'width=900,height=680');
-  win.document.write(html);
-  win.document.close();
 }
-
 function printOrderRow(o) { currentEditOrder = o; printOrder(); }
 
 // ========== ORDER PRINT / PDF ==========
