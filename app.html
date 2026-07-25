@@ -195,7 +195,7 @@
   <div class="card">
     <div class="card-head">
       <div class="card-title">Production Tracker</div>
-      <button class="btn btn-primary" onclick="openPrintSlip()" style="display:flex;align-items:center;gap:6px;">🖨️ Print Slip</button>
+      <button class="btn btn-primary" onclick="openPlannedSlip()" style="display:flex;align-items:center;gap:6px;">🖨️ Print Slip</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -1029,6 +1029,47 @@
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('dispatchModal')">Close</button>
       <button class="btn btn-primary" id="dsp-submit-btn" onclick="submitDispatch()">🚚 Save Dispatch</button>
+    </div>
+  </div>
+</div>
+
+  <!-- ===== PLANNED PRODUCTION SLIP MODAL ===== -->
+<div class="modal-overlay" id="plannedSlipModal">
+  <div class="modal" style="max-width:840px;">
+    <div class="modal-head">
+      <div class="modal-title">🖨️ Planned Production Slip</div>
+      <button class="modal-close" onclick="closeModal('plannedSlipModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-group"><label class="form-label">Plan Date <span class="req-mark">*</span></label><input class="form-control" type="date" id="ps-plan-date"></div>
+        <div class="form-group"><label class="form-label">Search</label><input class="form-control" id="ps-search" placeholder="Customer / Order / Item / Model..." oninput="renderPlannedPicker()"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">Pending Items</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ps-select-all" onchange="togglePlannedSelectAll()" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          Select all (filtered)
+        </label>
+      </div>
+      <div class="table-wrap" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+        <table>
+          <thead><tr>
+            <th style="width:36px;"></th><th>Order ID</th><th>Item ID</th><th>Customer</th>
+            <th>Product Model</th><th>Battery Type</th><th>Total</th><th>Produced</th><th>Pending</th><th style="width:110px;">Planned Qty</th>
+          </tr></thead>
+          <tbody id="ps-picker-body"><tr><td colspan="10"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;padding:10px 14px;background:var(--accent-dim);border:1px solid #C7D2FE;border-radius:10px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;">Selected</span><span style="font-size:16px;font-weight:700;color:var(--text);" id="ps-sel-count">0</span></div>
+        <div style="width:1px;height:24px;background:#C7D2FE;"></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;">Total Planned Qty</span><span style="font-size:16px;font-weight:700;color:var(--accent);" id="ps-sel-qty">0</span></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('plannedSlipModal')">Cancel</button>
+      <button class="btn btn-primary" id="ps-confirm-btn" onclick="confirmPlannedSlip()">✓ Confirm & Generate Slip</button>
     </div>
   </div>
 </div>
