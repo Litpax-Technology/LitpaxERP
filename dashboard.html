@@ -142,6 +142,18 @@
     <div class="ch"><h3>📈 Monthly Orders & Value Trend</h3><span class="meta">last 12 months</span></div>
     <div class="cb" id="trend-wrap"><div class="empty"><span class="loader"></span></div></div>
   </div>
+
+  <!-- PRODUCTION: PLANNED vs ACHIEVED -->
+  <div class="card span-6">
+    <div class="ch"><h3>🏭 Production — Planned vs Achieved</h3><span class="meta" id="pa-prod-meta"></span></div>
+    <div class="cb" id="pa-prod-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <!-- DISPATCH: PLANNED vs ACHIEVED -->
+  <div class="card span-6">
+    <div class="ch"><h3>🚚 Dispatch — Planned vs Achieved</h3><span class="meta" id="pa-disp-meta"></span></div>
+    <div class="cb" id="pa-disp-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
 </div>
 
 <div class="foot">Litpax Technology Pvt. Ltd. — LitpaxERP Sales Dashboard · read-only · auto-refresh har 5 min</div>
@@ -153,6 +165,8 @@ const API = 'https://script.google.com/macros/s/AKfycbxlYHhH5z00MDCCBV8hDUiqgAGD
 let _allOrders = [];
 let _range = 'thismonth';
 let _spChart = null, _trendChart = null;
+let _allProd = [], _allDisp = [];
+let _prodChart = null, _dispChart = null;
 
 // ── JSONP with TIMEOUT + error detection ──
 function api(params, cb){
@@ -264,9 +278,16 @@ function loadData(){
       showDiag(`📭 <b>Connection theek hai, but koi order nahi mila.</b><br>
         Orders sheet khaali hai ya <code>getOrders</code> khaali data return kar raha hai. Sheet mein data check karo.`);
     }
-    render();
-    setDot('ok','Live');
-    document.getElementById('last-upd').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    // ── production + dispatch bhi lao (plan-vs-achieved ke liye), fir render ──
+    api({ action:'getProduction' }, pr => {
+      _allProd = (pr && pr.success && pr.data) ? pr.data : [];
+      api({ action:'getAllDispatches' }, dr => {
+        _allDisp = (dr && dr.success && dr.data) ? dr.data : [];
+        render();
+        setDot('ok','Live');
+        document.getElementById('last-upd').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      });
+    });
   });
 }
 
@@ -310,6 +331,7 @@ function render(){
   renderSalesPerf(spList);
   renderLeaderboard(spList);
   renderTrend();
+  renderPlanVsAchieved(new Set(orders.map(o => o['Order ID'])));
 }
 
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
@@ -422,6 +444,96 @@ function renderTrend(){
   });
 }
 
+// ── PRODUCTION & DISPATCH: PLANNED vs ACHIEVED ──
+function renderPlanVsAchieved(orderIDs){
+  const prodWrap = document.getElementById('pa-prod-wrap');
+  const dispWrap = document.getElementById('pa-disp-wrap');
+
+  // Item ID -> model (dispatch rows ko model se jodne ke liye)
+  const itemModel = {};
+  _allProd.forEach(p => { if(p['Item ID']) itemModel[p['Item ID']] = p['Product Model'] || '—'; });
+
+  // Production: planned (Qty) vs achieved (Produced Qty) — filtered orders tak scoped
+  const pm = {}; let planTot = 0, prodTot = 0;
+  _allProd.filter(p => orderIDs.has(p['Order ID'])).forEach(p => {
+    const m = p['Product Model'] || '—';
+    const q = parseFloat(p['Qty'])||0, pr = parseFloat(p['Produced Qty'])||0;
+    if(!pm[m]) pm[m] = { model:m, planned:0, produced:0 };
+    pm[m].planned += q; pm[m].produced += pr;
+    planTot += q; prodTot += pr;
+  });
+
+  // Dispatch: achieved (Dispatch Qty) — filtered orders tak scoped
+  const dm = {}; let dispTot = 0;
+  _allDisp.forEach(d => {
+    if(!orderIDs.has(d['Order ID'])) return;
+    const m = itemModel[d['Item ID']] || '—';
+    const q = parseFloat(d['Dispatch Qty'])||0;
+    dm[m] = (dm[m]||0) + q; dispTot += q;
+  });
+
+  const pPct = planTot ? Math.round(prodTot/planTot*100) : 0;
+  const dPct = planTot ? Math.round(dispTot/planTot*100) : 0;
+  setText('pa-prod-meta', planTot ? `${fmt(prodTot)}/${fmt(planTot)} · ${pPct}% done` : '');
+  setText('pa-disp-meta', planTot ? `${fmt(dispTot)}/${fmt(planTot)} · ${dPct}% done` : '');
+
+  // top 10 models by planned qty, baaki "Other"
+  const models = Object.values(pm).sort((a,b)=> b.planned - a.planned);
+  const TOP = 10, head = models.slice(0,TOP), tail = models.slice(TOP);
+  if(tail.length){
+    const o = { model:'Other', planned:0, produced:0 };
+    tail.forEach(x=>{ o.planned+=x.planned; o.produced+=x.produced; });
+    head.push(o);
+  }
+  const labels   = head.map(x=>x.model);
+  const planData = head.map(x=>x.planned);
+  const prodData = head.map(x=>x.produced);
+  const dispData = head.map(x=> x.model==='Other'
+      ? tail.reduce((s,t)=> s + (dm[t.model]||0), 0)
+      : (dm[x.model]||0));
+
+  // PRODUCTION CHART
+  if(!planTot){ prodWrap.innerHTML = `<div class="empty"><div class="ei">🏭</div>Production data nahi mila</div>`; }
+  else {
+    prodWrap.innerHTML = '<canvas id="paProdChart"></canvas>';
+    if(_prodChart) _prodChart.destroy();
+    _prodChart = new Chart(document.getElementById('paProdChart'), {
+      type:'bar',
+      data:{ labels, datasets:[
+        { label:'Planned (Order Qty)', data:planData, backgroundColor:'rgba(99,102,241,.85)', borderRadius:6, borderSkipped:false },
+        { label:'Achieved (Produced)', data:prodData, backgroundColor:'rgba(22,163,74,.85)',  borderRadius:6, borderSkipped:false }
+      ]},
+      options:paBarOpts('Battery Qty')
+    });
+  }
+
+  // DISPATCH CHART
+  if(!planTot){ dispWrap.innerHTML = `<div class="empty"><div class="ei">🚚</div>Dispatch data nahi mila</div>`; }
+  else {
+    dispWrap.innerHTML = '<canvas id="paDispChart"></canvas>';
+    if(_dispChart) _dispChart.destroy();
+    _dispChart = new Chart(document.getElementById('paDispChart'), {
+      type:'bar',
+      data:{ labels, datasets:[
+        { label:'Planned (Order Qty)', data:planData, backgroundColor:'rgba(99,102,241,.85)', borderRadius:6, borderSkipped:false },
+        { label:'Dispatched',          data:dispData, backgroundColor:'rgba(234,88,12,.85)',  borderRadius:6, borderSkipped:false }
+      ]},
+      options:paBarOpts('Battery Qty')
+    });
+  }
+}
+
+function paBarOpts(yTitle){
+  return {
+    responsive:true, maintainAspectRatio:true, interaction:{mode:'index',intersect:false},
+    plugins:{ legend:{ position:'top', labels:{ font:{size:12,family:'DM Sans'}, boxWidth:13, padding:14 } } },
+    scales:{
+      x:{ grid:{display:false}, ticks:{ font:{size:11,family:'DM Sans',weight:'600'}, maxRotation:40 } },
+      y:{ beginAtZero:true, title:{display:true,text:yTitle,font:{size:10}}, ticks:{ font:{size:10}, precision:0 }, grid:{ color:'rgba(0,0,0,.04)' } }
+    }
+  };
+}
+  
 // ── INIT ──
 loadData();
 setInterval(loadData, 5*60*1000);
