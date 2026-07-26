@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitpaxERP — Production Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6fb; --card:#ffffff; --accent:#635bff; --accent-dim:#eef0ff; --accent-2:#7c74ff;
+  --ink:#1e1b4b; --text:#1f2233; --text2:#5b5f77; --text3:#9095ac;
+  --border:#e8e9f2; --border2:#f0f1f7;
+  --success:#16a34a; --success-dim:#e7f6ec; --warning:#e08a00; --warning-dim:#fdf3e2;
+  --danger:#e5484d; --danger-dim:#fdecec; --info:#0ea5e9;
+  --shadow:0 1px 2px rgba(20,20,60,.04),0 4px 16px rgba(20,20,60,.05);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;}
+.mono{font-family:'JetBrains Mono',monospace;}
+
+/* ===== LOGIN GATE ===== */
+#gate{position:fixed;inset:0;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:1000;}
+#gate.hide{display:none;}
+.gate-card{background:#fff;border-radius:18px;padding:38px 34px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+.gate-mark{width:52px;height:52px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 16px;}
+.gate-card h2{color:var(--ink);font-size:19px;margin-bottom:4px;}
+.gate-card p{color:var(--text3);font-size:13px;margin-bottom:22px;}
+.gate-card input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;text-align:center;letter-spacing:4px;font-family:'JetBrains Mono';margin-bottom:14px;outline:none;}
+.gate-card input:focus{border-color:var(--accent);}
+.gate-card button{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+.gate-err{color:var(--danger);font-size:12px;height:16px;margin-bottom:8px;}
+
+/* ===== TOPBAR ===== */
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-mark{width:34px;height:34px;border-radius:9px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;}
+.tb-title{font-size:16px;font-weight:700;color:var(--ink);}
+.tb-title span{color:var(--accent);}
+.tb-sub{font-size:11px;color:var(--text3);}
+.tb-right{display:flex;align-items:center;gap:10px;}
+.status-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:5px 11px;background:var(--border2);border-radius:20px;}
+.status-dot .d{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.status-dot.ok .d{background:var(--success);box-shadow:0 0 0 3px var(--success-dim);}
+.status-dot.wait .d{background:var(--warning);animation:pulse 1s infinite;}
+.status-dot.err .d{background:var(--danger);}
+@keyframes pulse{50%{opacity:.4;}}
+.btn{padding:8px 14px;border:1px solid var(--border);background:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);font-family:inherit;display:flex;align-items:center;gap:6px;transition:.15s;}
+.btn:hover{background:var(--border2);}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent-2);}
+
+/* ===== CONTROL BAR ===== */
+.ctrl{padding:18px 24px 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.ctrl h1{font-size:20px;font-weight:800;color:var(--ink);}
+.ctrl h1 small{display:block;font-size:12px;font-weight:500;color:var(--text3);margin-top:2px;}
+.presets{display:flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:4px;}
+.preset{padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit;transition:.15s;}
+.preset.active{background:var(--accent);color:#fff;}
+.preset:hover:not(.active){background:var(--border2);}
+.last-upd{font-size:11px;color:var(--text3);}
+
+/* ===== KPI ===== */
+.kpis{padding:14px 24px;display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.kpi.g::before{background:var(--success);}.kpi.a::before{background:var(--warning);}.kpi.r::before{background:var(--danger);}.kpi.i::before{background:var(--info);}
+.kpi-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;}
+.kpi-val{font-size:26px;font-weight:800;color:var(--ink);line-height:1;}
+.kpi-sub{font-size:11.5px;color:var(--text2);margin-top:6px;}
+.kpi-sub b{color:var(--success);}
+
+/* ===== GRID ===== */
+.grid{padding:6px 24px 32px;display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;}
+.span-3{grid-column:span 3;}.span-4{grid-column:span 4;}.span-5{grid-column:span 5;}.span-6{grid-column:span 6;}.span-7{grid-column:span 7;}.span-8{grid-column:span 8;}.span-12{grid-column:span 12;}
+.ch{padding:15px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border2);}
+.ch h3{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;}
+.ch .meta{font-size:11px;color:var(--text3);font-weight:500;}
+.cb{padding:16px 18px;flex:1;min-height:60px;}
+.cb.chart-wrap{height:290px;position:relative;}
+.cb.chart-wrap canvas{max-height:258px;}
+
+/* ===== EMPTY / LOADER ===== */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 16px;color:var(--text3);text-align:center;gap:8px;}
+.empty .ei{font-size:26px;opacity:.5;}
+.empty small{font-size:12px;max-width:260px;line-height:1.5;}
+.loader{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== TABLE ===== */
+.tbl-wrap{overflow-x:auto;max-height:340px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{position:sticky;top:0;background:#fafaff;text-align:left;padding:9px 12px;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border2);white-space:nowrap;}
+tbody tr:hover{background:var(--accent-dim);}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;}
+.pill.g{background:var(--success-dim);color:var(--success);}
+.pill.a{background:var(--warning-dim);color:var(--warning);}
+.pill.r{background:var(--danger-dim);color:var(--danger);}
+.pill.n{background:var(--border2);color:var(--text2);}
+.td-id{font-family:'JetBrains Mono';color:var(--accent);font-size:11.5px;}
+.td-b{font-weight:700;color:var(--ink);}
+.days-r{color:var(--danger);font-weight:700;}
+
+/* ===== DIAG ===== */
+.diag{margin:0 24px 16px;padding:14px 18px;border-radius:12px;background:var(--warning-dim);border:1px solid #f5d99a;color:#8a5a00;font-size:13px;line-height:1.6;display:none;}
+.diag.show{display:block;}
+.diag.err{background:var(--danger-dim);border-color:#f3b7b9;color:#a11d21;}
+.diag code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:5px;font-family:'JetBrains Mono';font-size:11.5px;}
+
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr);}.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12;}}
+@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr);}.ctrl{flex-direction:column;align-items:flex-start;}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-mark">L</div>
+    <h2>Production Dashboard</h2>
+    <p>Enter access PIN to continue</p>
+    <div class="gate-err" id="gateErr"></div>
+    <input type="password" id="gatePin" maxlength="8" placeholder="••••" inputmode="numeric" onkeydown="if(event.key==='Enter')tryGate()">
+    <button onclick="tryGate()">Unlock →</button>
+  </div>
+</div>
+
+<!-- ============ TOPBAR ============ -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-mark">L</div>
+    <div>
+      <div class="tb-title">Litpax<span>ERP</span></div>
+      <div class="tb-sub">Production Dashboard</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="status-dot" id="statusDot"><span class="d"></span><span id="statusTxt">Idle</span></span>
+    <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- ============ CONTROL BAR ============ -->
+<div class="ctrl">
+  <h1>Production Overview<small id="scopeLbl">Planned vs Produced · live snapshot</small></h1>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div class="presets" id="presets">
+      <button class="preset" data-r="today">Today</button>
+      <button class="preset" data-r="7d">7 Days</button>
+      <button class="preset active" data-r="month">This Month</button>
+      <button class="preset" data-r="fy">This FY</button>
+      <button class="preset" data-r="all">All</button>
+    </div>
+    <span class="last-upd" id="lastUpd"></span>
+  </div>
+</div>
+
+<!-- ============ DIAG ============ -->
+<div class="diag" id="diag"></div>
+
+<!-- ============ KPIs ============ -->
+<div class="kpis" id="kpis">
+  <div class="kpi"><div class="kpi-lbl">Planned Qty</div><div class="kpi-val" id="k-plan">—</div><div class="kpi-sub" id="k-plan-sub">from plan sheet</div></div>
+  <div class="kpi g"><div class="kpi-lbl">Produced Qty</div><div class="kpi-val" id="k-prod">—</div><div class="kpi-sub" id="k-prod-sub">achieved</div></div>
+  <div class="kpi i"><div class="kpi-lbl">Achievement</div><div class="kpi-val" id="k-ach">—</div><div class="kpi-sub">produced / planned</div></div>
+  <div class="kpi a"><div class="kpi-lbl">Pending Qty</div><div class="kpi-val" id="k-pend">—</div><div class="kpi-sub">live · to produce</div></div>
+  <div class="kpi"><div class="kpi-lbl">In Progress</div><div class="kpi-val" id="k-wip">—</div><div class="kpi-sub">items</div></div>
+  <div class="kpi r"><div class="kpi-lbl">Delayed</div><div class="kpi-val" id="k-delay">—</div><div class="kpi-sub">past complete-plan</div></div>
+</div>
+
+<!-- ============ CHARTS GRID ============ -->
+<div class="grid">
+
+  <div class="card span-8">
+    <div class="ch"><h3>🏭 Planned vs Produced — by Model</h3><span class="meta" id="m-pvp"></span></div>
+    <div class="cb chart-wrap" id="pvp-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-4">
+    <div class="ch"><h3>📊 Production Status</h3><span class="meta">live snapshot</span></div>
+    <div class="cb chart-wrap" id="status-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-8">
+    <div class="ch"><h3>📈 Daily Plan vs Produced</h3><span class="meta" id="m-trend"></span></div>
+    <div class="cb chart-wrap" id="trend-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-4">
+    <div class="ch"><h3>🔋 Battery Type Split</h3><span class="meta">planned qty</span></div>
+    <div class="cb chart-wrap" id="type-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-5">
+    <div class="ch"><h3>⏳ Pending by Model</h3><span class="meta">top 10 · live</span></div>
+    <div class="cb chart-wrap" id="pend-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-7">
+    <div class="ch"><h3>🚨 Delay Tracker</h3><span class="meta" id="m-delay"></span></div>
+    <div class="cb" style="padding:0;"><div class="tbl-wrap" id="delay-wrap"><div class="empty" style="padding:40px;"><span class="loader"></span></div></div></div>
+  </div>
+
+  <div class="card span-12">
+    <div class="ch"><h3>🗒️ Recent Production Plans</h3><span class="meta" id="m-recent"></span></div>
+    <div class="cb" style="padding:0;"><div class="tbl-wrap" id="recent-wrap"><div class="empty" style="padding:40px;"><span class="loader"></span></div></div></div>
+  </div>
+
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+// Sales dashboard wali SAME GAS URL yahan paste karo (jispe getProduction + getPlannedProduction deployed hai)
+const API_URL = 'PASTE_YOUR_GAS_WEB_APP_URL_HERE';
+const ACCESS_PIN = '';   // '' rakhoge to login skip ho jayega
+
+/* ================= STATE ================= */
+let _prod = [];      // getProduction rows (live snapshot)
+let _plan = [];      // getPlannedProduction rows
+let _range = 'month';
+const charts = {};   // id -> Chart instance
+const IND = ['#635bff','#8b85ff','#a99fff','#c4bcff','#4f46e5','#7c74ff','#b0a8ff','#5850ec'];
+
+/* ================= HELPERS ================= */
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const fmt = n => (Math.round(n)).toLocaleString('en-IN');
+function col(row, names){ for(const n of names){ if(row[n]!==undefined && row[n]!=='' && row[n]!==null) return row[n]; } return ''; }
+function setDot(cls,txt){ $('statusDot').className='status-dot '+cls; $('statusTxt').textContent=txt; }
+function showDiag(html,err){ const d=$('diag'); d.className='diag show'+(err?' err':''); d.innerHTML=html; }
+function hideDiag(){ $('diag').className='diag'; }
+
+// Robust date parse: dd-mm-yyyy, dd/mm/yyyy, yyyy-mm-dd, Date, ISO
+function parseDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(s); return isNaN(d)?null:d;
+}
+function fmtDate(d){ if(!d) return '—'; return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear(); }
+
+// Range boundaries
+function rangeStart(){
+  const now = new Date(); now.setHours(0,0,0,0);
+  if(_range==='today') return now;
+  if(_range==='7d'){ const d=new Date(now); d.setDate(d.getDate()-6); return d; }
+  if(_range==='month') return new Date(now.getFullYear(), now.getMonth(), 1);
+  if(_range==='fy'){ const y = now.getMonth()>=3 ? now.getFullYear() : now.getFullYear()-1; return new Date(y,3,1); }
+  return null; // all
+}
+function inRange(d){ if(_range==='all') return true; if(!d) return false; const s=rangeStart(); return d>=s; }
+
+// field accessors (flexible column names)
+const F = {
+  model:  r => col(r, ['Product Model','Model','Product']) || '—',
+  type:   r => col(r, ['Battery Type','Type']) || '—',
+  qty:    r => num(col(r, ['Total Qty','Qty','Order Qty'])),
+  produced: r => num(col(r, ['Produced Qty','Produced'])),
+  pending:  r => { const p = col(r,['Pending Qty','Pending']); return p!=='' ? num(p) : (F.qty(r)-F.produced(r)); },
+  status:  r => (col(r, ['Status']) || '').toString(),
+  customer:r => col(r, ['Customer Name','Customer','Party']) || '—',
+  orderId: r => col(r, ['Order ID','OrderID']) || '',
+  itemId:  r => col(r, ['Item ID','ItemID']) || '',
+  cPlan:   r => parseDate(col(r, ['Production Complete Plan','Complete Plan','Production Complete Plan Date','Prod Complete Plan'])),
+  cActual: r => parseDate(col(r, ['Production Complete Actual','Complete Actual','Production Complete Actual Date'])),
+  planDate:r => parseDate(col(r, ['Plan Date','Planned Date','Date'])),
+  planQty: r => num(col(r, ['Planned Qty','Plan Qty']))
+};
+function chart(id, cfg){ if(charts[id]) charts[id].destroy(); const c=$(id); c.innerHTML='<canvas></canvas>'; charts[id]=new Chart(c.querySelector('canvas'), cfg); }
+function emptyCard(id,icon,msg){ $(id).innerHTML=`<div class="empty"><div class="ei">${icon}</div><small>${msg}</small></div>`; }
+
+/* ================= API (JSONP) ================= */
+function api(params, cb){
+  const name = 'cb_'+Math.random().toString(36).slice(2);
+  let s, done=false;
+  const to = setTimeout(()=>{ if(done)return; done=true; cleanup(); cb({success:false,message:'__timeout__'}); }, 30000);
+  function cleanup(){ try{delete window[name];}catch(e){} if(s&&s.parentNode) s.parentNode.removeChild(s); clearTimeout(to); }
+  window[name] = res => { if(done)return; done=true; cleanup(); cb(res); };
+  const q = Object.keys(params).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(params[k])).join('&');
+  s = document.createElement('script');
+  s.src = API_URL + '?' + q + '&callback=' + name;
+  s.onerror = ()=>{ if(done)return; done=true; cleanup(); cb({success:false,message:'__neterr__'}); };
+  document.body.appendChild(s);
+}
+
+/* ================= LOAD ================= */
+function loadData(){
+  if(API_URL.indexOf('PASTE_YOUR') === 0){
+    showDiag('⚙️ <b>Setup needed:</b> Top of the file mein <code>API_URL</code> mein apni GAS Web App URL paste karo (wahi jo sales dashboard use karta hai).', true);
+    setDot('err','Not configured'); return;
+  }
+  setDot('wait','Loading…');
+  api({action:'getProduction'}, pr => {
+    if(pr && (pr.message==='__timeout__'||pr.message==='__neterr__')){
+      setDot('err','Connection failed');
+      showDiag('❌ <b>GAS reach nahi hua.</b> URL sahi hai? Web App "Anyone" access pe deployed hai? Redeploy ke baad naya URL use karo.', true);
+      return;
+    }
+    _prod = (pr && pr.success && pr.data) ? pr.data : [];
+    api({action:'getPlannedProduction'}, pl => {
+      _plan = (pl && pl.success && pl.data) ? pl.data : [];
+      hideDiag();
+      if(!_prod.length && !_plan.length){
+        showDiag('📭 Production aur Plan dono khaali. Pehle koi order/production ho, ya <code>getProduction</code> / <code>getPlannedProduction</code> deploy check karo.');
+      }
+      render();
+      setDot('ok','Live');
+      $('lastUpd').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    });
+  });
+}
+
+/* ================= RENDER ================= */
+function render(){
+  const planScoped = _plan.filter(r => inRange(F.planDate(r)));
+  renderKPIs(planScoped);
+  renderPlanVsProduced(planScoped);
+  renderStatus();
+  renderTrend(planScoped);
+  renderTypeSplit(planScoped);
+  renderPending();
+  renderDelay();
+  renderRecent();
+  $('scopeLbl').textContent = _range==='all'
+    ? 'Planned vs Produced · all-time'
+    : 'Plan-based cards scoped to selected range · pending/status are live';
+}
+
+/* ---- KPIs ---- */
+function renderKPIs(plan){
+  let planTot=0, prodFromPlan=0;
+  plan.forEach(r => { planTot += F.planQty(r); prodFromPlan += F.produced(r); });
+  // fallback: agar plan sheet khaali, to production sheet se planned=Qty
+  let usingFallback = false;
+  if(!plan.length && _prod.length){
+    usingFallback = true;
+    _prod.forEach(r => { planTot += F.qty(r); prodFromPlan += F.produced(r); });
+  }
+  const pendTot = _prod.reduce((s,r)=> s + Math.max(0,F.pending(r)), 0);
+  const wip = _prod.filter(r => /progress|start|running|wip/i.test(F.status(r))).length;
+  const delayed = _prod.filter(isDelayed).length;
+  const ach = planTot ? Math.round(prodFromPlan/planTot*100) : 0;
+
+  $('k-plan').textContent = fmt(planTot);
+  $('k-plan-sub').textContent = usingFallback ? 'from order qty (no plan sheet)' : 'from plan sheet';
+  $('k-prod').textContent = fmt(prodFromPlan);
+  $('k-prod-sub').innerHTML = planTot ? `<b>${ach}%</b> of plan` : 'achieved';
+  $('k-ach').textContent = planTot ? ach+'%' : '—';
+  $('k-pend').textContent = fmt(pendTot);
+  $('k-wip').textContent = wip;
+  $('k-delay').textContent = delayed;
+}
+
+/* ---- Planned vs Produced by Model ---- */
+function renderPlanVsProduced(plan){
+  const src = plan.length ? plan : _prod;
+  const usesPlan = plan.length > 0;
+  const map = {};
+  src.forEach(r => {
+    const m = F.model(r);
+    if(!map[m]) map[m] = {planned:0, produced:0};
+    map[m].planned  += usesPlan ? F.planQty(r) : F.qty(r);
+    map[m].produced += F.produced(r);
+  });
+  let arr = Object.entries(map).map(([model,v])=>({model,...v})).sort((a,b)=>b.planned-a.planned);
+  if(!arr.length){ emptyCard('pvp-wrap','🏭','Is range mein koi plan/production data nahi.'); $('m-pvp').textContent=''; return; }
+  const TOP=12, head=arr.slice(0,TOP), tail=arr.slice(TOP);
+  if(tail.length){ const o={model:'Other',planned:0,produced:0}; tail.forEach(x=>{o.planned+=x.planned;o.produced+=x.produced;}); head.push(o); }
+  $('m-pvp').textContent = usesPlan ? 'planned from plan sheet' : 'planned = order qty';
+  chart('pvp-wrap',{
+    type:'bar',
+    data:{ labels:head.map(x=>x.model), datasets:[
+      {label:'Planned', data:head.map(x=>x.planned), backgroundColor:'#635bff', borderRadius:5, borderSkipped:false},
+      {label:'Produced',data:head.map(x=>x.produced),backgroundColor:'#16a34a', borderRadius:5, borderSkipped:false}
+    ]},
+    options:barOpts()
+  });
+}
+
+/* ---- Status donut ---- */
+function renderStatus(){
+  if(!_prod.length){ emptyCard('status-wrap','📊','Production data nahi mila.'); return; }
+  let comp=0,prog=0,pend=0;
+  _prod.forEach(r=>{ const s=F.status(r).toLowerCase();
+    if(/complet|done|ready|finish/.test(s)) comp++;
+    else if(/progress|start|running|wip/.test(s)) prog++;
+    else pend++;
+  });
+  chart('status-wrap',{
+    type:'doughnut',
+    data:{ labels:['Completed','In Progress','Pending'], datasets:[{ data:[comp,prog,pend], backgroundColor:['#16a34a','#635bff','#e08a00'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{position:'bottom', labels:{font:{size:11,family:'DM Sans'},boxWidth:11,padding:12,usePointStyle:true}} } }
+  });
+}
+
+/* ---- Daily trend (plan date) ---- */
+function renderTrend(plan){
+  if(!plan.length){ emptyCard('trend-wrap','📈','Plan sheet khaali — daily trend ke liye Planned Production entries chahiye.'); $('m-trend').textContent=''; return; }
+  const map = {};
+  plan.forEach(r=>{ const d=F.planDate(r); if(!d) return; const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(!map[k]) map[k]={planned:0,produced:0,d}; map[k].planned+=F.planQty(r); map[k].produced+=F.produced(r); });
+  const keys = Object.keys(map).sort();
+  if(!keys.length){ emptyCard('trend-wrap','📈','Plan Date columns parse nahi hue.'); return; }
+  $('m-trend').textContent = keys.length+' days';
+  chart('trend-wrap',{
+    type:'line',
+    data:{ labels:keys.map(k=>fmtDate(map[k].d)), datasets:[
+      {label:'Planned', data:keys.map(k=>map[k].planned), borderColor:'#635bff', backgroundColor:'rgba(99,91,255,.12)', fill:true, tension:.35, pointRadius:3, borderWidth:2},
+      {label:'Produced',data:keys.map(k=>map[k].produced),borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.10)', fill:true, tension:.35, pointRadius:3, borderWidth:2}
+    ]},
+    options:barOpts(false)
+  });
+}
+
+/* ---- Battery type split ---- */
+function renderTypeSplit(plan){
+  const src = plan.length ? plan : _prod;
+  const usesPlan = plan.length>0;
+  const map={};
+  src.forEach(r=>{ const t=F.type(r); map[t]=(map[t]||0)+(usesPlan?F.planQty(r):F.qty(r)); });
+  const entries = Object.entries(map).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){ emptyCard('type-wrap','🔋','No data.'); return; }
+  chart('type-wrap',{
+    type:'doughnut',
+    data:{ labels:entries.map(e=>e[0]), datasets:[{ data:entries.map(e=>e[1]), backgroundColor:IND, borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
+      plugins:{ legend:{position:'bottom', labels:{font:{size:10.5,family:'DM Sans'},boxWidth:10,padding:9,usePointStyle:true}} } }
+  });
+}
+
+/* ---- Pending by model (live) ---- */
+function renderPending(){
+  const map={};
+  _prod.forEach(r=>{ const p=Math.max(0,F.pending(r)); if(p<=0) return; const m=F.model(r); map[m]=(map[m]||0)+p; });
+  let arr=Object.entries(map).map(([model,pending])=>({model,pending})).sort((a,b)=>b.pending-a.pending).slice(0,10);
+  if(!arr.length){ emptyCard('pend-wrap','✅','Koi pending nahi — sab produced!'); return; }
+  chart('pend-wrap',{
+    type:'bar',
+    data:{ labels:arr.map(x=>x.model), datasets:[{label:'Pending Qty', data:arr.map(x=>x.pending), backgroundColor:'#e08a00', borderRadius:5, borderSkipped:false}] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{beginAtZero:true,ticks:{font:{size:10},precision:0},grid:{color:'rgba(0,0,0,.04)'}},
+               y:{ticks:{font:{size:11,family:'DM Sans',weight:'600'}},grid:{display:false}} } }
+  });
+}
+
+/* ---- Delay tracker ---- */
+function isDelayed(r){
+  const s=F.status(r).toLowerCase();
+  if(/complet|done|ready|finish/.test(s)) return false;
+  if(F.cActual(r)) return false;
+  const cp=F.cPlan(r); if(!cp) return false;
+  const today=new Date(); today.setHours(0,0,0,0);
+  return cp < today && F.pending(r) > 0;
+}
+function renderDelay(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  let rows=_prod.filter(isDelayed).map(r=>{ const cp=F.cPlan(r); const days=Math.round((today-cp)/86400000);
+    return {order:F.orderId(r),cust:F.customer(r),model:F.model(r),pend:F.pending(r),cp,days};
+  }).sort((a,b)=>b.days-a.days);
+  $('m-delay').textContent = rows.length ? rows.length+' overdue items' : 'all on track';
+  const w=$('delay-wrap');
+  if(!rows.length){ w.innerHTML='<div class="empty" style="padding:40px;"><div class="ei">✅</div><small>Koi item complete-plan date se late nahi.</small></div>'; return; }
+  w.innerHTML = `<table><thead><tr><th>Order</th><th>Customer</th><th>Model</th><th>Pending</th><th>Complete Plan</th><th>Overdue</th></tr></thead><tbody>`+
+    rows.slice(0,60).map(r=>`<tr>
+      <td class="td-id">${r.order||'—'}</td>
+      <td class="td-b">${r.cust}</td>
+      <td>${r.model}</td>
+      <td><span class="pill a">${r.pend}</span></td>
+      <td>${fmtDate(r.cp)}</td>
+      <td class="days-r">${r.days}d</td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+/* ---- Recent plans ---- */
+function renderRecent(){
+  const w=$('recent-wrap');
+  if(!_plan.length){ w.innerHTML='<div class="empty" style="padding:40px;"><div class="ei">🗒️</div><small>Abhi koi Planned Production entry nahi. Production page → Print Slip → plan banao, yahan dikhega.</small></div>'; $('m-recent').textContent=''; return; }
+  const rows=_plan.slice().reverse().slice(0,25);
+  $('m-recent').textContent = _plan.length+' total plans';
+  w.innerHTML = `<table><thead><tr><th>Plan ID</th><th>Plan Date</th><th>Order</th><th>Customer</th><th>Model</th><th>Type</th><th>Planned</th><th>Produced</th><th>Status</th></tr></thead><tbody>`+
+    rows.map(r=>{ const pl=F.planQty(r), pd=F.produced(r); const st=(F.status(r)||'Planned');
+      const done = pd>=pl && pl>0; const some = pd>0 && pd<pl;
+      const cls = done?'g':(some?'a':'n');
+      return `<tr>
+        <td class="td-id">${col(r,['Plan ID'])||'—'}</td>
+        <td>${fmtDate(F.planDate(r))}</td>
+        <td class="td-id">${F.orderId(r)||'—'}</td>
+        <td class="td-b">${F.customer(r)}</td>
+        <td>${F.model(r)}</td>
+        <td>${F.type(r)}</td>
+        <td class="td-b">${fmt(pl)}</td>
+        <td>${fmt(pd)}</td>
+        <td><span class="pill ${cls}">${done?'Done':(some?'Partial':st)}</span></td>
+      </tr>`; }).join('')+`</tbody></table>`;
+}
+
+/* ---- shared chart options ---- */
+function barOpts(showY=true){
+  return { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    plugins:{ legend:{position:'top', labels:{font:{size:12,family:'DM Sans'},boxWidth:12,padding:14,usePointStyle:true}} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{font:{size:10.5,family:'DM Sans',weight:'600'},maxRotation:42,minRotation:0} },
+      y:{ display:showY, beginAtZero:true, ticks:{font:{size:10},precision:0}, grid:{color:'rgba(0,0,0,.04)'} }
+    }
+  };
+}
+
+/* ================= GATE + PRESETS ================= */
+function tryGate(){
+  const v=$('gatePin').value.trim();
+  if(v===ACCESS_PIN){ $('gate').classList.add('hide'); loadData(); }
+  else { $('gateErr').textContent='Galat PIN'; $('gatePin').value=''; $('gatePin').focus(); }
+}
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); _range=b.dataset.r;
+  if(_prod.length||_plan.length) render();
+}));
+
+/* ================= INIT ================= */
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!ACCESS_PIN){ $('gate').classList.add('hide'); loadData(); }
+  else $('gatePin').focus();
+});
+</script>
+</body>
+</html>
