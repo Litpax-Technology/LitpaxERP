@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitpaxERP — Dispatch Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6fb; --card:#ffffff; --accent:#635bff; --accent-dim:#eef0ff; --accent-2:#7c74ff;
+  --ink:#1e1b4b; --text:#1f2233; --text2:#5b5f77; --text3:#9095ac;
+  --border:#e8e9f2; --border2:#f0f1f7;
+  --success:#16a34a; --success-dim:#e7f6ec; --warning:#e08a00; --warning-dim:#fdf3e2;
+  --danger:#e5484d; --danger-dim:#fdecec; --info:#0ea5e9;
+  --shadow:0 1px 2px rgba(20,20,60,.04),0 4px 16px rgba(20,20,60,.05);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;}
+.mono{font-family:'JetBrains Mono',monospace;}
+
+#gate{position:fixed;inset:0;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:1000;}
+#gate.hide{display:none;}
+.gate-card{background:#fff;border-radius:18px;padding:38px 34px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+.gate-mark{width:52px;height:52px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 16px;}
+.gate-card h2{color:var(--ink);font-size:19px;margin-bottom:4px;}
+.gate-card p{color:var(--text3);font-size:13px;margin-bottom:22px;}
+.gate-card input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;text-align:center;letter-spacing:4px;font-family:'JetBrains Mono';margin-bottom:14px;outline:none;}
+.gate-card input:focus{border-color:var(--accent);}
+.gate-card button{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+.gate-err{color:var(--danger);font-size:12px;height:16px;margin-bottom:8px;}
+
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-mark{width:34px;height:34px;border-radius:9px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;}
+.tb-title{font-size:16px;font-weight:700;color:var(--ink);}
+.tb-title span{color:var(--accent);}
+.tb-sub{font-size:11px;color:var(--text3);}
+.tb-right{display:flex;align-items:center;gap:10px;}
+.status-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:5px 11px;background:var(--border2);border-radius:20px;}
+.status-dot .d{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.status-dot.ok .d{background:var(--success);box-shadow:0 0 0 3px var(--success-dim);}
+.status-dot.wait .d{background:var(--warning);animation:pulse 1s infinite;}
+.status-dot.err .d{background:var(--danger);}
+@keyframes pulse{50%{opacity:.4;}}
+.btn{padding:8px 14px;border:1px solid var(--border);background:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);font-family:inherit;display:flex;align-items:center;gap:6px;transition:.15s;}
+.btn:hover{background:var(--border2);}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent-2);}
+
+.ctrl{padding:18px 24px 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.ctrl h1{font-size:20px;font-weight:800;color:var(--ink);}
+.ctrl h1 small{display:block;font-size:12px;font-weight:500;color:var(--text3);margin-top:2px;}
+.presets{display:flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:4px;}
+.preset{padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit;transition:.15s;}
+.preset.active{background:var(--accent);color:#fff;}
+.preset:hover:not(.active){background:var(--border2);}
+.last-upd{font-size:11px;color:var(--text3);}
+
+.kpis{padding:14px 24px;display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.kpi.g::before{background:var(--success);}.kpi.a::before{background:var(--warning);}.kpi.r::before{background:var(--danger);}.kpi.i::before{background:var(--info);}
+.kpi-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;}
+.kpi-val{font-size:26px;font-weight:800;color:var(--ink);line-height:1;}
+.kpi-sub{font-size:11.5px;color:var(--text2);margin-top:6px;}
+.kpi-sub b{color:var(--success);}
+
+.grid{padding:6px 24px 32px;display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;}
+.span-3{grid-column:span 3;}.span-4{grid-column:span 4;}.span-5{grid-column:span 5;}.span-6{grid-column:span 6;}.span-7{grid-column:span 7;}.span-8{grid-column:span 8;}.span-12{grid-column:span 12;}
+.ch{padding:15px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border2);}
+.ch h3{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;}
+.ch .meta{font-size:11px;color:var(--text3);font-weight:500;}
+.cb{padding:16px 18px;flex:1;min-height:60px;}
+.cb.chart-wrap{height:290px;position:relative;}
+.cb.chart-wrap canvas{max-height:258px;}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 16px;color:var(--text3);text-align:center;gap:8px;}
+.empty .ei{font-size:26px;opacity:.5;}
+.empty small{font-size:12px;max-width:280px;line-height:1.5;}
+.loader{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.tbl-wrap{overflow-x:auto;max-height:340px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{position:sticky;top:0;background:#fafaff;text-align:left;padding:9px 12px;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border2);white-space:nowrap;}
+tbody tr:hover{background:var(--accent-dim);}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;}
+.pill.g{background:var(--success-dim);color:var(--success);}
+.pill.a{background:var(--warning-dim);color:var(--warning);}
+.pill.r{background:var(--danger-dim);color:var(--danger);}
+.pill.n{background:var(--border2);color:var(--text2);}
+.td-id{font-family:'JetBrains Mono';color:var(--accent);font-size:11.5px;}
+.td-b{font-weight:700;color:var(--ink);}
+.days-r{color:var(--danger);font-weight:700;}
+
+.diag{margin:0 24px 16px;padding:14px 18px;border-radius:12px;background:var(--warning-dim);border:1px solid #f5d99a;color:#8a5a00;font-size:13px;line-height:1.6;display:none;}
+.diag.show{display:block;}
+.diag.err{background:var(--danger-dim);border-color:#f3b7b9;color:#a11d21;}
+.diag code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:5px;font-family:'JetBrains Mono';font-size:11.5px;}
+
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr);}.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12;}}
+@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr);}.ctrl{flex-direction:column;align-items:flex-start;}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-mark">L</div>
+    <h2>Dispatch Dashboard</h2>
+    <p>Enter access PIN to continue</p>
+    <div class="gate-err" id="gateErr"></div>
+    <input type="password" id="gatePin" maxlength="8" placeholder="••••" inputmode="numeric" onkeydown="if(event.key==='Enter')tryGate()">
+    <button onclick="tryGate()">Unlock →</button>
+  </div>
+</div>
+
+<!-- ============ TOPBAR ============ -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-mark">L</div>
+    <div>
+      <div class="tb-title">Litpax<span>ERP</span></div>
+      <div class="tb-sub">Dispatch Dashboard</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="status-dot" id="statusDot"><span class="d"></span><span id="statusTxt">Idle</span></span>
+    <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- ============ CONTROL BAR ============ -->
+<div class="ctrl">
+  <h1>Dispatch Overview<small id="scopeLbl">Planned vs Dispatched · pending live</small></h1>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div class="presets" id="presets">
+      <button class="preset" data-r="today">Today</button>
+      <button class="preset" data-r="7d">7 Days</button>
+      <button class="preset active" data-r="month">This Month</button>
+      <button class="preset" data-r="fy">This FY</button>
+      <button class="preset" data-r="all">All</button>
+    </div>
+    <span class="last-upd" id="lastUpd"></span>
+  </div>
+</div>
+
+<!-- ============ DIAG ============ -->
+<div class="diag" id="diag"></div>
+
+<!-- ============ KPIs ============ -->
+<div class="kpis" id="kpis">
+  <div class="kpi"><div class="kpi-lbl">To Dispatch</div><div class="kpi-val" id="k-plan">—</div><div class="kpi-sub">planned · order qty</div></div>
+  <div class="kpi g"><div class="kpi-lbl">Dispatched</div><div class="kpi-val" id="k-disp">—</div><div class="kpi-sub" id="k-disp-sub">all-time</div></div>
+  <div class="kpi i"><div class="kpi-lbl">Fulfilment</div><div class="kpi-val" id="k-ful">—</div><div class="kpi-sub">dispatched / planned</div></div>
+  <div class="kpi a"><div class="kpi-lbl">Pending Dispatch</div><div class="kpi-val" id="k-pend">—</div><div class="kpi-sub">live · not sent</div></div>
+  <div class="kpi r"><div class="kpi-lbl">Delayed Orders</div><div class="kpi-val" id="k-delay">—</div><div class="kpi-sub">past plan date</div></div>
+  <div class="kpi"><div class="kpi-lbl">In Range</div><div class="kpi-val" id="k-range">—</div><div class="kpi-sub" id="k-range-sub">dispatched</div></div>
+</div>
+
+<!-- ============ CHARTS GRID ============ -->
+<div class="grid">
+
+  <div class="card span-8">
+    <div class="ch"><h3>🚚 Planned vs Dispatched — Top Customers</h3><span class="meta">live · order qty vs sent</span></div>
+    <div class="cb chart-wrap" id="pvd-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-4">
+    <div class="ch"><h3>📦 Dispatch Status</h3><span class="meta">orders · live</span></div>
+    <div class="cb chart-wrap" id="status-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-8">
+    <div class="ch"><h3>📈 Dispatch Trend</h3><span class="meta" id="m-trend"></span></div>
+    <div class="cb chart-wrap" id="trend-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-4">
+    <div class="ch"><h3>🗺️ Dispatched by State</h3><span class="meta">live · top 8</span></div>
+    <div class="cb chart-wrap" id="geo-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-5">
+    <div class="ch"><h3>⏱️ On-time vs Delayed</h3><span class="meta">delivered orders</span></div>
+    <div class="cb chart-wrap" id="ontime-wrap"><div class="empty"><span class="loader"></span></div></div>
+  </div>
+
+  <div class="card span-7">
+    <div class="ch"><h3>🚨 Pending Dispatch — Aging</h3><span class="meta" id="m-pend"></span></div>
+    <div class="cb" style="padding:0;"><div class="tbl-wrap" id="pend-wrap"><div class="empty" style="padding:40px;"><span class="loader"></span></div></div></div>
+  </div>
+
+  <div class="card span-12">
+    <div class="ch"><h3>🗒️ Recent Dispatches</h3><span class="meta" id="m-recent"></span></div>
+    <div class="cb" style="padding:0;"><div class="tbl-wrap" id="recent-wrap"><div class="empty" style="padding:40px;"><span class="loader"></span></div></div></div>
+  </div>
+
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+// Sales/Production dashboard wali SAME GAS URL (jispe getAllDispatches + getOrders deployed hai)
+const API_URL = 'PASTE_YOUR_GAS_WEB_APP_URL_HERE';
+const ACCESS_PIN = '';   // '' = login skip
+
+/* ================= STATE ================= */
+let _orders = [];    // getOrders rows
+let _disp = [];      // getAllDispatches rows
+let _range = 'month';
+let orderMap = {};   // Order ID -> order row
+let dispByOrder = {};// Order ID -> total dispatched qty (all-time)
+const charts = {};
+const IND = ['#635bff','#8b85ff','#a99fff','#c4bcff','#4f46e5','#7c74ff','#b0a8ff','#5850ec'];
+
+/* ================= HELPERS ================= */
+const $ = id => document.getElementById(id);
+const num = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
+const fmt = n => (Math.round(n)).toLocaleString('en-IN');
+function col(row, names){ for(const n of names){ if(row[n]!==undefined && row[n]!=='' && row[n]!==null) return row[n]; } return ''; }
+function setDot(cls,txt){ $('statusDot').className='status-dot '+cls; $('statusTxt').textContent=txt; }
+function showDiag(html,err){ const d=$('diag'); d.className='diag show'+(err?' err':''); d.innerHTML=html; }
+function hideDiag(){ $('diag').className='diag'; }
+
+function parseDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/); if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+  const d=new Date(s); return isNaN(d)?null:d;
+}
+function fmtDate(d){ if(!d) return '—'; return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear(); }
+
+function rangeStart(){
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(_range==='today') return now;
+  if(_range==='7d'){ const d=new Date(now); d.setDate(d.getDate()-6); return d; }
+  if(_range==='month') return new Date(now.getFullYear(),now.getMonth(),1);
+  if(_range==='fy'){ const y=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1; return new Date(y,3,1); }
+  return null;
+}
+function inRange(d){ if(_range==='all') return true; if(!d) return false; return d>=rangeStart(); }
+
+// order accessors
+const O = {
+  id: r => col(r,['Order ID','OrderID']) || '',
+  customer: r => col(r,['Customer Name','Customer','Party']) || '—',
+  state: r => col(r,['State','Delivery State','Party State']) || '',
+  zone: r => col(r,['Zone','Region']) || '',
+  qty: r => num(col(r,['Total Qty','Qty','Order Qty','Total Quantity'])),
+  planDisp: r => parseDate(col(r,['Plan Dispatch Date','Planned Dispatch Date','Dispatch Plan Date','Expected Dispatch Date','Expected Dispatch'])),
+  status: r => (col(r,['Dispatch Status','Status','Order Status'])||'').toString(),
+  orderDate: r => parseDate(col(r,['Order Date','Date','Created On']))
+};
+// dispatch accessors
+const D = {
+  order: r => col(r,['Order ID','OrderID']) || '',
+  item: r => col(r,['Item ID','ItemID']) || '',
+  qty: r => num(col(r,['Dispatch Qty','Dispatched Qty','Qty','Quantity'])),
+  date: r => parseDate(col(r,['Dispatch Date','Dispatched On','Date'])),
+  vehicle: r => col(r,['Vehicle No','Vehicle','Transporter','LR No','LR Number']) || '',
+  customer: r => col(r,['Customer Name','Customer']) || '',
+  model: r => col(r,['Product Model','Model']) || ''
+};
+function chart(id,cfg){ if(charts[id]) charts[id].destroy(); const c=$(id); c.innerHTML='<canvas></canvas>'; charts[id]=new Chart(c.querySelector('canvas'),cfg); }
+function emptyCard(id,icon,msg){ $(id).innerHTML=`<div class="empty"><div class="ei">${icon}</div><small>${msg}</small></div>`; }
+
+/* ================= API (JSONP) ================= */
+function api(params, cb){
+  const name='cb_'+Math.random().toString(36).slice(2);
+  let s, done=false;
+  const to=setTimeout(()=>{ if(done)return; done=true; cleanup(); cb({success:false,message:'__timeout__'}); },30000);
+  function cleanup(){ try{delete window[name];}catch(e){} if(s&&s.parentNode) s.parentNode.removeChild(s); clearTimeout(to); }
+  window[name]=res=>{ if(done)return; done=true; cleanup(); cb(res); };
+  const q=Object.keys(params).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(params[k])).join('&');
+  s=document.createElement('script');
+  s.src=API_URL+'?'+q+'&callback='+name;
+  s.onerror=()=>{ if(done)return; done=true; cleanup(); cb({success:false,message:'__neterr__'}); };
+  document.body.appendChild(s);
+}
+
+/* ================= LOAD ================= */
+function loadData(){
+  if(API_URL.indexOf('PASTE_YOUR')===0){
+    showDiag('⚙️ <b>Setup needed:</b> Top of file mein <code>API_URL</code> set karo (same GAS URL as sales/production dashboard).',true);
+    setDot('err','Not configured'); return;
+  }
+  setDot('wait','Loading…');
+  api({action:'getOrders'}, or => {
+    if(or && (or.message==='__timeout__'||or.message==='__neterr__')){
+      setDot('err','Connection failed');
+      showDiag('❌ <b>GAS reach nahi hua.</b> URL sahi hai? Web App "Anyone" access pe deployed hai?',true); return;
+    }
+    _orders = (or && or.success && or.data) ? or.data : [];
+    api({action:'getAllDispatches'}, dr => {
+      _disp = (dr && dr.success && dr.data) ? dr.data : [];
+      buildMaps(); hideDiag();
+      if(!_orders.length && !_disp.length){
+        showDiag('📭 Orders aur Dispatch dono khaali. <code>getOrders</code> / <code>getAllDispatches</code> deploy check karo.');
+      }
+      render();
+      setDot('ok','Live');
+      $('lastUpd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    });
+  });
+}
+
+function buildMaps(){
+  orderMap={}; dispByOrder={};
+  _orders.forEach(o=>{ const id=O.id(o); if(id) orderMap[id]=o; });
+  _disp.forEach(d=>{ const id=D.order(d); if(!id) return; dispByOrder[id]=(dispByOrder[id]||0)+D.qty(d); });
+}
+function custOf(d){ const c=D.customer(d); if(c) return c; const o=orderMap[D.order(d)]; return o?O.customer(o):'—'; }
+
+/* ================= RENDER ================= */
+function render(){
+  renderKPIs();
+  renderPlanVsDispatched();
+  renderStatus();
+  renderTrend();
+  renderGeo();
+  renderOntime();
+  renderPending();
+  renderRecent();
+  $('scopeLbl').textContent = 'Planned/pending are live · Trend & Recent use selected range';
+}
+
+/* ---- KPIs ---- */
+function renderKPIs(){
+  let planTot=0, dispTot=0, pendTot=0, delayed=0;
+  const today=new Date(); today.setHours(0,0,0,0);
+  _orders.forEach(o=>{
+    const q=O.qty(o), sent=dispByOrder[O.id(o)]||0;
+    planTot+=q; const pend=Math.max(0,q-sent); pendTot+=pend;
+    if(pend>0){ const pd=O.planDisp(o); if(pd && pd<today) delayed++; }
+  });
+  _disp.forEach(d=>{ dispTot+=D.qty(d); });
+  // agar orders me qty nahi mili, planned ko dispatched se hi le lo (kam se kam fulfilment 100 na dikhe galat)
+  if(!planTot) planTot = dispTot;
+  const rangeDisp=_disp.filter(d=>inRange(D.date(d))).reduce((s,d)=>s+D.qty(d),0);
+  const ful=planTot?Math.round(dispTot/planTot*100):0;
+
+  $('k-plan').textContent=fmt(planTot);
+  $('k-disp').textContent=fmt(dispTot);
+  $('k-disp-sub').innerHTML = planTot?`<b>${ful}%</b> fulfilled`:'all-time';
+  $('k-ful').textContent = planTot?ful+'%':'—';
+  $('k-pend').textContent=fmt(pendTot);
+  $('k-delay').textContent=delayed;
+  $('k-range').textContent=fmt(rangeDisp);
+  $('k-range-sub').textContent = _range==='all'?'all-time':'this '+_range;
+}
+
+/* ---- Planned vs Dispatched by customer (live) ---- */
+function renderPlanVsDispatched(){
+  if(!_orders.length){ emptyCard('pvd-wrap','🚚','Orders data nahi mila — customer-wise ke liye <code>getOrders</code> chahiye.'); return; }
+  const map={};
+  _orders.forEach(o=>{ const c=O.customer(o); if(!map[c]) map[c]={planned:0,disp:0}; map[c].planned+=O.qty(o); map[c].disp+=(dispByOrder[O.id(o)]||0); });
+  let arr=Object.entries(map).map(([cust,v])=>({cust,...v})).filter(x=>x.planned>0).sort((a,b)=>b.planned-a.planned).slice(0,12);
+  if(!arr.length){ emptyCard('pvd-wrap','🚚','Order qty columns nahi mile.'); return; }
+  chart('pvd-wrap',{
+    type:'bar',
+    data:{ labels:arr.map(x=>x.cust), datasets:[
+      {label:'Planned', data:arr.map(x=>x.planned), backgroundColor:'#635bff', borderRadius:5, borderSkipped:false},
+      {label:'Dispatched', data:arr.map(x=>x.disp), backgroundColor:'#16a34a', borderRadius:5, borderSkipped:false}
+    ]},
+    options:barOpts()
+  });
+}
+
+/* ---- Dispatch status donut (orders, live) ---- */
+function renderStatus(){
+  if(!_orders.length){ emptyCard('status-wrap','📦','Orders data nahi mila.'); return; }
+  let full=0,part=0,none=0;
+  _orders.forEach(o=>{ const q=O.qty(o), sent=dispByOrder[O.id(o)]||0;
+    if(q>0 && sent>=q) full++; else if(sent>0) part++; else none++; });
+  chart('status-wrap',{
+    type:'doughnut',
+    data:{ labels:['Fully Dispatched','Partial','Pending'], datasets:[{ data:[full,part,none], backgroundColor:['#16a34a','#e08a00','#635bff'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{position:'bottom', labels:{font:{size:11,family:'DM Sans'},boxWidth:11,padding:12,usePointStyle:true}} } }
+  });
+}
+
+/* ---- Dispatch trend (range) ---- */
+function renderTrend(){
+  const rows=_disp.filter(d=>inRange(D.date(d)));
+  if(!rows.length){ emptyCard('trend-wrap','📈','Is range mein koi dispatch nahi.'); $('m-trend').textContent=''; return; }
+  const monthly = (_range==='fy'||_range==='all');
+  const map={};
+  rows.forEach(d=>{ const dt=D.date(d); if(!dt) return;
+    const k = monthly ? dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')
+                      : dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    if(!map[k]) map[k]={qty:0, d:dt}; map[k].qty+=D.qty(d);
+  });
+  const keys=Object.keys(map).sort();
+  $('m-trend').textContent = keys.length+(monthly?' months':' days');
+  const labels = keys.map(k=> monthly ? map[k].d.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}) : fmtDate(map[k].d));
+  chart('trend-wrap',{
+    type:'line',
+    data:{ labels, datasets:[{ label:'Dispatched Qty', data:keys.map(k=>map[k].qty), borderColor:'#635bff', backgroundColor:'rgba(99,91,255,.14)', fill:true, tension:.35, pointRadius:3, borderWidth:2 }] },
+    options:barOpts(true,false)
+  });
+}
+
+/* ---- Dispatched by state (live) ---- */
+function renderGeo(){
+  const map={};
+  _disp.forEach(d=>{ const o=orderMap[D.order(d)]; const st=(o?O.state(o):'')||'Unknown'; map[st]=(map[st]||0)+D.qty(d); });
+  let arr=Object.entries(map).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!arr.length){ emptyCard('geo-wrap','🗺️','State column orders mein nahi mila — is card ke liye order me State chahiye.'); return; }
+  const top=arr.slice(0,8);
+  chart('geo-wrap',{
+    type:'doughnut',
+    data:{ labels:top.map(e=>e[0]), datasets:[{ data:top.map(e=>e[1]), backgroundColor:IND, borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'56%',
+      plugins:{ legend:{position:'bottom', labels:{font:{size:10,family:'DM Sans'},boxWidth:10,padding:8,usePointStyle:true}} } }
+  });
+}
+
+/* ---- On-time vs Delayed (delivered orders) ---- */
+function renderOntime(){
+  let onTime=0, late=0, noData=0;
+  _orders.forEach(o=>{ const q=O.qty(o), sent=dispByOrder[O.id(o)]||0;
+    if(!(q>0 && sent>=q)) return; // sirf fully dispatched orders
+    const pd=O.planDisp(o); if(!pd){ noData++; return; }
+    // last dispatch date for this order
+    let last=null; _disp.forEach(d=>{ if(D.order(d)===O.id(o)){ const dt=D.date(d); if(dt && (!last||dt>last)) last=dt; } });
+    if(!last){ noData++; return; }
+    if(last<=pd) onTime++; else late++;
+  });
+  if(onTime+late+noData===0){ emptyCard('ontime-wrap','⏱️','Abhi koi fully-dispatched order nahi.'); return; }
+  chart('ontime-wrap',{
+    type:'doughnut',
+    data:{ labels:['On-time','Delayed','No plan date'], datasets:[{ data:[onTime,late,noData], backgroundColor:['#16a34a','#e5484d','#c4bcff'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{position:'bottom', labels:{font:{size:11,family:'DM Sans'},boxWidth:11,padding:11,usePointStyle:true}} } }
+  });
+}
+
+/* ---- Pending dispatch aging (live) ---- */
+function renderPending(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  let rows=[];
+  _orders.forEach(o=>{ const q=O.qty(o), sent=dispByOrder[O.id(o)]||0; const pend=Math.max(0,q-sent); if(pend<=0) return;
+    const pd=O.planDisp(o); const days = pd ? Math.round((today-pd)/86400000) : null;
+    rows.push({order:O.id(o),cust:O.customer(o),state:O.state(o),pend,pd,days});
+  });
+  rows.sort((a,b)=> (b.days??-1e9)-(a.days??-1e9));
+  const overdue=rows.filter(r=>r.days>0).length;
+  $('m-pend').textContent = rows.length ? `${rows.length} orders · ${overdue} overdue` : 'nothing pending';
+  const w=$('pend-wrap');
+  if(!rows.length){ w.innerHTML='<div class="empty" style="padding:40px;"><div class="ei">✅</div><small>Sab dispatch ho chuka — kuch pending nahi.</small></div>'; return; }
+  w.innerHTML=`<table><thead><tr><th>Order</th><th>Customer</th><th>State</th><th>Pending</th><th>Plan Date</th><th>Aging</th></tr></thead><tbody>`+
+    rows.slice(0,60).map(r=>{ const late=r.days>0;
+      return `<tr>
+        <td class="td-id">${r.order||'—'}</td>
+        <td class="td-b">${r.cust}</td>
+        <td>${r.state||'—'}</td>
+        <td><span class="pill ${late?'r':'a'}">${r.pend}</span></td>
+        <td>${fmtDate(r.pd)}</td>
+        <td class="${late?'days-r':''}">${r.days==null?'—':(late?r.days+'d late':Math.abs(r.days)+'d left')}</td>
+      </tr>`; }).join('')+`</tbody></table>`;
+}
+
+/* ---- Recent dispatches (range) ---- */
+function renderRecent(){
+  const w=$('recent-wrap');
+  let rows=_disp.filter(d=>inRange(D.date(d))).slice().sort((a,b)=>{ const x=D.date(a),y=D.date(b); return (y?y:0)-(x?x:0); });
+  $('m-recent').textContent = rows.length ? rows.length+' in range' : '';
+  if(!rows.length){ w.innerHTML='<div class="empty" style="padding:40px;"><div class="ei">🗒️</div><small>Is range mein koi dispatch entry nahi.</small></div>'; return; }
+  w.innerHTML=`<table><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Item</th><th>Model</th><th>Qty</th><th>Vehicle / LR</th></tr></thead><tbody>`+
+    rows.slice(0,40).map(d=>`<tr>
+      <td>${fmtDate(D.date(d))}</td>
+      <td class="td-id">${D.order(d)||'—'}</td>
+      <td class="td-b">${custOf(d)}</td>
+      <td class="td-id">${D.item(d)||'—'}</td>
+      <td>${D.model(d)||'—'}</td>
+      <td class="td-b">${fmt(D.qty(d))}</td>
+      <td>${D.vehicle(d)||'—'}</td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+/* ---- shared bar/line options ---- */
+function barOpts(showY=true, showLegend=true){
+  return { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    plugins:{ legend:{display:showLegend, position:'top', labels:{font:{size:12,family:'DM Sans'},boxWidth:12,padding:14,usePointStyle:true}} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{font:{size:10.5,family:'DM Sans',weight:'600'},maxRotation:42,minRotation:0} },
+      y:{ display:showY, beginAtZero:true, ticks:{font:{size:10},precision:0}, grid:{color:'rgba(0,0,0,.04)'} }
+    }
+  };
+}
+
+/* ================= GATE + PRESETS ================= */
+function tryGate(){
+  const v=$('gatePin').value.trim();
+  if(v===ACCESS_PIN){ $('gate').classList.add('hide'); loadData(); }
+  else { $('gateErr').textContent='Galat PIN'; $('gatePin').value=''; $('gatePin').focus(); }
+}
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); _range=b.dataset.r;
+  if(_orders.length||_disp.length) render();
+}));
+
+/* ================= INIT ================= */
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!ACCESS_PIN){ $('gate').classList.add('hide'); loadData(); }
+  else $('gatePin').focus();
+});
+</script>
+</body>
+</html>
