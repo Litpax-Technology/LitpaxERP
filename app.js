@@ -1889,14 +1889,20 @@ function printOrder() {
   api({ action: 'getItemsByOrder', 'Order ID': oid }, ir => {
     const items = (ir.data || []).filter(i => (i['Battery Type'] || '') !== 'Charger');
     api({ action: 'getChargersByOrder', 'Order ID': oid }, cr => {
-      win.document.open();
-      win.document.write(buildOrderPrint(o, items, cr.data || []));
-      win.document.close();
+      api({ action: 'getPayments', 'Order ID': oid }, pr => {
+        const payments = (pr.success && pr.data) ? pr.data : [];
+        const totalReceived = pr.totalReceived || 0;
+        win.document.open();
+        win.document.write(buildOrderPrint(o, items, cr.data || [], payments, totalReceived));
+        win.document.close();
+      });
     });
   });
 }
 
-function buildOrderPrint(o, items, chargers) {
+function buildOrderPrint(o, items, chargers, payments, totalReceived) {
+  payments = payments || [];
+  totalReceived = totalReceived || 0;
   const oid = o['Order ID'] || '';
   const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 
@@ -1928,6 +1934,32 @@ function buildOrderPrint(o, items, chargers) {
           <td class="r b">₹${fmt(c['Total'] || 0)}</td>
         </tr>`).join('')}</tbody>
     </table>` : '';
+
+    const orderVal = parseFloat(o['Total Order Value'] || 0);
+  const balance  = orderVal - totalReceived;
+
+  const paymentRows = payments.map((p, n) => `
+    <tr>
+      <td>${n + 1}</td>
+      <td>${esc(fmtDisplayDate(p['Date'] || ''))}</td>
+      <td>${esc(p['Mode'])}</td>
+      <td>${esc(p['Reference']) || '—'}</td>
+      <td>${esc(p['Remarks']) || '—'}</td>
+      <td class="r b">₹${fmt(p['Amount'] || 0)}</td>
+    </tr>`).join('');
+
+  const paymentBlock = `
+<div class="sec-t">💵 Payment Details</div>
+<div class="tot" style="justify-content:flex-start;">
+  <div style="text-align:left;"><span class="lbl">Total Received</span><span class="amt">₹${fmt(totalReceived)}</span></div>
+  <div style="text-align:left;"><span class="lbl">Balance Pending</span><span class="amt" style="color:${balance > 0 ? '#C0392B' : '#157A5C'};">₹${fmt(balance)}</span></div>
+  <div style="text-align:left;"><span class="lbl">Payment Status</span><span class="amt" style="color:#0D1F3C;font-size:13px;">${esc(o['Payment Status']) || '—'}</span></div>
+</div>
+${payments.length ? `
+<table style="margin-top:10px;">
+  <thead><tr><th>#</th><th>Date</th><th>Mode</th><th>Reference</th><th>Remarks</th><th class="r">Amount</th></tr></thead>
+  <tbody>${paymentRows}</tbody>
+</table>` : '<div style="margin-top:10px;color:#888;font-size:11.5px;">Koi payment entry nahi abhi</div>'}`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>${esc(oid)} — ${esc(o['Customer Name'])}</title>
