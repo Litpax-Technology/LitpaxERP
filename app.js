@@ -2045,7 +2045,7 @@ ${chargerBlock}
   <div><span class="lbl">Transport Charges</span><span class="amt" style="color:#0D1F3C;">₹${fmt(o['Transportation Charges'] || 0)}</span></div>
   <div><span class="lbl">Total Order Value</span><span class="amt">₹${fmt(o['Total Order Value'] || 0)}</span></div>
 </div>
-
+${paymentBlock}
 ${o['Order Remarks'] ? `<div class="rem"><b>Remarks:</b> ${esc(o['Order Remarks'])}</div>` : ''}
 
 <div class="sign"><div>Customer Signature</div><div>For Litpax Technology Pvt. Ltd.</div></div>
