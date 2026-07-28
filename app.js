@@ -440,6 +440,7 @@ function renderOrders() {
         <button class="btn btn-sm btn-success" onclick='openPaymentModal("${o['Order ID']||''}","${(o['Customer Name']||'').replace(/"/g,'&quot;')}")' title="Payment Entry">💰</button>
         <button class="btn btn-sm" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
         <button class="btn btn-sm" onclick='printOrderRow(${JSON.stringify(o)})' title="Print / PDF">🖨️</button>
+        ${(user.role === 'Admin' || user.role === 'Sales') ? `<button class="btn btn-sm btn-danger" onclick='confirmDeleteOrder("${o['Order ID']||''}")' title="Delete Order">🗑️</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -452,6 +453,41 @@ function filterOrders(f, el) {
 }
 
 function searchOrders() { renderOrders(); }
+
+// ========== DELETE ORDER (permanent) ==========
+let pendingDeleteOrderID = '';
+
+function confirmDeleteOrder(orderID) {
+  pendingDeleteOrderID = orderID;
+  document.getElementById('del-order-id-display').textContent = orderID;
+  document.getElementById('del-order-id-input').value = '';
+  document.getElementById('del-order-btn').disabled = true;
+  openModal('deleteOrderModal');
+}
+
+function onDeleteOrderIdInput() {
+  const val = document.getElementById('del-order-id-input').value.trim();
+  document.getElementById('del-order-btn').disabled = (val !== pendingDeleteOrderID);
+}
+
+function submitDeleteOrder() {
+  const typed = document.getElementById('del-order-id-input').value.trim();
+  if (typed !== pendingDeleteOrderID) { toast('Order ID match nahi kar raha', 'e'); return; }
+  const btn = document.getElementById('del-order-btn');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  api({ action: 'deleteOrder', 'Order ID': pendingDeleteOrderID }, r => {
+    btn.textContent = '🗑️ Delete Permanently';
+    if (r.success) {
+      toast('Order deleted: ' + pendingDeleteOrderID);
+      closeModal('deleteOrderModal');
+      pendingDeleteOrderID = '';
+      loadOrders();
+    } else {
+      btn.disabled = false;
+      toast(r.message || 'Delete failed', 'e');
+    }
+  });
+}
 
 function viewOrder(o) {
   currentEditOrder = o;
