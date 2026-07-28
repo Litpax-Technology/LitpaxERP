@@ -1495,7 +1495,10 @@ function loadPaymentsList(orderID) {
             ${p['Remarks']?`<div style="font-size:11px;color:var(--text3);">${p['Remarks']}</div>`:''}
           </div>
         </div>
-        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${p['Payment ID']||''}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);">${p['Payment ID']||''}</span>
+          <button class="btn btn-sm btn-danger" title="Delete payment" onclick="deletePayment('${p['Payment ID']||''}','${orderID}','${fmt(p['Amount']||0)}')">🗑️</button>
+        </div>
       </div>`).join('');
   });
 }
@@ -1526,6 +1529,19 @@ function submitPayment() {
       loadPaymentsList(currentPaymentOrderID);
     } else {
       toast(r.message || 'Failed', 'e');
+    }
+  });
+}
+
+function deletePayment(paymentID, orderID, amountLabel) {
+  if (!paymentID) { toast('Payment ID nahi mila', 'e'); return; }
+  if (!confirm(`Payment ₹${amountLabel} (${paymentID}) delete karein? Ye wapas nahi hoga.`)) return;
+  api({ action: 'deletePayment', 'Payment ID': paymentID, 'Order ID': orderID }, r => {
+    if (r.success) {
+      toast('Payment deleted');
+      loadPaymentsList(orderID);   // list + Total Received + Balance refresh
+    } else {
+      toast(r.message || 'Delete failed', 'e');
     }
   });
 }
