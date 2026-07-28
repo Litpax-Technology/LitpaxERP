@@ -3535,7 +3535,8 @@ function submitEditOrder() {
           const id = row.id.replace('edit-item-row-', '');
           const qty = parseFloat(document.getElementById('eim-qty-' + id)?.value) || 0;
           const model = document.getElementById('eim-model-' + id)?.value?.trim();
-          if (model) totalQty += qty;
+          const btype = document.getElementById('eim-btype-' + id)?.value || '';
+          if (qty > 0 && (model || btype)) totalQty += qty;   // model ya btype koi bhi ho, qty count karo
         });
         api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': String(totalQty) }, () => {
           toast('Order updated!');
