@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycbyuyhQGFHjwc9QcOFOwBv7LS3qyk8B_OibBBOdCOOgW_ggp0t2PwvZOK_WAILSisefI-w/exec';
+const API = 'https://script.google.com/macros/s/AKfycby5mJ6ZdhCAv2XKRn4cgVlOzCL5Aj64EEhGpmAgAjLxQTt8lG2hLsKulyQ-A-VjEsWyeQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2215,16 +2215,15 @@ function loadDispatch() {
             const iid = b['Item ID'] || '';
             dspBilled[iid] = (dspBilled[iid]||0) + (parseFloat(b['Billed Qty'])||0);
           });
-          const uniq = [...new Set(allDspItems.map(p => p['Order ID']))];
-          dspPayMap = {};
-          let pending = uniq.length;
-          if (!pending) { renderDispatch(); return; }
-          uniq.forEach(oid => {
-            api({ action: 'getPayments', 'Order ID': oid }, pr2 => {
+          api({ action: 'getAllPayments' }, pr2 => {
+            const totals = (pr2.success && pr2.totals) ? pr2.totals : {};
+            dspPayMap = {};
+            [...new Set(allDspItems.map(p => p['Order ID']))].forEach(oid => {
               const ov = parseFloat(dspOrderMap[oid]?.['Total Order Value']) || 0;
-              dspPayMap[oid] = { received: pr2.totalReceived||0, orderVal: ov, balance: ov - (pr2.totalReceived||0) };
-              if (--pending === 0) renderDispatch();
+              const received = totals[oid] || 0;
+              dspPayMap[oid] = { received, orderVal: ov, balance: ov - received };
             });
+            renderDispatch();
           });
         });
       });
@@ -2551,18 +2550,14 @@ function loadAccounts() {
 
         // Step 4: Payments — fetch all unique orders ke payments
         orderPayMap = {};
-        let pending = uniqueOrderIDs.length;
-        if (!pending) { renderAccounts(allAccounts, prodMap, orderValMap); return; }
-        uniqueOrderIDs.forEach(orderID => {
-          api({ action: 'getPayments', 'Order ID': orderID }, pr2 => {
-            orderPayMap[orderID] = {
-              totalReceived: pr2.totalReceived || 0,
-              orderVal: orderValMap[orderID] || 0,
-              balance: (orderValMap[orderID] || 0) - (pr2.totalReceived || 0)
-            };
-            pending--;
-            if (pending === 0) renderAccounts(allAccounts, prodMap, orderValMap);
+        api({ action: 'getAllPayments' }, pr2 => {
+          const totals = (pr2.success && pr2.totals) ? pr2.totals : {};
+          uniqueOrderIDs.forEach(orderID => {
+            const received = totals[orderID] || 0;
+            const ov = orderValMap[orderID] || 0;
+            orderPayMap[orderID] = { totalReceived: received, orderVal: ov, balance: ov - received };
           });
+          renderAccounts(allAccounts, prodMap, orderValMap);
         });
         });
       });
