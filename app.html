@@ -876,6 +876,29 @@
   </div>
 </div>
 
+  <!-- ===== DELETE ORDER MODAL ===== -->
+<div class="modal-overlay" id="deleteOrderModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <div class="modal-title">🗑️ Delete Order Permanently</div>
+      <button class="modal-close" onclick="closeModal('deleteOrderModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--error-dim);border:1px solid var(--error-b);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--error);">
+        ⚠️ Ye action <b>permanent</b> hai aur wapas nahi ho sakta. Order <b id="del-order-id-display"></b> ka poora data — Sales, CRM, Production, Accounts, Payments, Billings, Dispatch — sabhi jagah se hamesha ke liye delete ho jayega.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm karne ke liye Order ID type karo</label>
+        <input class="form-control" id="del-order-id-input" placeholder="e.g. ORD-0014" oninput="onDeleteOrderIdInput()" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('deleteOrderModal')">Cancel</button>
+      <button class="btn btn-danger" id="del-order-btn" disabled onclick="submitDeleteOrder()">🗑️ Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== VIEW PAYMENTS MODAL (Accounts) ===== -->
 <div class="modal-overlay" id="viewPaymentsModal">
   <div class="modal" style="max-width:500px;">
