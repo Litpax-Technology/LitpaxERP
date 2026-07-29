@@ -3625,6 +3625,9 @@ document.querySelectorAll('.nav-item').forEach(el => {
 
 // ========== INIT ==========
 document.getElementById('o-date').value = new Date().toISOString().split('T')[0];
+document.getElementById('o-date').readOnly = true;
+document.getElementById('o-date').style.background = 'var(--surface2)';
+document.getElementById('o-date').style.cursor = 'not-allowed';
 
 markRequired(['o-date','o-sales','o-cust','o-phone','o-city','o-paymode','o-status','o-paystatus']);
 markRequired(['e-cust','e-phone','e-city','e-paymode','e-status','e-paystatus']);
