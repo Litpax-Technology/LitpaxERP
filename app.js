@@ -2283,7 +2283,7 @@ function renderDispatch() {
   setText('dsp-partial', partial);
   setText('dsp-done', done);
 
-  if (!data.length) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="empty"><div class="empty-ico">🚚</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
+  if (!data.length) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="19"><div class="empty"><div class="empty-ico">🚚</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
 
   // Order-wise grouping (Production jaisa)
   const groups = {}, seq = [];
@@ -2327,6 +2327,8 @@ function renderDispatch() {
         <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Order Date']||'')}</td>
         <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer Name']||''}</td>
         <td rowspan="${count}" style="vertical-align:middle;${bt}">${o['City']||''}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Model']||'—'}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Qty']||'—'}</td>
         <td rowspan="${count}" style="vertical-align:middle;${bt}">${payCell}</td>
         <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(o['Plan Dispatch Date']||'') || '—'}</td>
       ` : '';
