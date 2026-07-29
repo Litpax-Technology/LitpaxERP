@@ -125,6 +125,10 @@
   <div class="pipeline" id="ordersPipeline">
     <div class="pipe-node active" onclick="filterOrders('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="pc-all">0</div><div class="pipe-lbl">All</div></div>
     <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterOrders('pending',this)"><div class="pipe-icon">⏳</div><div class="pipe-count" id="pc-pending">0</div><div class="pipe-lbl">Pending</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterOrders('completed',this)"><div class="pipe-icon">✅</div><div class="pipe-count" id="pc-completed">0</div><div class="pipe-lbl">Completed</div></div>
+    <div class="pipe-sep">›</div>
     <div class="pipe-node" onclick="filterOrders('advance',this)"><div class="pipe-icon">💰</div><div class="pipe-count" id="pc-adv">0</div><div class="pipe-lbl">Advance</div></div>
     <div class="pipe-sep">›</div>
     <div class="pipe-node" onclick="filterOrders('dispatched',this)"><div class="pipe-icon">🚚</div><div class="pipe-count" id="pc-dis">0</div><div class="pipe-lbl">Dispatched</div></div>
