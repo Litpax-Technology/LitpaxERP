@@ -10,11 +10,11 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin:      ['admindashboard','orders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
-  Sales:      ['orders','customers','mydashboard'],
+  Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
+  Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
   Production: ['production'],
-  CRM:        ['crm','orders'],
+  CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
 };
 (function applyRole(){
@@ -86,6 +86,30 @@ function nav(id, el) {
   document.getElementById('pageTitle').textContent = m.title || id;
   document.getElementById('pageSub').textContent = m.sub || '';
   loadPage(id);
+}
+
+function navOrdersFiltered(filter, el) {
+  // Orders page hi kholo, par filter set karke
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-orders').classList.add('active');
+  if (el) el.classList.add('active');
+
+  const titles = {
+    pending:   { title: 'Pending Orders',   sub: 'Production abhi baaki hai' },
+    completed: { title: 'Completed Orders',  sub: 'Production complete ho chuka hai' }
+  };
+  const m = titles[filter] || {};
+  document.getElementById('pageTitle').textContent = m.title || 'Orders';
+  document.getElementById('pageSub').textContent = m.sub || '';
+
+  orderFilter = filter;
+  loadOrders();   // load hone ke baad renderOrders() filter apply karega
+
+  // pipeline node highlight bhi karo (agar dikh raha hai)
+  document.querySelectorAll('#ordersPipeline .pipe-node').forEach(n => n.classList.remove('active'));
+  const pipeBtn = document.querySelector(`#ordersPipeline .pipe-node[onclick*="'${filter}'"]`);
+  if (pipeBtn) pipeBtn.classList.add('active');
 }
 
 function loadPage(id) {
