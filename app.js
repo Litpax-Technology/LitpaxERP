@@ -25,7 +25,10 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
-  
+  if (user.role === 'Sales' || user.role === 'Admin') {
+    const pipeline = document.getElementById('ordersPipeline');
+    if (pipeline) pipeline.style.display = 'none';
+  }
 
   if (user.role === 'Accounts') {
     document.querySelector('.sidebar').style.display = 'flex';
