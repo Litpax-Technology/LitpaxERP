@@ -402,16 +402,25 @@ function loadOrders() {
   });
 }
 
+function isOrderCompleted(o) {
+  return String(o['Final Status'] || '').toLowerCase().includes('production complete');
+}
+
 function renderOrders() {
   let data = allOrders;
   if (orderFilter === 'advance') data = allOrders.filter(o => (o['Order Status']||'').startsWith('Advance'));
   else if (orderFilter === 'pdc') data = allOrders.filter(o => (o['Order Status']||'').startsWith('PDC'));
   else if (orderFilter === 'credit') data = allOrders.filter(o => (o['Order Status']||'').startsWith('Credit'));
   else if (orderFilter === 'dispatched') data = allOrders.filter(o => (o['Order Status']||'').includes('Dispatched'));
+  else if (orderFilter === 'completed') data = allOrders.filter(o => isOrderCompleted(o));
+  else if (orderFilter === 'pending') data = allOrders.filter(o => !isOrderCompleted(o));
 
   const adv = allOrders.filter(o => (o['Order Status']||'').startsWith('Advance')).length;
   const dis = allOrders.filter(o => (o['Order Status']||'').includes('Dispatched')).length;
+  const completed = allOrders.filter(o => isOrderCompleted(o)).length;
   document.getElementById('pc-all').textContent = allOrders.length;
+  document.getElementById('pc-pending').textContent = allOrders.length - completed;
+  document.getElementById('pc-completed').textContent = completed;
   document.getElementById('pc-adv').textContent = adv;
   document.getElementById('pc-dis').textContent = dis;
 
