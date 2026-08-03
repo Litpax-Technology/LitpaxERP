@@ -13,7 +13,7 @@ const roleAccess = {
   Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
-  Production: ['production'],
+  Production: ['production','orders','pendingorders','completedorders'],
   CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
 };
@@ -41,9 +41,14 @@ const roleAccess = {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
-  } else if (user.role === 'Production' || user.role === 'CRM' || user.role === 'Dispatch') {
+  } else if (user.role === 'Production') {
     document.querySelector('.sidebar').style.display = 'flex';
-    // Sirf relevant section dikhao
+    // Production ko Sales section dikhega (Pending/Completed tabs uske andar hain)
+    ['sec-master','sec-admin','sec-finance'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+  } else if (user.role === 'CRM' || user.role === 'Dispatch') {
+    document.querySelector('.sidebar').style.display = 'flex';
     ['sec-sales','sec-master','sec-admin','sec-finance'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = 'none';
     });
