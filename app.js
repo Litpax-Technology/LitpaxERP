@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/macros/s/AKfycby5mJ6ZdhCAv2XKRn4cgVlOzCL5Aj64EEhGpmAgAjLxQTt8lG2hLsKulyQ-A-VjEsWyeQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyP03ynGrhUtB_BM5geqTWAx7j5Ovn17Ak0amoZlEwrBihc5EkR1Ry6u-NSxK08oe8ELQ/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
