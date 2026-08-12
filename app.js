@@ -2473,6 +2473,7 @@ function loadCustomers() {
           <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-warning" onclick='openCustEdit(${JSON.stringify(c)})' title="Edit">📝</button>
           <button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')" style="margin-left:4px;">📎</button>
+          <button class="btn btn-sm" onclick="openBatterySpec('${c.CompanyName}')" style="margin-left:4px;background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" title="Battery Spec">🔋</button>
         </td>
         </tr>`).join('');
     });
@@ -2487,7 +2488,7 @@ function loadCustomers() {
         <td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td>
         <td>${c.City}</td>
         <td>${c.CreditDays} days</td>
-        <td><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎 Docs</button>td>
+        <td style="white-space:nowrap;"><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎</button> <button class="btn btn-sm" onclick="openBatterySpec('${c.CompanyName}')" style="background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" title="Battery Spec">🔋</button></td>
       </tr>`).join('');
     });
   }
@@ -3082,6 +3083,85 @@ function uploadCustDoc() {
       })
       .catch(err => { if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload'; } status.style.color = 'var(--error)'; status.textContent = '❌ ' + err.message; });
     });
+  });
+}
+
+// ========== BATTERY SPEC (customer-wise, sheet-driven columns) ==========
+// Columns yahan hardcode NAHI — GAS BatterySpec sheet ke header se aate hain.
+// Naya column chahiye? Sheet me "Customer Name" ke baad, "Updated By" se pehle header add kar do.
+let currentSpecCust = '';
+let currentSpecColumns = [];
+
+function openBatterySpec(custName) {
+  currentSpecCust = custName;
+  currentSpecColumns = [];
+  document.getElementById('batterySpecTitle').textContent = '🔋 ' + custName + ' — Battery Spec';
+  document.getElementById('specStatus').style.display = 'none';
+  document.getElementById('specThead').innerHTML = '';
+  document.getElementById('specTbody').innerHTML =
+    `<tr><td><div class="loading"><div class="spin"></div></div></td></tr>`;
+  openModal('batterySpecModal');
+  loadBatterySpec(custName);
+}
+
+function loadBatterySpec(custName) {
+  api({ action: 'getBatterySpec', customerName: custName }, r => {
+    currentSpecColumns = (r.success && r.columns) ? r.columns : [];
+    if (!currentSpecColumns.length) {
+      document.getElementById('specThead').innerHTML = '';
+      document.getElementById('specTbody').innerHTML =
+        `<tr><td style="padding:16px;color:var(--error);font-size:12px;">Sheet me koi column header nahi mila — BatterySpec sheet check karo</td></tr>`;
+      return;
+    }
+    document.getElementById('specThead').innerHTML =
+      '<tr>' + currentSpecColumns.map(c => `<th>${c}</th>`).join('') + '<th style="width:44px;"></th></tr>';
+    document.getElementById('specTbody').innerHTML = '';
+    const rows = (r.success && r.data) ? r.data : [];
+    if (!rows.length) { addSpecRow(); return; }
+    rows.forEach(row => addSpecRow(row));
+  });
+}
+
+function addSpecRow(values) {
+  values = values || {};
+  if (!currentSpecColumns.length) return;
+  const tb = document.getElementById('specTbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = currentSpecColumns.map(c =>
+    `<td><input class="form-control" data-col="${c}" value="${(values[c] || '').toString().replace(/"/g, '&quot;')}" placeholder="${c}" style="font-size:12px;padding:5px 8px;"></td>`
+  ).join('') +
+  `<td style="text-align:center;"><button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()" title="Remove">✕</button></td>`;
+  tb.appendChild(tr);
+}
+
+function collectSpecRows() {
+  const rows = [];
+  document.querySelectorAll('#specTbody tr').forEach(tr => {
+    const obj = {}; let any = false;
+    tr.querySelectorAll('input[data-col]').forEach(inp => {
+      const v = inp.value.trim();
+      obj[inp.dataset.col] = v;
+      if (v) any = true;
+    });
+    if (any) rows.push(obj);
+  });
+  return rows;
+}
+
+function saveBatterySpec() {
+  const btn = document.getElementById('specSaveBtn');
+  const status = document.getElementById('specStatus');
+  const rows = collectSpecRows();
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({ action: 'saveBatterySpec', customerName: currentSpecCust, rows: JSON.stringify(rows), 'Added By': user.name || '' }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Spec'; }
+    if (r.success) {
+      toast('Battery spec saved!');
+      status.style.display = 'block'; status.style.color = 'var(--success)'; status.textContent = '✅ Saved ' + rows.length + ' row(s)';
+    } else {
+      toast(r.message || 'Save failed', 'e');
+      status.style.display = 'block'; status.style.color = 'var(--error)'; status.textContent = '❌ ' + (r.message || 'Failed');
+    }
   });
 }
 
