@@ -3165,6 +3165,57 @@ function saveBatterySpec() {
   });
 }
 
+// ---- Column editor (headings rename/add/delete) ----
+function openSpecColumns() {
+  const list = document.getElementById('specColsList');
+  // Jo abhi table me dikh rahe hain (server se aaye) wahi editable
+  const cols = currentSpecColumns.length ? currentSpecColumns.slice() : [];
+  list.innerHTML = cols.map(c => specColRowHTML(c)).join('');
+  if (!cols.length) addSpecColInput();
+  document.getElementById('specColsStatus').style.display = 'none';
+  openModal('specColsModal');
+}
+
+function specColRowHTML(name) {
+  const safe = (name || '').toString().replace(/"/g, '&quot;');
+  return `<div class="spec-col-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+    <input class="form-control spec-col-input" value="${safe}" placeholder="Column name" style="font-size:13px;">
+    <button class="btn btn-sm btn-danger" onclick="this.closest('.spec-col-row').remove()" title="Remove column">✕</button>
+  </div>`;
+}
+
+function addSpecColInput() {
+  document.getElementById('specColsList').insertAdjacentHTML('beforeend', specColRowHTML(''));
+}
+
+function saveSpecColumns() {
+  const btn = document.getElementById('specColsSaveBtn');
+  const status = document.getElementById('specColsStatus');
+  const cols = [];
+  let bad = false;
+  document.querySelectorAll('#specColsList .spec-col-input').forEach(inp => {
+    const v = inp.value.trim();
+    if (!v) return;                       // khaali skip
+    if (cols.some(c => c.toLowerCase() === v.toLowerCase())) bad = true;  // duplicate
+    cols.push(v);
+  });
+  if (!cols.length) { toast('Kam se kam ek column rakho', 'e'); return; }
+  if (bad) { toast('Do columns ka naam same hai — alag rakho', 'e'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  api({ action: 'setBatterySpecColumns', columns: JSON.stringify(cols) }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Columns'; }
+    if (r.success) {
+      toast('Columns updated!');
+      closeModal('specColsModal');
+      loadBatterySpec(currentSpecCust);   // table naye columns ke sath reload
+    } else {
+      status.style.display = 'block'; status.style.color = 'var(--error)'; status.textContent = '❌ ' + (r.message || 'Failed');
+      toast(r.message || 'Failed', 'e');
+    }
+  });
+}
+
 // ========== MY DASHBOARD ==========
 function loadMyDashboard() {
   const el = document.getElementById('myDashboardContent');
