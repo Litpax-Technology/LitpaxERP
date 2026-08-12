@@ -2487,7 +2487,7 @@ function loadCustomers() {
         <td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td>
         <td>${c.City}</td>
         <td>${c.CreditDays} days</td>
-        <td><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎 Docs</button><button class="btn btn-sm btn-warning" style="margin-left:4px;" onclick='openCustEdit(JSON.parse(this.dataset.c))' data-c='CUSTJSON'>📝</button></td>
+        <td><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎 Docs</button>td>
       </tr>`).join('');
     });
   }
