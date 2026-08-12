@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbwsJnXcCEi_IJmYYc7-mDhAPIJxIkbru38UWXMIt6b6go-21TZKc9JMAiMG6htbvX6pzg/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzPE1ImWNsNE-hLFgSFDbinwpYpEBXB0odlySyKWy2OtbKa6XpDXinlf80bFdh4FzsEqg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
