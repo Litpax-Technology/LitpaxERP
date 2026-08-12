@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbx7j4awjCNfxZ_PwL52alJ156YR9HsmNxERROOhes6jjgy_qqQ9JJ8IwZCmtlbgo2rA_g/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbwsJnXcCEi_IJmYYc7-mDhAPIJxIkbru38UWXMIt6b6go-21TZKc9JMAiMG6htbvX6pzg/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2470,7 +2470,10 @@ function loadCustomers() {
           <td>${c.Phone||'—'}</td>
           <td style="font-family:monospace;font-size:11px;">${c.GSTIN||'—'}</td>
           <td>${c.City||'—'}</td>
-          <td><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎 Docs</button></td>
+          <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-warning" onclick='openCustEdit(${JSON.stringify(c)})' title="Edit">📝</button>
+          <button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')" style="margin-left:4px;">📎</button>
+        </td>
         </tr>`).join('');
     });
   } else {
