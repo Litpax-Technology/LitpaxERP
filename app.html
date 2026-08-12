@@ -758,7 +758,10 @@
           <tbody id="specTbody"></tbody>
         </table>
       </div>
-      <button class="btn btn-sm btn-primary" onclick="addSpecRow()" style="margin-top:10px;">+ Add Row</button>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-primary" onclick="addSpecRow()">+ Add Row</button>
+        <button class="btn btn-sm" onclick="openSpecColumns()" style="background:var(--surface2);border-color:var(--border2);color:var(--text2);">⚙️ Columns</button>
+      </div>
       <div id="specStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
     </div>
     <div class="modal-foot">
