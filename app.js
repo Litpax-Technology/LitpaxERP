@@ -1337,24 +1337,15 @@ let allCRM = [];
 let crmBilledMap = {};
 
 function loadCRM() {
-  api({ action: 'getCRM' }, r => {
+  api({ action: 'getCRMBundle' }, r => {
     if (!r.success) { document.getElementById('crmTable').innerHTML = `<tr><td colspan="33"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-txt">No CRM records</div></div></td></tr>`; return; }
-    allCRM = r.data || [];
+    allCRM = r.crm || [];
     document.getElementById('crm-total').textContent = allCRM.length;
     document.getElementById('crm-prod').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('production')).length;
     document.getElementById('crm-dispatch').textContent = allCRM.filter(c => (c['Current Stage']||'').toLowerCase().includes('dispatch')).length;
     document.getElementById('crm-paid').textContent = allCRM.filter(c => c['Payment Received Actual']).length;
-
-    // Billings fetch karo
-    api({ action: 'getAllBillings' }, br => {
-      crmBilledMap = {};
-      (br.data || []).forEach(b => {
-        const iid = b['Item ID'] || '';
-        if (!crmBilledMap[iid]) crmBilledMap[iid] = 0;
-        crmBilledMap[iid] += parseFloat(b['Billed Qty']) || 0;
-      });
-      renderCRM(allCRM);
-    });
+    crmBilledMap = r.billed || {};
+    renderCRM(allCRM);
   });
 }
 
@@ -1647,9 +1638,9 @@ function uploadPmSlipNow() {
 // ========== PRODUCTION ==========
 let allProd = [];
 function loadProduction() {
-  api({ action: 'getProduction' }, r => {
+  api({ action: 'getProductionBundle' }, r => {
     if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
-    allProd = r.data || [];
+    allProd = r.production || [];
     document.getElementById('prod-total').textContent = allProd.length;
     const _live = p => {
       const t = parseFloat(p['Qty']) || 0, q = parseFloat(p['Produced Qty']) || 0;
@@ -1659,17 +1650,7 @@ function loadProduction() {
     document.getElementById('prod-done').textContent = allProd.filter(p => _live(p) === 'Completed').length;
     document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Production Delay']).length;
     if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
-
-    // Billings fetch karo — item level pe billed qty
-    api({ action: 'getAllBillings' }, br => {
-      const billedMap = {};
-      (br.data || []).forEach(b => {
-        const iid = b['Item ID'] || '';
-        if (!billedMap[iid]) billedMap[iid] = 0;
-        billedMap[iid] += parseFloat(b['Billed Qty']) || 0;
-      });
-      renderProduction(billedMap);
-    });
+    renderProduction(r.billed || {});
   });
 }
 
@@ -2236,36 +2217,20 @@ let currentDispatchData = null;
 
 function loadDispatch() {
   document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
-  api({ action: 'getProduction' }, pr => {
-    allDspItems = pr.data || [];
-    api({ action: 'getOrders' }, or => {
-      dspOrderMap = {};
-      (or.data || []).forEach(o => dspOrderMap[o['Order ID']] = o);
-      api({ action: 'getAllDispatches' }, dr => {
-        dspTotals = {};
-        (dr.data || []).forEach(d => {
-          const iid = d['Item ID'] || '';
-          dspTotals[iid] = (dspTotals[iid]||0) + (parseFloat(d['Dispatch Qty'])||0);
-        });
-        api({ action: 'getAllBillings' }, br => {
-          dspBilled = {};
-          (br.data || []).forEach(b => {
-            const iid = b['Item ID'] || '';
-            dspBilled[iid] = (dspBilled[iid]||0) + (parseFloat(b['Billed Qty'])||0);
-          });
-          api({ action: 'getAllPayments' }, pr2 => {
-            const totals = (pr2.success && pr2.totals) ? pr2.totals : {};
-            dspPayMap = {};
-            [...new Set(allDspItems.map(p => p['Order ID']))].forEach(oid => {
-              const ov = parseFloat(dspOrderMap[oid]?.['Total Order Value']) || 0;
-              const received = totals[oid] || 0;
-              dspPayMap[oid] = { received, orderVal: ov, balance: ov - received };
-            });
-            renderDispatch();
-          });
-        });
-      });
+  api({ action: 'getDispatchBundle' }, r => {
+    if (!r.success) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="empty"><div class="empty-txt">Load failed</div></div></td></tr>'; return; }
+    allDspItems = r.production || [];
+    dspOrderMap = r.orderMap || {};
+    dspTotals   = r.dispTotals || {};
+    dspBilled   = r.billed || {};
+    const payTotals = r.payTotals || {};
+    dspPayMap = {};
+    [...new Set(allDspItems.map(p => p['Order ID']))].forEach(oid => {
+      const ov = parseFloat(dspOrderMap[oid]?.['Total Order Value']) || 0;
+      const received = payTotals[oid] || 0;
+      dspPayMap[oid] = { received, orderVal: ov, balance: ov - received };
     });
+    renderDispatch();
   });
 }
 
@@ -2546,13 +2511,17 @@ let accItemMap = {};
 
 function loadAccounts() {
   document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
-  // Step 1: Accounts data
-  api({ action: 'getAccounts' }, r => {
-    if (!r.success || !r.data.length) {
+  api({ action: 'getAccountsBundle' }, r => {
+    if (!r.success || !r.accounts || !r.accounts.length) {
       document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No accounts data</div></div></td></tr>';
       return;
     }
-    allAccounts = r.data || [];
+    allAccounts       = r.accounts || [];
+    const prodMap     = r.prodMap || {};
+    const orderValMap = r.orderValMap || {};
+    const payTotals   = r.payTotals || {};
+    accItemMap        = r.itemMap || {};
+
     const uniqueOrderIDs = [...new Set(allAccounts.map(a => a['Order ID']))];
     const totalQty    = allAccounts.reduce((s,a) => s + (parseFloat(a['Qty'])||0), 0);
     const withCharger = allAccounts.filter(a => a['Charger Qty']).length;
@@ -2561,51 +2530,21 @@ function loadAccounts() {
     document.getElementById('acc-qty').textContent     = totalQty;
     document.getElementById('acc-charger').textContent = withCharger;
 
-    // Step 2: Orders data (for Total Value)
-    api({ action: 'getOrders' }, or => {
-      const ordersData = or.data || [];
-      const orderValMap = {};
-      ordersData.forEach(o => { orderValMap[o['Order ID']] = parseFloat(o['Total Order Value'])||0; });
-
-      // Step 3: Production data — status + produced/pending qty live fetch
-      api({ action: 'getProduction' }, pr => {
-        const prodMap = {};
-        (pr.data || []).forEach(p => {
-          prodMap[p['Item ID']] = {
-            status:      p['Status'] || 'Pending',
-            producedQty: parseFloat(p['Produced Qty']) || 0,
-            pendingQty:  parseFloat(p['Pending Qty'])  || 0
-          };
-        });
-        // Accounts data mein production values merge karo
-        allAccounts.forEach(a => {
-          const pd = prodMap[a['Item ID']];
-          if (pd) {
-            a['Produced Qty'] = pd.producedQty;
-            a['Pending Qty']  = pd.pendingQty;
-          }
-        });
-
-        // Step 4: Payments — fetch all unique orders ke payments
-        // Step 3b: OrderItems — Price Type aur Rate
-        api({ action: 'getOrderItems' }, ir => {
-        accItemMap = {};
-        (ir.data || []).forEach(i => { if (i['Item ID']) accItemMap[i['Item ID']] = i; });
-
-        // Step 4: Payments — fetch all unique orders ke payments
-        orderPayMap = {};
-        api({ action: 'getAllPayments' }, pr2 => {
-          const totals = (pr2.success && pr2.totals) ? pr2.totals : {};
-          uniqueOrderIDs.forEach(orderID => {
-            const received = totals[orderID] || 0;
-            const ov = orderValMap[orderID] || 0;
-            orderPayMap[orderID] = { totalReceived: received, orderVal: ov, balance: ov - received };
-          });
-          renderAccounts(allAccounts, prodMap, orderValMap);
-        });
-        });
-      });
+    // Production produced/pending merge
+    allAccounts.forEach(a => {
+      const pd = prodMap[a['Item ID']];
+      if (pd) { a['Produced Qty'] = pd.producedQty; a['Pending Qty'] = pd.pendingQty; }
     });
+
+    // orderPayMap banao
+    orderPayMap = {};
+    uniqueOrderIDs.forEach(orderID => {
+      const received = payTotals[orderID] || 0;
+      const ov = orderValMap[orderID] || 0;
+      orderPayMap[orderID] = { totalReceived: received, orderVal: ov, balance: ov - received };
+    });
+
+    renderAccounts(allAccounts, prodMap, orderValMap);
   });
 }
 
