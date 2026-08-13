@@ -771,7 +771,25 @@
   </div>
 </div>
 
-<!-- EDIT ORDER MODAL -->
+  <!-- BATTERY SPEC COLUMNS MODAL -->
+<div class="modal-overlay" id="specColsModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div class="modal-title">⚙️ Manage Columns</div>
+      <button class="modal-close" onclick="closeModal('specColsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Column rename karo ya naya add karo. Save karte hi sab customers ke liye lag jayega. (Rename pe purana data naye naam ke neeche aa jayega.)</div>
+      <div id="specColsList"></div>
+      <button class="btn btn-sm btn-primary" onclick="addSpecColInput()" style="margin-top:8px;">+ Add Column</button>
+      <div id="specColsStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('specColsModal')">Cancel</button>
+      <button class="btn btn-primary" id="specColsSaveBtn" onclick="saveSpecColumns()">💾 Save Columns</button>
+    </div>
+  </div>
+</div>
 
 <!-- EDIT ORDER MODAL -->
 <div class="modal-overlay" id="editOrderModal">
