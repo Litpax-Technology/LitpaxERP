@@ -198,6 +198,15 @@
     <div class="stat c-green"><div class="stat-lbl">Completed</div><div class="stat-val" id="prod-done">0</div></div>
     <div class="stat c-red"><div class="stat-lbl">Delayed</div><div class="stat-val" id="prod-delayed">0</div></div>
   </div>
+  <div class="pipeline" id="prodPipeline">
+    <div class="pipe-node active" onclick="filterProduction('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="ppc-all">0</div><div class="pipe-lbl">All</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterProduction('pending',this)"><div class="pipe-icon">⏳</div><div class="pipe-count" id="ppc-pending">0</div><div class="pipe-lbl">Pending</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterProduction('inprogress',this)"><div class="pipe-icon">⚙️</div><div class="pipe-count" id="ppc-inprog">0</div><div class="pipe-lbl">In Progress</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterProduction('completed',this)"><div class="pipe-icon">✅</div><div class="pipe-count" id="ppc-completed">0</div><div class="pipe-lbl">Completed</div></div>
+  </div>
   <div class="card">
     <div class="card-head">
       <div class="card-title">Production Tracker</div>
