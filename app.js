@@ -2242,6 +2242,15 @@ function submitProdUpdate() {
         if (allDone) crmParams['Current Stage'] = 'Production Complete';
       }
       if (Object.keys(crmParams).length > 2) api(crmParams, () => {});
+
+      // FMS: Start / Complete checkbox ticked hai to us step ko Done karo
+      if (document.getElementById('pu-sa-chk').checked) {
+        api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'start', 'Actual': params['Production Start Actual'] || '' }, () => {});
+      }
+      if (document.getElementById('pu-ca-chk').checked) {
+        api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'complete', 'Actual': params['Production Complete Actual'] || '' }, () => {});
+      }
+
       toast('Production updated!');
       closeModal('prodUpdateModal');
       loadProduction();
