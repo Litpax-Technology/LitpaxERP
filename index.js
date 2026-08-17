@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbwsJnXcCEi_IJmYYc7-mDhAPIJxIkbru38UWXMIt6b6go-21TZKc9JMAiMG6htbvX6pzg/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbyCxuJg9kolgse0AE_JwmojtEBLSMHLpRhrdvGhTd7Xor8JyynuvGYwGp07v-McjRUMcw/exec';
 document.getElementById('pword').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
@@ -21,25 +21,46 @@ function showErr(m) {
 function hideErr() {
   document.getElementById('errBox').classList.remove('show');
 }
-function doLogin() {
+function doLogin(attempt) {
+  attempt = attempt || 1;
   const u = document.getElementById('uname').value.trim();
   const p = document.getElementById('pword').value.trim();
   if (!u || !p) { showErr('Username aur password dono bharein'); return; }
   hideErr(); setLoad(true); window._done = false;
+
+  const cbName = 'onLogin_' + Date.now();
+  window[cbName] = function(res) {
+    if (window._done) return;
+    window._done = true;
+    setLoad(false);
+    delete window[cbName];
+    if (res.success) {
+      sessionStorage.setItem('erp_user', JSON.stringify(res.user));
+      window.location.href = 'app.html';
+    } else {
+      showErr(res.message || 'Login failed');
+    }
+  };
+
   const s = document.createElement('script');
-  s.src = `${API}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&callback=onLogin`;
-  s.onerror = () => { setLoad(false); showErr('Network error — dobara try karein'); };
+  s.src = `${API}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&callback=${cbName}`;
+  s.onerror = () => {
+    if (window._done) return;
+    if (attempt < 2) { s.remove(); doLogin(attempt + 1); return; }
+    window._done = true; setLoad(false); delete window[cbName];
+    showErr('Network error — dobara try karein');
+  };
   document.body.appendChild(s);
+
   setTimeout(() => {
-    if (!window._done) { setLoad(false); showErr('Timeout — please retry'); }
-  }, 12000);
-}
-function onLogin(res) {
-  window._done = true; setLoad(false);
-  if (res.success) {
-    sessionStorage.setItem('erp_user', JSON.stringify(res.user));
-    window.location.href = 'app.html';
-  } else {
-    showErr(res.message || 'Login failed');
-  }
+    if (window._done) return;
+    if (attempt < 2) {
+      // Cold start — chupchaap ek baar aur try karo
+      s.remove();
+      doLogin(attempt + 1);
+    } else {
+      window._done = true; setLoad(false); delete window[cbName];
+      showErr('Timeout — please retry');
+    }
+  }, 15000);
 }
