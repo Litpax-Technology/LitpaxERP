@@ -13,7 +13,7 @@ const roleAccess = {
   Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
-  Production: ['production','orders','pendingorders','completedorders'],
+  Production: ['production'],
   CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
 };
@@ -43,8 +43,8 @@ const roleAccess = {
     });
   } else if (user.role === 'Production') {
     document.querySelector('.sidebar').style.display = 'flex';
-    // Production ko Sales section dikhega (Pending/Completed tabs uske andar hain)
-    ['sec-master','sec-admin','sec-finance'].forEach(id => {
+    // Production sirf Production tracker — Sales tabs hata diye, filter Production page ke andar hi hai
+    ['sec-sales','sec-master','sec-admin','sec-finance'].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = 'none';
     });
   } else if (user.role === 'CRM' || user.role === 'Dispatch') {
@@ -1636,29 +1636,52 @@ function uploadPmSlipNow() {
 }
 
 // ========== PRODUCTION ==========
-let allProd = [];
+// ========== PRODUCTION ==========
+let allProd = [], prodFilter = 'all', prodBilledMap = {};
+
+function prodLiveStatus(p) {
+  const t = parseFloat(p['Qty']) || 0, q = parseFloat(p['Produced Qty']) || 0;
+  return (t > 0 && q >= t) ? 'Completed' : (q > 0 || p['Production Start Actual']) ? 'In Progress' : 'Pending';
+}
+
 function loadProduction() {
   api({ action: 'getProductionBundle' }, r => {
     if (!r.success) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No production records</div></div></td></tr>`; return; }
     allProd = r.production || [];
+    prodBilledMap = r.billed || {};
+    const pendingCount = allProd.filter(p => prodLiveStatus(p) === 'Pending').length;
+    const inprogCount  = allProd.filter(p => prodLiveStatus(p) === 'In Progress').length;
+    const doneCount    = allProd.filter(p => prodLiveStatus(p) === 'Completed').length;
     document.getElementById('prod-total').textContent = allProd.length;
-    const _live = p => {
-      const t = parseFloat(p['Qty']) || 0, q = parseFloat(p['Produced Qty']) || 0;
-      return (t > 0 && q >= t) ? 'Completed' : (q > 0 || p['Production Start Actual']) ? 'In Progress' : 'Pending';
-    };
-    document.getElementById('prod-inprog').textContent = allProd.filter(p => _live(p) === 'In Progress').length;
-    document.getElementById('prod-done').textContent = allProd.filter(p => _live(p) === 'Completed').length;
+    document.getElementById('prod-inprog').textContent = inprogCount;
+    document.getElementById('prod-done').textContent = doneCount;
     document.getElementById('prod-delayed').textContent = allProd.filter(p => p['Production Delay']).length;
+    setText('ppc-all', allProd.length);
+    setText('ppc-pending', pendingCount);
+    setText('ppc-inprog', inprogCount);
+    setText('ppc-completed', doneCount);
     if (!allProd.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">No records yet</div></div></td></tr>`; return; }
-    renderProduction(r.billed || {});
+    renderProduction(prodBilledMap);
   });
+}
+
+function filterProduction(f, el) {
+  prodFilter = f;
+  document.querySelectorAll('#prodPipeline .pipe-node').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderProduction(prodBilledMap);
 }
 
 function renderProduction(billedMap) {
     billedMap = billedMap || {};
+    let list = allProd;
+    if (prodFilter === 'pending')         list = allProd.filter(p => prodLiveStatus(p) === 'Pending');
+    else if (prodFilter === 'inprogress') list = allProd.filter(p => prodLiveStatus(p) === 'In Progress');
+    else if (prodFilter === 'completed')  list = allProd.filter(p => prodLiveStatus(p) === 'Completed');
+    if (!list.length) { document.getElementById('prodTable').innerHTML = `<tr><td colspan="22"><div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">Is filter mein koi item nahi</div></div></td></tr>`; return; }
     const prodGroups = {};
     const prodSeq = [];
-    allProd.forEach(p => {
+    list.forEach(p => {
       const oid = p['Order ID'] || '';
       if (!prodGroups[oid]) { prodGroups[oid] = []; prodSeq.push(oid); }
       prodGroups[oid].push(p);
