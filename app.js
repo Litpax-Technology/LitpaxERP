@@ -2156,14 +2156,29 @@ function calcProdQty() {
   document.getElementById('pu-pending-qty').textContent = pending >= 0 ? pending : 0;
 }
 
+function toggleProdDate(which) {
+  const chk    = document.getElementById(`pu-${which}-chk`);
+  const dateEl = document.getElementById(`pu-${which}`);
+  if (!chk || !dateEl) return;
+  if (chk.checked) {
+    if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+  } else {
+    dateEl.value = '';
+  }
+}
+
 function openProdUpdate(p) {
   document.getElementById('pu-orderid').value = p['Order ID']||'';
   document.getElementById('pu-itemid').value = p['Item ID']||'';
   document.getElementById('pu-model').value = p['Product Model']||'';
   document.getElementById('pu-btype').value = p['Battery Type']||'';
   document.getElementById('pu-status').value = p['Status']||'Pending';
-  document.getElementById('pu-sa').value = toInputDate(p['Production Start Actual']||'');
-  document.getElementById('pu-ca').value = toInputDate(p['Production Complete Actual']||'');
+  const saVal = toInputDate(p['Production Start Actual']||'');
+  const caVal = toInputDate(p['Production Complete Actual']||'');
+  document.getElementById('pu-sa').value = saVal;
+  document.getElementById('pu-ca').value = caVal;
+  document.getElementById('pu-sa-chk').checked = !!saVal;
+  document.getElementById('pu-ca-chk').checked = !!caVal;
   document.getElementById('pu-delay').value = p['Production Delay']||'';
   document.getElementById('pu-remarks').value = p['Remarks']||'';
   // Produced Qty info
