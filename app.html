@@ -560,8 +560,20 @@
           </select>
           <div style="font-size:11px;color:var(--text3);margin-top:4px;">Auto: Pending Qty 0 → Completed | Start Actual ya Produced Qty → In Progress</div>
         </div>
-        <div class="form-group"><label class="form-label">Start Date</label><input class="form-control" type="date" id="pu-sa"></div>
-        <div class="form-group"><label class="form-label">Completion Date</label><input class="form-control" type="date" id="pu-ca"></div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="pu-sa-chk" onchange="toggleProdDate('sa')" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+            Production Started
+          </label>
+          <input class="form-control" type="date" id="pu-sa">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="pu-ca-chk" onchange="toggleProdDate('ca')" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+            Production Completed
+          </label>
+          <input class="form-control" type="date" id="pu-ca">
+        </div>
         <div class="form-group"><label class="form-label">Production Delay</label>
           <select class="form-control" id="pu-delay">
             <option value="">No Delay</option>
