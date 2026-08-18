@@ -2270,8 +2270,27 @@ function submitProdUpdate() {
 }
 
 // ========== DISPATCH ==========
+// ========== DISPATCH ==========
 let allDspItems = [], dspTotals = {}, dspBilled = {}, dspPayMap = {}, dspOrderMap = {};
 let currentDispatchData = null;
+let dspFilter = 'all';
+
+function dspStatus(p) {
+  const qty  = parseFloat(p['Qty'])||0;
+  const disp = dspTotals[p['Item ID']]||0;
+  const prod = parseFloat(p['Produced Qty'])||0;
+  if (disp >= qty && qty > 0) return 'done';
+  if (disp > 0)               return 'partial';
+  if (prod > 0)               return 'ready';
+  return 'waiting';
+}
+
+function filterDispatch(f, el) {
+  dspFilter = f;
+  document.querySelectorAll('#dspPipeline .pipe-node').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderDispatch();
+}
 
 function loadDispatch() {
   document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="17"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
@@ -2311,7 +2330,17 @@ function renderDispatch() {
   setText('dsp-partial', partial);
   setText('dsp-done', done);
 
-  if (!data.length) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="19"><div class="empty"><div class="empty-ico">🚚</div><div class="empty-txt">No records</div></div></td></tr>'; return; }
+  // Pipeline counts — hamesha full set pe (search ke andar bhi sahi rahe)
+  setText('dpc-all', allDspItems.length);
+  setText('dpc-waiting', allDspItems.filter(p => dspStatus(p) === 'waiting').length);
+  setText('dpc-ready',   allDspItems.filter(p => dspStatus(p) === 'ready').length);
+  setText('dpc-partial', allDspItems.filter(p => dspStatus(p) === 'partial').length);
+  setText('dpc-done',    allDspItems.filter(p => dspStatus(p) === 'done').length);
+
+  // Status filter
+  if (dspFilter !== 'all') data = data.filter(p => dspStatus(p) === dspFilter);
+
+  if (!data.length) { document.getElementById('dispatchTable').innerHTML = '<tr><td colspan="19"><div class="empty"><div class="empty-ico">🚚</div><div class="empty-txt">Is filter mein koi record nahi</div></div></td></tr>'; return; }
 
   // Order-wise grouping (Production jaisa)
   const groups = {}, seq = [];
