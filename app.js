@@ -1706,7 +1706,8 @@ function renderProduction(billedMap) {
 
       items.forEach((p, idx) => {
         const isFirst = idx === 0;
-        const bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
+        let bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
+        if (isProdOverdue(p)) bt += 'background:#FEF2F2;';   // 5+ din purana + incomplete → halka red
         const _tQty = parseFloat(p['Qty']) || 0;
         const _pQty = parseFloat(p['Produced Qty']) || 0;
         const liveStatus = (_tQty > 0 && _pQty >= _tQty) ? 'Completed'
@@ -2334,9 +2335,9 @@ function renderDispatch() {
       : '—';
 
     items.forEach((p, idx) => {
-        const isFirst = idx === 0;
-        let bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
-        if (isProdOverdue(p)) bt += 'background:#FEF2F2;';   // 5+ din purana + incomplete → halka red
+      const isFirst = idx === 0;
+      const bt = (isFirst && sr > 1) ? 'border-top:2px solid var(--border2);' : '';
+      const qty      = parseFloat(p['Qty'])||0;
       const qty      = parseFloat(p['Qty'])||0;
       const produced = parseFloat(p['Produced Qty'])||0;
       const billed   = dspBilled[p['Item ID']]||0;
