@@ -2338,7 +2338,6 @@ function renderDispatch() {
       const isFirst = idx === 0;
       const bt = (isFirst && sr > 1) ? 'border-top:2px solid var(--border2);' : '';
       const qty      = parseFloat(p['Qty'])||0;
-      const qty      = parseFloat(p['Qty'])||0;
       const produced = parseFloat(p['Produced Qty'])||0;
       const billed   = dspBilled[p['Item ID']]||0;
       const disp     = dspTotals[p['Item ID']]||0;
