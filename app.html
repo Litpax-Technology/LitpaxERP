@@ -235,6 +235,17 @@
     <div class="stat c-purple"><div class="stat-lbl">Partial Dispatched</div><div class="stat-val" id="dsp-partial">0</div></div>
     <div class="stat c-green"><div class="stat-lbl">Fully Dispatched</div><div class="stat-val" id="dsp-done">0</div></div>
   </div>
+  <div class="pipeline" id="dspPipeline">
+    <div class="pipe-node active" onclick="filterDispatch('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="dpc-all">0</div><div class="pipe-lbl">All</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterDispatch('waiting',this)"><div class="pipe-icon">⏳</div><div class="pipe-count" id="dpc-waiting">0</div><div class="pipe-lbl">Waiting</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterDispatch('ready',this)"><div class="pipe-icon">📦</div><div class="pipe-count" id="dpc-ready">0</div><div class="pipe-lbl">Ready</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterDispatch('partial',this)"><div class="pipe-icon">🔄</div><div class="pipe-count" id="dpc-partial">0</div><div class="pipe-lbl">Partial</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterDispatch('done',this)"><div class="pipe-icon">🚚</div><div class="pipe-count" id="dpc-done">0</div><div class="pipe-lbl">Dispatched</div></div>
+  </div>
   <div class="card">
     <div class="card-head">
       <div class="card-title">Dispatch Queue</div>
