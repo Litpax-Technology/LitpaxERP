@@ -1672,6 +1672,16 @@ function filterProduction(f, el) {
   renderProduction(prodBilledMap);
 }
 
+const OVERDUE_DAYS = 5;   // itne din se purana + incomplete = overdue highlight
+
+function isProdOverdue(p) {
+  if (prodLiveStatus(p) === 'Completed') return false;   // ban gaya to overdue nahi
+  const t = parseDMY(fmtDisplayDate(p['Order Date'] || ''));
+  if (!t) return false;
+  const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
+  return days > OVERDUE_DAYS;
+}
+
 function renderProduction(billedMap) {
     billedMap = billedMap || {};
     let list = allProd;
@@ -2324,8 +2334,9 @@ function renderDispatch() {
       : '—';
 
     items.forEach((p, idx) => {
-      const isFirst = idx === 0;
-      const bt = (isFirst && sr > 1) ? 'border-top:2px solid var(--border2);' : '';
+        const isFirst = idx === 0;
+        let bt = (isFirst && prodSr > 1) ? 'border-top:2px solid var(--border2);' : '';
+        if (isProdOverdue(p)) bt += 'background:#FEF2F2;';   // 5+ din purana + incomplete → halka red
       const qty      = parseFloat(p['Qty'])||0;
       const produced = parseFloat(p['Produced Qty'])||0;
       const billed   = dspBilled[p['Item ID']]||0;
