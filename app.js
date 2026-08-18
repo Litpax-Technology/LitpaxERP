@@ -2411,6 +2411,26 @@ function renderDispatch() {
 
 function searchDispatch() { renderDispatch(); }
 
+function toggleDispatchFMS() {
+  const chk    = document.getElementById('dsp-fms-chk');
+  const dateEl = document.getElementById('dsp-date');
+  if (!chk || !dateEl) return;
+
+  if (chk.checked) {
+    if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+
+    const itemID = currentDispatchData ? (currentDispatchData.iid || '') : '';
+    if (!itemID) { toast('Item ID nahi mila', 'e'); chk.checked = false; return; }
+
+    api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'dispatch', 'Actual': fmtDisplayDate(dateEl.value) }, r => {
+      if (r && r.success) toast('FMS dispatch Done ✓');
+      else { toast((r && r.message) || 'FMS update fail', 'e'); chk.checked = false; }
+    });
+  } else {
+    dateEl.value = '';
+  }
+}
+
 function openDispatchModal(p) {
   const oid  = p['Order ID']||'';
   const iid  = p['Item ID']||'';
@@ -2436,7 +2456,8 @@ function openDispatchModal(p) {
   } else warnEl.style.display = 'none';
 
   document.getElementById('dsp-qty').value      = (qty - disp) > 0 ? (qty - disp) : '';
-  document.getElementById('dsp-date').value     = new Date().toISOString().split('T')[0];
+  document.getElementById('dsp-date').value     = '';
+  document.getElementById('dsp-fms-chk').checked = false;
   document.getElementById('dsp-transport').value= dspOrderMap[oid]?.['Suggested Transport'] || '';
   document.getElementById('dsp-vehicle').value  = '';
   document.getElementById('dsp-lr').value       = '';
