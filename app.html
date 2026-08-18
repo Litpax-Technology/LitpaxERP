@@ -325,6 +325,15 @@
     <div class="stat c-amber"><div class="stat-lbl">Total Qty</div><div class="stat-val" id="acc-qty">0</div></div>
     <div class="stat c-purple"><div class="stat-lbl">With Charger</div><div class="stat-val" id="acc-charger">0</div></div>
   </div>
+  <div class="pipeline" id="accPipeline">
+    <div class="pipe-node active" onclick="filterAccounts('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="apc-all">0</div><div class="pipe-lbl">All</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterAccounts('pending',this)"><div class="pipe-icon">⏳</div><div class="pipe-count" id="apc-pending">0</div><div class="pipe-lbl">Pending</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterAccounts('inprogress',this)"><div class="pipe-icon">⚙️</div><div class="pipe-count" id="apc-inprog">0</div><div class="pipe-lbl">In Progress</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterAccounts('completed',this)"><div class="pipe-icon">✅</div><div class="pipe-count" id="apc-completed">0</div><div class="pipe-lbl">Completed</div></div>
+  </div>
   <div class="card">
     <div class="card-head">
       <div class="card-title">Accounts</div>
@@ -1056,7 +1065,13 @@
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">+ New Billing Entry</div>
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Invoice No</label><input class="form-control" id="bl-invoice-no" placeholder="INV-001"></div>
-          <div class="form-group"><label class="form-label">Invoice Date</label><input class="form-control" type="date" id="bl-invoice-date"></div>
+          <div class="form-group">
+            <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+              <input type="checkbox" id="bl-fms-chk" onchange="toggleBillingFMS()" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+              Invoice Date <span style="font-size:10px;color:var(--text3);font-weight:400;">(tick → FMS Done)</span>
+            </label>
+            <input class="form-control" type="date" id="bl-invoice-date">
+          </div>
           <div class="form-group"><label class="form-label">Billed Qty</label><input class="form-control" type="number" id="bl-billed-qty-input" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Invoice Amount (₹)</label><input class="form-control" type="number" id="bl-invoice-amount" placeholder="0"></div>
           <div class="form-group form-full"><label class="form-label">Remarks</label><input class="form-control" id="bl-remarks" placeholder="Optional"></div>
