@@ -2756,7 +2756,7 @@ function openBillingModal(a) {
   document.getElementById('bl-product-display').textContent  = a['Product Model'] || '';
   document.getElementById('bl-total-qty').textContent        = a['Qty'] || 0;
   document.getElementById('bl-produced-qty').textContent     = a['Produced Qty'] || 0;
-  document.getElementById('bl-invoice-date').value           = new Date().toISOString().split('T')[0];
+  document.getElementById('bl-invoice-date').value           = '';
   document.getElementById('bl-invoice-no').value             = '';
   document.getElementById('bl-billed-qty-input').value       = a['Produced Qty'] || '';
   document.getElementById('bl-invoice-amount').value         = '';
