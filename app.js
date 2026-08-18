@@ -2560,6 +2560,19 @@ function submitUser() {
 
 // ========== ACCOUNTS ==========
 let allAccounts = [];
+let accFilter = 'all', accProdMap = {}, accOrderValMap = {};
+
+function accStatus(a) {
+  const pd = accProdMap[a['Item ID']] || {};
+  return (typeof pd === 'object' ? (pd.status || 'Pending') : (pd || 'Pending'));
+}
+
+function filterAccounts(f, el) {
+  accFilter = f;
+  document.querySelectorAll('#accPipeline .pipe-node').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderAccounts(allAccounts, accProdMap, accOrderValMap);
+}
 
 // orderPayMap: { orderID: { total, balance, orderVal } }
 let orderPayMap = {};
@@ -2602,6 +2615,8 @@ function loadAccounts() {
       orderPayMap[orderID] = { totalReceived: received, orderVal: ov, balance: ov - received };
     });
 
+    accProdMap = prodMap;
+    accOrderValMap = orderValMap;
     renderAccounts(allAccounts, prodMap, orderValMap);
   });
 }
@@ -2609,8 +2624,20 @@ function loadAccounts() {
 function renderAccounts(data, prodMap, orderValMap) {
   prodMap = prodMap || {};
   orderValMap = orderValMap || {};
+
+  // Pipeline counts (Production status wise) — hamesha full set pe
+  setText('apc-all', allAccounts.length);
+  setText('apc-pending', allAccounts.filter(a => accStatus(a) === 'Pending').length);
+  setText('apc-inprog',  allAccounts.filter(a => accStatus(a) === 'In Progress').length);
+  setText('apc-completed', allAccounts.filter(a => accStatus(a) === 'Completed').length);
+
+  // Production-status filter
+  if (accFilter === 'pending')         data = data.filter(a => accStatus(a) === 'Pending');
+  else if (accFilter === 'inprogress') data = data.filter(a => accStatus(a) === 'In Progress');
+  else if (accFilter === 'completed')  data = data.filter(a => accStatus(a) === 'Completed');
+
   if (!data.length) {
-    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">No records</div></div></td></tr>';
+    document.getElementById('accountsTable').innerHTML = '<tr><td colspan="22"><div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">Is filter mein koi record nahi</div></div></td></tr>';
     return;
   }
 
@@ -2735,8 +2762,32 @@ function openBillingModal(a) {
   document.getElementById('bl-invoice-amount').value         = '';
   document.getElementById('bl-remarks').value                = '';
   document.getElementById('bl-billed-qty').textContent       = a['Billed Qty'] || 0;
+  document.getElementById('bl-fms-chk').checked              = false;
   openModal('billingModal');
   loadBillingHistory(a['Order ID'], a['Item ID']);
+}
+
+function toggleBillingFMS() {
+  const chk    = document.getElementById('bl-fms-chk');
+  const dateEl = document.getElementById('bl-invoice-date');
+  if (!chk || !dateEl) return;
+
+  if (chk.checked) {
+    // date auto-fill agar khaali ho
+    if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+
+    const itemID = currentBillingData['Item ID'] || '';
+    if (!itemID) { toast('Item ID nahi mila', 'e'); chk.checked = false; return; }
+
+    // FMS Billing step Done — same markFMSProductionDone, Step: 'billing' (O/P columns)
+    api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'billing', 'Actual': fmtDisplayDate(dateEl.value) }, r => {
+      if (r && r.success) toast('FMS billing Done ✓');
+      else { toast((r && r.message) || 'FMS update fail', 'e'); chk.checked = false; }
+    });
+  } else {
+    // untick → sirf date clear, FMS ka Done rehne do (bill kat gaya to kat gaya)
+    dateEl.value = '';
+  }
 }
 
 function loadBillingHistory(orderID, itemID) {
@@ -2837,7 +2888,7 @@ function searchAccounts() {
     (a['Customer Name']||'').toLowerCase().includes(q) ||
     (a['Product Model']||'').toLowerCase().includes(q)
   );
-  renderAccounts(filtered, {}, {});
+  renderAccounts(filtered, accProdMap, accOrderValMap);
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
