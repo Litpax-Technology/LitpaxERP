@@ -2415,17 +2415,8 @@ function toggleDispatchFMS() {
   const chk    = document.getElementById('dsp-fms-chk');
   const dateEl = document.getElementById('dsp-date');
   if (!chk || !dateEl) return;
-
   if (chk.checked) {
     if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
-
-    const itemID = currentDispatchData ? (currentDispatchData.iid || '') : '';
-    if (!itemID) { toast('Item ID nahi mila', 'e'); chk.checked = false; return; }
-
-    api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'dispatch', 'Actual': fmtDisplayDate(dateEl.value) }, r => {
-      if (r && r.success) toast('FMS dispatch Done ✓');
-      else { toast((r && r.message) || 'FMS update fail', 'e'); chk.checked = false; }
-    });
   } else {
     dateEl.value = '';
   }
@@ -2521,6 +2512,10 @@ function submitDispatch() {
   }, r => {
     if (btn) { btn.disabled = false; btn.textContent = '🚚 Save Dispatch'; }
     if (r.success) {
+      // FMS: Dispatch checkbox ticked hai to us step ko Done karo
+      if (document.getElementById('dsp-fms-chk')?.checked) {
+        api({ action: 'markFMSProductionDone', 'Item ID': c.iid, 'Step': 'dispatch', 'Actual': fmtDisplayDate(document.getElementById('dsp-date').value) }, () => {});
+      }
       toast('Dispatch saved! ' + r.dispatchID + (r.orderDispatched ? ' — 🎉 Pura order Dispatched ho gaya!' : ''));
       closeModal('dispatchModal');
       loadDispatch();
