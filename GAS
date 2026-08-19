@@ -1,0 +1,2687 @@
+// =============================================
+// LitpaxERP — Central Apps Script FINAL
+// (Updated: Slip Note support in uploadSlip + getSlips)
+// =============================================
+/**
+ * @OnlyCurrentDoc
+ */
+
+const SALES_ID = '1LRycrP64zsG6338m5di8_cWFVOeHuccwovqGRdATjJg';
+const CRM_ID   = '1VoVjFfL25cyszTLc-tYXZsxtYR2irbDyGGm5phfxIGM';
+const PROD_ID  = '1X9kaQEWkRWXWfbxfaOiaDAwNLGIui9lkh7IH7kZ-Ku4';
+const ACC_ID   = '1E3ZKqZ8W9HM2qaGZ3nbptWFafp5tWTa3TePMzugguys';
+const DISP_ID  = '1tdk_VOucubZOk18idOG-FwbFNCrDxjmop7U8qOptbpg';
+
+function SS_SALES() { return SpreadsheetApp.openById(SALES_ID); }
+function SS_CRM()   { return SpreadsheetApp.openById(CRM_ID); }
+function SS_PROD()  { return SpreadsheetApp.openById(PROD_ID); }
+function SS_ACC()   { return SpreadsheetApp.openById(ACC_ID); }
+function SS_DISP()  { return SpreadsheetApp.openById(DISP_ID); }
+
+
+function fixDateFormat(val) {
+  if (!val || typeof val !== 'string') return val;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+  if (val.indexOf('T') > -1 || /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    var d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      var ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+      return ist.getUTCDate().toString().padStart(2,'0') + '/' +
+             (ist.getUTCMonth()+1).toString().padStart(2,'0') + '/' +
+             ist.getUTCFullYear();
+    }
+  }
+  return val;
+}
+
+function doGet(e)  { return handleRequest(e); }
+function doPost(e) {
+  try { return handleRequest(e); }
+  catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function handleRequest(e) {
+  const cb = e && e.parameter && e.parameter.callback;
+  let result;
+  try {
+    const params   = e && e.parameter ? e.parameter : {};
+    const postData = e && e.postData ? JSON.parse(e.postData.contents || '{}') : {};
+    const rawData  = Object.assign({}, params, postData);
+    const data = {};
+    Object.keys(rawData).forEach(function(k) {
+      data[k.replace(/\+/g, ' ')] = rawData[k];
+    });
+    const action = data.action;
+    switch (action) {
+      case 'login':                result = login(data); break;
+      case 'getOrders':            result = getSheet('Orders',         SS_SALES); break;
+      case 'addOrder':             result = addOrder(data); break;
+      case 'updateOrder':          result = updateByID('Orders', 'Order ID', SS_SALES, data); if (result.success && data['Transportation Charges'] !== undefined) updateOrderTotalValue(data['Order ID']); if (result.success) syncOrderToLinkedSheets(data); break;
+      case 'getOrderItems':        result = getSheet('OrderItems',     SS_SALES); break;
+      case 'getItemsByOrder':      result = getItemsByOrder(data); break;
+      case 'addOrderItem':         result = addOrderItem(data); break;
+      case 'updateOrderItem':      result = updateByID('OrderItems', 'Item ID', SS_SALES, data); if (result.success) syncItemToLinkedSheets(data); break;
+      case 'deleteOrderItem':      result = deleteOrderItem(data); break;
+      case 'updateProdItems':      result = updateProdItems(data); break;
+      case 'getCRM':               result = getSheet('CRM1',          SS_CRM);  break;
+      case 'updateCRM':            result = updateCRM(data); break;
+      case 'getProduction':        result = getSheet('Production',    SS_PROD); break;
+      case 'updateProduction':     result = updateProduction(data); break;
+      case 'markFMSProductionDone': result = markFMSProductionDone(data); break;
+      case 'getAccounts':          result = getSheet('Accounts',      SS_ACC); break;
+      case 'getUsers':             result = getSheet('Users',         SS_SALES); break;
+      case 'addUser':              result = addToSheet('Users',       SS_SALES, data); break;
+      case 'getCustomers':         result = getSheet('Customers',     SS_SALES); break;
+      case 'addCustomer':          result = addCustomer(data); break;
+      case 'updateCustomer':       result = updateCustomer(data); break;
+      case 'getProducts':          result = getSheet('Products',      SS_SALES); break;
+      case 'addProduct':           result = addToSheet('Products',    SS_SALES, data); break;
+      case 'getSuppliers':         result = getSheet('Suppliers',     SS_SALES); break;
+      case 'addSupplier':          result = addToSheet('Suppliers',   SS_SALES, data); break;
+      case 'updateChargerInOrder': result = updateChargerInOrder(data); break;
+      case 'addChargerItem':       result = addChargerItem(data); break;
+      case 'getChargersByOrder':   result = getChargersByOrder(data); break;
+      case 'updateChargerItem':    result = updateChargerItem(data); break;
+      case 'deleteChargerItem':    result = deleteChargerItem(data); break;
+      case 'deleteOrder':           result = deleteOrder(data); break;
+      case 'uploadCustomerDoc':    result = uploadCustomerDoc(data); break;
+      case 'getCustomerDocs':      result = getCustomerDocs(data); break;
+      case 'getCustFolderId':      result = { success: true, folderId: getCustFolderId() }; break;
+      case 'uploadSlip':           result = uploadSlip(data); break;
+      case 'getUploadUrl':         result = getUploadUrl(data); break;
+      case 'getAccessToken':       result = { success: true, token: ScriptApp.getOAuthToken() }; break;
+      case 'getSlips':             result = getSlips(data); break;
+      case 'addPayment':           result = addPayment(data); break;
+      case 'getPayments':          result = getPayments(data); break;
+      case 'getAllPayments':       result = getAllPayments(); break;
+      case 'deletePayment':        result = deletePayment(data); break;
+      case 'getAccountsBundle':    result = getAccountsBundle(); break;
+      case 'getDispatchBundle':    result = getDispatchBundle(); break;
+      case 'getProductionBundle':  result = getProductionBundle(); break;
+      case 'getCRMBundle':         result = getCRMBundle(); break;
+      case 'addBilling':           result = addBilling(data); break;
+      case 'getBillings':          result = getBillings(data); break;
+      case 'getAllBillings':        result = getAllBillings(); break;
+      case 'addDispatch':           result = addDispatch(data); break;
+      case 'getAllDispatches':      result = getAllDispatches(); break;
+      case 'addPlannedProduction':  result = addPlannedProduction(data); break;
+      case 'getPlannedProduction':  result = getPlannedProduction(); break;
+      case 'getBatterySpec':        result = getBatterySpec(data); break;
+      case 'saveBatterySpec':       result = saveBatterySpec(data); break;
+      case 'setBatterySpecColumns': result = setBatterySpecColumns(data); break;
+      default: result = { success: false, message: 'Unknown action: ' + action };
+    }
+  } catch(err) {
+    result = { success: false, message: err.toString() };
+  }
+  const out = ContentService.createTextOutput(
+    cb ? cb + '(' + JSON.stringify(result) + ')' : JSON.stringify(result)
+  );
+  out.setMimeType(cb ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
+  return out;
+}
+
+// =============================================
+// HELPERS
+// =============================================
+
+function getSheet(tabName, ssFn) {
+  const ss    = ssFn();
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) return { success: false, message: tabName + ' tab not found' };
+  const vals  = sheet.getDataRange().getValues();
+  if (vals.length <= 1) return { success: true, data: [] };
+  const headers = vals[0];
+  const rows    = vals.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  });
+  return { success: true, data: rows };
+}
+
+function addToSheet(tabName, ssFn, data) {
+  const ss    = ssFn();
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) return { success: false, message: tabName + ' tab not found' };
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const row     = headers.map(h => data[h] !== undefined ? data[h] : '');
+  sheet.appendRow(row);
+  return { success: true, message: 'Added to ' + tabName };
+}
+
+function updateByID(tabName, idCol, ssFn, data) {
+  const ss    = ssFn();
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) return { success: false, message: tabName + ' tab not found' };
+  const all     = sheet.getDataRange().getValues();
+  const headers = all[0];
+  const idIdx   = headers.indexOf(idCol);
+  const idVal   = data[idCol];
+  for (let i = 1; i < all.length; i++) {
+    if (all[i][idIdx] == idVal) {
+      headers.forEach((h, j) => {
+        if (data[h] !== undefined) {
+          var val = data[h];
+          if (typeof val === 'string' && (val.indexOf('T') > -1 || /^\d{4}-\d{2}-\d{2}$/.test(val))) {
+            val = fixDateFormat(val);
+          }
+          sheet.getRange(i + 1, j + 1).setValue(val);
+        }
+      });
+      return { success: true, message: tabName + ' updated' };
+    }
+  }
+  return { success: false, message: 'Row not found: ' + idVal };
+}
+
+// =============================================
+// LOGIN
+// =============================================
+
+function login(data) {
+  const ss    = SS_SALES();
+  const sheet = ss.getSheetByName('Users');
+  if (!sheet) {
+    if (data.username === 'darpan' && data.password === 'admin123') {
+      return { success: true, user: { username: 'darpan', name: 'Darpan', role: 'Admin', salesName: '' } };
+    }
+    return { success: false, message: 'Users tab not found' };
+  }
+  const vals    = sheet.getDataRange().getValues();
+  const headers = vals[0];
+  const uIdx = headers.indexOf('Username');
+  const pIdx = headers.indexOf('Password');
+  const rIdx = headers.indexOf('Role');
+  const nIdx = headers.indexOf('Name');
+  const aIdx = headers.indexOf('IsActive');
+  const sIdx = headers.indexOf('SalesName');
+  for (let i = 1; i < vals.length; i++) {
+    if (vals[i][uIdx] == data.username && vals[i][pIdx] == data.password) {
+      if (vals[i][aIdx] === false || vals[i][aIdx] === 'FALSE') {
+        return { success: false, message: 'Account inactive' };
+      }
+      return {
+        success: true,
+        user: {
+          username:  vals[i][uIdx],
+          name:      vals[i][nIdx],
+          role:      vals[i][rIdx],
+          salesName: sIdx >= 0 ? String(vals[i][sIdx] || '') : ''
+        }
+      };
+    }
+  }
+  return { success: false, message: 'Invalid username or password' };
+}
+
+// =============================================
+// ADD ORDER
+// =============================================
+
+function addOrder(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss    = SS_SALES();
+    const sheet = ss.getSheetByName('Orders');
+    if (!sheet) return { success: false, message: 'Orders tab not found' };
+
+    SpreadsheetApp.flush();
+
+    // --- Order ID: max existing number + 1 (row position pe depend NAHI) ---
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const idIdx   = headers.indexOf('Order ID');
+    let maxNum = 0;
+    if (idIdx >= 0 && sheet.getLastRow() > 1) {
+      const idVals = sheet.getRange(2, idIdx + 1, sheet.getLastRow() - 1, 1).getValues();
+      for (let i = 0; i < idVals.length; i++) {
+        const m = String(idVals[i][0]).match(/ORD-(\d+)/);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (n > maxNum) maxNum = n;
+        }
+      }
+    }
+    const orderID = 'ORD-' + String(maxNum + 1).padStart(4, '0');
+    data['Order ID'] = orderID;
+
+    if (data['Date']) {
+      data['Date'] = fixDateFormat(data['Date']);
+    } else {
+      var now = new Date();
+      data['Date'] = now.getDate().toString().padStart(2,'0') + '/' +
+                     (now.getMonth()+1).toString().padStart(2,'0') + '/' +
+                     now.getFullYear();
+    }
+    const row = headers.map(h => data[h] !== undefined ? data[h] : '');
+    sheet.appendRow(row);
+    SpreadsheetApp.flush();
+    autoSaveCustomerFromOrder(data);
+    return { success: true, message: 'Order created', orderID: orderID };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =============================================
+// ADD ORDER ITEM
+// =============================================
+
+function addOrderItem(data) {
+  const ss    = SS_SALES();
+  const sheet = ss.getSheetByName('OrderItems');
+  if (!sheet) return { success: false, message: 'OrderItems tab not found' };
+  const itemID = 'ITM-' + new Date().getTime().toString().slice(-7);
+  data['Item ID'] = itemID;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const row     = headers.map(h => data[h] !== undefined ? data[h] : '');
+  sheet.appendRow(row);
+  if (data['Order ID'] && data['Product Model']) {
+    var orderData = getOrderByID(data['Order ID']);
+    pushItemToProduction(orderData, data);
+    pushItemToAccounts(orderData, data);
+    pushSingleItemToFMS(orderData, data);
+    if ((orderData['Assigned CRM'] || '').trim() === 'Kamal') {
+      pushItemToCRM(orderData, data);
+    }
+  }
+  if (data['Order ID']) {
+    updateOrderTotalValue(data['Order ID']);
+  }
+  return { success: true, message: 'Item added', itemID: itemID };
+}
+
+// =============================================
+// UPDATE ORDER TOTAL VALUE WITH GST
+// =============================================
+
+function updateOrderTotalValue(orderID, extraChargerTotal) {
+  try {
+    var ss = SS_SALES();
+    extraChargerTotal = parseFloat(extraChargerTotal) || 0;
+    var itemSheet = ss.getSheetByName('OrderItems');
+    if (!itemSheet) return;
+    var iVals    = itemSheet.getDataRange().getValues();
+    var iHeaders = iVals[0];
+    var oIdx     = iHeaders.indexOf('Order ID');
+    var tIdx     = iHeaders.indexOf('Total');
+    var qIdx     = -1;
+    for (var k = 0; k < iHeaders.length; k++) {
+      if (iHeaders[k].toString().trim() === 'Qty') { qIdx = k; break; }
+    }
+    var totalWithGST = 0, totalQty = 0;
+    for (var i = 1; i < iVals.length; i++) {
+      if (iVals[i][oIdx] == orderID) {
+        totalWithGST += (parseFloat(iVals[i][tIdx]) || 0) * 1.18;
+        totalQty     += qIdx >= 0 ? (parseFloat(iVals[i][qIdx]) || 0) : 0;
+      }
+    }
+    var chargerQty = 0;
+    var chargerSheet = ss.getSheetByName('OrderItemCharger');
+    if (chargerSheet && chargerSheet.getLastRow() > 1) {
+      var cVals    = chargerSheet.getDataRange().getValues();
+      var cHeaders = cVals[0];
+      var cOIdx    = cHeaders.indexOf('Order ID');
+      var cTIdx    = cHeaders.indexOf('Total');
+      var cQIdx    = cHeaders.indexOf('Qty');
+      for (var c = 1; c < cVals.length; c++) {
+        if (cVals[c][cOIdx] == orderID) {
+          totalWithGST += parseFloat(cVals[c][cTIdx]) || 0;
+          chargerQty   += cQIdx >= 0 ? (parseFloat(cVals[c][cQIdx]) || 0) : 0;
+        }
+      }
+    }
+    totalWithGST += extraChargerTotal;
+    var oSheet   = ss.getSheetByName('Orders');
+    if (!oSheet) return;
+    var oVals    = oSheet.getDataRange().getValues();
+    var oHeaders = oVals[0];
+    var ordIdx = -1, valIdx = -1, qtyIdx = -1, chrIdx = -1, transIdx = -1;
+    for (var m = 0; m < oHeaders.length; m++) {
+      var h = oHeaders[m].toString().trim();
+      if (h === 'Order ID')               ordIdx   = m;
+      if (h === 'Total Order Value')      valIdx   = m;
+      if (h === 'Total Qty')              qtyIdx   = m;
+      if (h === 'Charger Qty')            chrIdx   = m;
+      if (h === 'Transportation Charges') transIdx = m;
+    }
+    for (var j = 1; j < oVals.length; j++) {
+      if (oVals[j][ordIdx] == orderID) {
+        var transCharge = transIdx >= 0 ? (parseFloat(oVals[j][transIdx]) || 0) : 0;
+        var finalTotal  = Math.round(totalWithGST + transCharge);
+        if (valIdx >= 0) oSheet.getRange(j + 1, valIdx + 1).setValue(finalTotal);
+        if (qtyIdx >= 0) oSheet.getRange(j + 1, qtyIdx + 1).setValue(totalQty);
+        if (chrIdx >= 0 && chargerQty > 0) oSheet.getRange(j + 1, chrIdx + 1).setValue(chargerQty);
+        return finalTotal;
+      }
+    }
+  } catch(e) {
+    Logger.log('updateOrderTotalValue ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// GET ORDER BY ID
+// =============================================
+
+function getOrderByID(orderID) {
+  var ss    = SS_SALES();
+  var sheet = ss.getSheetByName('Orders');
+  if (!sheet) return {};
+  var vals    = sheet.getDataRange().getValues();
+  var headers = vals[0];
+  var oIdx    = headers.indexOf('Order ID');
+  for (var i = 1; i < vals.length; i++) {
+    if (vals[i][oIdx] == orderID) {
+      var obj = {};
+      headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
+      return obj;
+    }
+  }
+  return {};
+}
+
+// =============================================
+// PUSH ITEM TO PRODUCTION
+// =============================================
+
+function pushItemToProduction(orderData, itemData) {
+  try {
+    var ss    = SpreadsheetApp.openById(PROD_ID);
+    var sheet = ss.getSheetByName('Production');
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (!headers || headers.length === 0) return;
+    var prodData = {};
+    for (var i = 0; i < headers.length; i++) prodData[headers[i]] = '';
+
+    var chargerQty = ''; var chargerModel = '';
+    try {
+      var ssSales = SS_SALES();
+      var orderID = orderData['Order ID'] || itemData['Order ID'] || '';
+      var existingRows = 0;
+      var pVals2  = sheet.getDataRange().getValues();
+      var pH2     = pVals2[0];
+      var pO2     = pH2.indexOf('Order ID');
+      for (var ex = 1; ex < pVals2.length; ex++) {
+        if (pVals2[ex][pO2] == orderID) existingRows++;
+      }
+      if (existingRows === 0) {
+        var cSheet = ssSales.getSheetByName('OrderItemCharger');
+        if (cSheet && cSheet.getLastRow() > 1) {
+          var cVals    = cSheet.getDataRange().getValues();
+          var cHeaders = cVals[0];
+          var cOIdx    = cHeaders.indexOf('Order ID');
+          var cQIdx    = cHeaders.indexOf('Qty');
+          var cMIdx    = cHeaders.indexOf('Charger Model');
+          var totalCQty = 0; var chargerModels = [];
+          for (var c = 1; c < cVals.length; c++) {
+            if (cVals[c][cOIdx] == orderID) {
+              totalCQty += parseFloat(cVals[c][cQIdx]) || 0;
+              var cm = cMIdx >= 0 ? (cVals[c][cMIdx] || '') : '';
+              if (cm && chargerModels.indexOf(cm) === -1) chargerModels.push(cm);
+            }
+          }
+          if (totalCQty > 0) chargerQty = totalCQty;
+          chargerModel = chargerModels.join(', ');
+        }
+      }
+    } catch(ce) { Logger.log('chargerQty fetch error: ' + ce); }
+
+    prodData['Sr No']         = lastRow;
+    prodData['Item ID']       = itemData['Item ID'] || '';
+    prodData['Order ID']      = orderData['Order ID'] || itemData['Order ID'] || '';
+    prodData['Order Date']    = orderData['Date'] || '';
+    prodData['Customer Name'] = orderData['Customer Name'] || '';
+    prodData['Product Model'] = itemData['Product Model'] || '';
+    prodData['Battery Type']  = itemData['Battery Type']  || '';
+    prodData['Qty']           = itemData['Qty'] || '';
+    prodData['Charger Model'] = chargerModel || '';
+    prodData['Charger Qty']   = chargerQty || '';
+    prodData['Sales Person']  = orderData['Sales Person Name'] || '';
+    prodData['Assigned CRM']  = orderData['Assigned CRM'] || '';
+    prodData['Sales Remarks'] = itemData['Remarks'] || '';
+    prodData['Status']        = 'Pending';
+    prodData['Remarks']       = '';
+    var row = headers.map(function(h) { return prodData[h] !== undefined ? prodData[h] : ''; });
+    sheet.appendRow(row);
+  } catch(e) {
+    Logger.log('pushItemToProduction ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// PUSH ITEM TO ACCOUNTS
+// =============================================
+
+function pushItemToAccounts(orderData, itemData) {
+  try {
+    var ss    = SS_ACC();
+    var sheet = ss.getSheetByName('Accounts');
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (!headers || headers.length === 0) return;
+    var accData = {};
+    for (var i = 0; i < headers.length; i++) accData[headers[i]] = '';
+
+    var orderVal = parseFloat(orderData['Total Order Value']) || 0;
+
+    accData['Sr No']           = lastRow;
+    accData['Item ID']         = itemData['Item ID'] || '';
+    accData['Order ID']        = orderData['Order ID'] || itemData['Order ID'] || '';
+    accData['Order Date']      = orderData['Date'] || '';
+    accData['Customer Name']   = orderData['Customer Name'] || '';
+    accData['Product Model']   = itemData['Product Model'] || '';
+    accData['Battery Type']    = itemData['Battery Type'] || '';
+    accData['Qty']             = itemData['Qty'] || '';
+    accData['Charger Model']   = '';
+    accData['Charger Qty']     = '';
+    accData['Sales Person']    = orderData['Sales Person Name'] || '';
+    accData['Assigned CRM']    = orderData['Assigned CRM'] || '';
+    accData['Order Value']     = orderVal;
+    accData['Total Received']  = 0;
+    accData['Balance']         = orderVal;
+
+    var row = headers.map(function(h) { return accData[h] !== undefined ? accData[h] : ''; });
+    sheet.appendRow(row);
+  } catch(e) {
+    Logger.log('pushItemToAccounts ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// PUSH ITEM TO CRM
+// =============================================
+
+function pushItemToCRM(orderData, itemData) {
+  try {
+    var ss    = SpreadsheetApp.openById(CRM_ID);
+    var sheet = ss.getSheetByName('CRM1');
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (!headers || headers.length === 0) return;
+    var crmData = {};
+    for (var i = 0; i < headers.length; i++) crmData[headers[i]] = '';
+    crmData['Sr No']             = lastRow;
+    crmData['Item ID']           = itemData['Item ID'] || '';
+    crmData['Order ID']          = orderData['Order ID'] || itemData['Order ID'] || '';
+    crmData['Order Date']        = orderData['Date'] || '';
+    crmData['Customer Name']     = orderData['Customer Name'] || '';
+    crmData['Customer No']       = orderData['Customer Phone'] || '';
+    crmData['Product Type']      = itemData['Battery Type'] || '';
+    crmData['Product Model']     = itemData['Product Model'] || '';
+    crmData['Qty']               = itemData['Qty'] || '';
+    crmData['Sales Person']      = orderData['Sales Person Name'] || '';
+    crmData['Payment Mode']      = orderData['Payment Mode'] || '';
+    crmData['Plan Payment Date'] = orderData['Plan Payment Date'] || '';
+    crmData['Payment Status']    = orderData['Payment Status'] || '';
+    crmData['Plan Dispatch Date']= orderData['Plan Dispatch Date'] || '';
+    crmData['Current Stage']     = 'Order Received';
+    crmData['Next Stage']        = 'Production';
+    crmData['Follow-up With']    = orderData['Assigned CRM'] || '';
+    var row = headers.map(function(h) { return crmData[h] !== undefined ? crmData[h] : ''; });
+    sheet.appendRow(row);
+  } catch(e) {
+    Logger.log('pushItemToCRM ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// UPDATE PRODUCTION
+// =============================================
+
+function updateProduction(data) {
+  try {
+    var ss    = SpreadsheetApp.openById(PROD_ID);
+    var sheet = ss.getSheetByName('Production');
+    if (!sheet) return { success: false, message: 'Production sheet not found' };
+    var all     = sheet.getDataRange().getValues();
+    var headers = all[0];
+    var itemIdx = headers.indexOf('Item ID');
+    var oIdx    = headers.indexOf('Order ID');
+    var itemID  = data['Item ID'] || '';
+    var orderID = data['Order ID'] || '';
+    var targetRow = -1;
+    if (itemID && itemIdx >= 0) {
+      for (var i = 1; i < all.length; i++) {
+        if (String(all[i][itemIdx]) === String(itemID)) { targetRow = i; break; }
+      }
+    }
+    if (targetRow === -1) {
+      for (var j = 1; j < all.length; j++) {
+        if (all[j][oIdx] == orderID) { targetRow = j; break; }
+      }
+    }
+    if (targetRow === -1) return { success: false, message: 'Row not found' };
+    headers.forEach(function(h, k) {
+      if (data[h] !== undefined) {
+        var val = data[h];
+        if (typeof val === 'string' && (val.indexOf('T') > -1 || /^\d{4}-\d{2}-\d{2}$/.test(val))) {
+          val = fixDateFormat(val);
+        }
+        sheet.getRange(targetRow + 1, k + 1).setValue(val);
+      }
+    });
+
+    // Produced Qty aur Pending Qty update karo
+    var producedQty = parseFloat(data['Produced Qty']) || 0;
+    if (producedQty > 0) {
+      var totalQtyIdx = headers.indexOf('Qty');
+      var prodQtyIdx  = headers.indexOf('Produced Qty');
+      var pendQtyIdx  = headers.indexOf('Pending Qty');
+      var totalQty    = parseFloat(all[targetRow][totalQtyIdx]) || 0;
+      var pendingQty  = totalQty - producedQty;
+      if (prodQtyIdx >= 0) sheet.getRange(targetRow + 1, prodQtyIdx + 1).setValue(producedQty);
+      if (pendQtyIdx >= 0) sheet.getRange(targetRow + 1, pendQtyIdx + 1).setValue(pendingQty < 0 ? 0 : pendingQty);
+
+      // Accounts sheet bhi update karo
+      try {
+        var accSheet = SS_ACC().getSheetByName('Accounts');
+        if (accSheet && accSheet.getLastRow() > 1) {
+          var aVals    = accSheet.getDataRange().getValues();
+          var aHeaders = aVals[0].map(function(h) { return h.toString().trim(); });
+          var aIIdx    = aHeaders.indexOf('Item ID');
+          var aPQIdx   = aHeaders.indexOf('Produced Qty');
+          var aPdIdx   = aHeaders.indexOf('Pending Qty');
+          for (var ax = 1; ax < aVals.length; ax++) {
+            if (String(aVals[ax][aIIdx]).trim() === String(itemID).trim()) {
+              if (aPQIdx >= 0) accSheet.getRange(ax + 1, aPQIdx + 1).setValue(producedQty);
+              if (aPdIdx >= 0) accSheet.getRange(ax + 1, aPdIdx + 1).setValue(pendingQty < 0 ? 0 : pendingQty);
+              break;
+            }
+          }
+        }
+      } catch(ae) { Logger.log('Accounts produced qty update error: ' + ae); }
+    }
+
+    // OrderItems sheet mein bhi status update karo
+    if (itemID) {
+      try {
+        var salesSS  = SS_SALES();
+        var oiSheet  = salesSS.getSheetByName('OrderItems');
+        if (oiSheet && oiSheet.getLastRow() > 1) {
+          var oiVals    = oiSheet.getDataRange().getValues();
+          var oiHeaders = oiVals[0];
+          var oiIIdx    = oiHeaders.indexOf('Item ID');
+          var oiStIdx   = oiHeaders.indexOf('Status');
+          if (oiStIdx >= 0) {
+            for (var oi = 1; oi < oiVals.length; oi++) {
+              if (String(oiVals[oi][oiIIdx]).trim() === String(itemID).trim()) {
+                var prodStatus = data['Status'] || '';
+                var actualComplete = data['Production Complete Actual'] || '';
+                var actualStart    = data['Production Start Actual'] || '';
+                var itemStatus = prodStatus === 'Completed' || actualComplete
+                  ? 'Production Completed'
+                  : actualStart
+                  ? 'In Progress'
+                  : 'Pending';
+                oiSheet.getRange(oi + 1, oiStIdx + 1).setValue(itemStatus);
+                break;
+              }
+            }
+          }
+        }
+      } catch(oie) { Logger.log('OrderItems status update error: ' + oie); }
+    }
+
+    var result = { success: true, message: 'Production updated' };
+    if (!orderID) return result;
+
+    var vals2    = sheet.getDataRange().getValues();
+    var headers2 = vals2[0];
+    var oIdx2    = headers2.indexOf('Order ID');
+    var qIdx2    = headers2.indexOf('Qty');
+    var pqIdx2   = headers2.indexOf('Produced Qty');
+    var totalRows = 0, completedRows = 0;
+    for (var r = 1; r < vals2.length; r++) {
+      if (vals2[r][oIdx2] == orderID) {
+        totalRows++;
+        var tq = parseFloat(vals2[r][qIdx2])  || 0;
+        var pq = parseFloat(vals2[r][pqIdx2]) || 0;
+        if (tq > 0 && pq >= tq) completedRows++;
+      }
+    }
+    if (totalRows > 0 && totalRows === completedRows) {
+      var salesSS = SS_SALES();
+      var oSheet  = salesSS.getSheetByName('Orders');
+      if (oSheet) {
+        var oVals    = oSheet.getDataRange().getValues();
+        var oHeaders = oVals[0];
+        var ordIdx   = oHeaders.indexOf('Order ID');
+        var fsIdx    = oHeaders.indexOf('Final Status');
+        if (fsIdx >= 0) {
+          for (var f = 1; f < oVals.length; f++) {
+            if (oVals[f][ordIdx] == orderID) {
+              oSheet.getRange(f + 1, fsIdx + 1).setValue('Production Completed');
+              break;
+            }
+          }
+        }
+      }
+      var crmSS    = SpreadsheetApp.openById(CRM_ID);
+      var crmSheet = crmSS.getSheetByName('CRM1');
+      if (crmSheet) {
+        var cVals    = crmSheet.getDataRange().getValues();
+        var cHeaders = cVals[0];
+        var cOIdx    = cHeaders.indexOf('Order ID');
+        var cSIdx    = cHeaders.indexOf('Current Stage');
+        if (cSIdx >= 0) {
+          for (var cr = 1; cr < cVals.length; cr++) {
+            if (cVals[cr][cOIdx] == orderID) {
+              crmSheet.getRange(cr + 1, cSIdx + 1).setValue('Production Complete');
+            }
+          }
+        }
+      }
+      result.allCompleted = true;
+    }
+    return result;
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// UPDATE PRODUCTION WITH ITEM DETAILS
+// =============================================
+
+function updateProdItems(data) {
+  try {
+    var ss    = SpreadsheetApp.openById(PROD_ID);
+    var sheet = ss.getSheetByName('Production');
+    if (!sheet) return { success: false, message: 'Production sheet not found' };
+    var all     = sheet.getDataRange().getValues();
+    var headers = all[0];
+    var oIdx    = headers.indexOf('Order ID');
+    var mIdx    = headers.indexOf('Product Model');
+    var bIdx    = headers.indexOf('Battery Type');
+    var orderID = data['Order ID'];
+    var model   = data['Product Model'] || '';
+    var btype   = data['Battery Type']  || '';
+    for (var i = 1; i < all.length; i++) {
+      if (all[i][oIdx] == orderID) {
+        if (mIdx >= 0 && model) sheet.getRange(i + 1, mIdx + 1).setValue(model);
+        if (bIdx >= 0 && btype) sheet.getRange(i + 1, bIdx + 1).setValue(btype);
+        return { success: true, message: 'Production items updated' };
+      }
+    }
+    return { success: false, message: 'Order not found in Production' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// GET ITEMS BY ORDER ID
+// =============================================
+
+function getItemsByOrder(data) {
+  const ss    = SS_SALES();
+  const sheet = ss.getSheetByName('OrderItems');
+  if (!sheet) return { success: true, data: [] };
+  const vals    = sheet.getDataRange().getValues();
+  if (vals.length <= 1) return { success: true, data: [] };
+  const headers = vals[0];
+  const oIdx    = headers.indexOf('Order ID');
+  const rows    = vals.slice(1)
+    .filter(row => row[oIdx] == data['Order ID'])
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i]; });
+      return obj;
+    });
+  return { success: true, data: rows };
+}
+
+// =============================================
+// DELETE ORDER ITEM (OrderItems + Production + Accounts + CRM se hatao)
+// =============================================
+function deleteOrderItem(data) {
+  try {
+    var itemID  = data['Item ID'] || '';
+    var orderID = data['Order ID'] || '';
+    if (!itemID) return { success: false, message: 'Item ID missing' };
+
+    // 1) OrderItems se delete
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('OrderItems');
+    if (!sheet) return { success: false, message: 'OrderItems tab not found' };
+    var all     = sheet.getDataRange().getValues();
+    var idIdx   = all[0].indexOf('Item ID');
+    var deleted = false;
+    for (var i = all.length - 1; i >= 1; i--) {
+      if (String(all[i][idIdx]) === String(itemID)) { sheet.deleteRow(i + 1); deleted = true; }
+    }
+    if (!deleted) return { success: false, message: 'Item not found: ' + itemID };
+
+    // 2) Production se delete
+    try {
+      var pSheet = SpreadsheetApp.openById(PROD_ID).getSheetByName('Production');
+      if (pSheet && pSheet.getLastRow() > 1) {
+        var pV = pSheet.getDataRange().getValues();
+        var pI = pV[0].indexOf('Item ID');
+        for (var p = pV.length - 1; p >= 1; p--) {
+          if (String(pV[p][pI]) === String(itemID)) pSheet.deleteRow(p + 1);
+        }
+      }
+    } catch(pe) { Logger.log('del prod item error: ' + pe); }
+
+    // 3) Accounts se delete
+    try {
+      var aSheet = SS_ACC().getSheetByName('Accounts');
+      if (aSheet && aSheet.getLastRow() > 1) {
+        var aV = aSheet.getDataRange().getValues();
+        var aI = aV[0].indexOf('Item ID');
+        for (var a = aV.length - 1; a >= 1; a--) {
+          if (String(aV[a][aI]) === String(itemID)) aSheet.deleteRow(a + 1);
+        }
+      }
+    } catch(ae) { Logger.log('del acc item error: ' + ae); }
+
+    // 4) CRM se delete
+    try {
+      var cSheet = SpreadsheetApp.openById(CRM_ID).getSheetByName('CRM1');
+      if (cSheet && cSheet.getLastRow() > 1) {
+        var cV = cSheet.getDataRange().getValues();
+        var cI = cV[0].indexOf('Item ID');
+        for (var c = cV.length - 1; c >= 1; c--) {
+          if (String(cV[c][cI]) === String(itemID)) cSheet.deleteRow(c + 1);
+        }
+      }
+    } catch(ce) { Logger.log('del crm item error: ' + ce); }
+
+    // 5) Order total recalc
+    if (orderID) updateOrderTotalValue(orderID);
+
+    return { success: true, message: 'Item deleted' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+
+
+// =============================================
+// UPDATE CRM
+// =============================================
+
+function updateCRM(data) {
+  try {
+    var ss    = SpreadsheetApp.openById(CRM_ID);
+    var sheet = ss.getSheetByName('CRM1');
+    if (!sheet) return { success: false, message: 'CRM1 not found' };
+    var all     = sheet.getDataRange().getValues();
+    var headers = all[0];
+    var itemIdx = headers.indexOf('Item ID');
+    var oIdx    = headers.indexOf('Order ID');
+    var itemID  = data['Item ID'] || '';
+    var orderID = data['Order ID'] || '';
+    var targetRow = -1;
+    if (itemID && itemIdx >= 0) {
+      for (var i = 1; i < all.length; i++) {
+        if (String(all[i][itemIdx]) === String(itemID)) { targetRow = i; break; }
+      }
+    }
+    if (targetRow === -1) {
+      for (var j = 1; j < all.length; j++) {
+        if (all[j][oIdx] == orderID) { targetRow = j; break; }
+      }
+    }
+    if (targetRow === -1) return { success: false, message: 'CRM row not found' };
+    headers.forEach(function(h, k) {
+      if (data[h] !== undefined) {
+        var val = data[h];
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+          val = fixDateFormat(val);
+        }
+        sheet.getRange(targetRow + 1, k + 1).setValue(val);
+      }
+    });
+    return { success: true, message: 'CRM updated' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// PUSH TO CRM (legacy)
+// =============================================
+
+function pushToCRM(data, orderID) {
+  try {
+    var ss    = SpreadsheetApp.openById(CRM_ID);
+    var sheet = ss.getSheetByName('CRM1');
+    if (!sheet) return 'ERROR: CRM1 sheet not found';
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) return 'ERROR: CRM headers empty';
+    var crmData = {};
+    for (var i = 0; i < headers.length; i++) crmData[headers[i]] = '';
+    crmData['Sr No']             = lastRow;
+    crmData['Order ID']          = orderID;
+    crmData['Order Date']        = data['Date'] || '';
+    crmData['Customer Name']     = data['Customer Name'] || '';
+    crmData['Customer No']       = data['Customer Phone'] || '';
+    crmData['Product Type']      = data['Price Type'] || '';
+    crmData['Product Model']     = '';
+    crmData['Qty']               = data['Total Qty'] || '';
+    crmData['Sales Person']      = data['Sales Person Name'] || '';
+    crmData['Payment Mode']      = data['Payment Mode'] || '';
+    crmData['Plan Payment Date'] = data['Plan Payment Date'] || '';
+    crmData['Payment Status']    = data['Payment Status'] || '';
+    crmData['Plan Dispatch Date']= data['Plan Dispatch Date'] || '';
+    crmData['Current Stage']     = 'Order Received';
+    crmData['Next Stage']        = 'Production';
+    crmData['Follow-up With']    = data['Assigned CRM'] || '';
+    var row = headers.map(function(h) { return crmData[h] !== undefined ? crmData[h] : ''; });
+    sheet.appendRow(row);
+    return 'OK';
+  } catch(e) {
+    return 'ERROR: ' + e.toString();
+  }
+}
+
+// =============================================
+// PUSH TO PRODUCTION (legacy)
+// =============================================
+
+function pushToProduction(data, orderID) {
+  try {
+    var ss    = SpreadsheetApp.openById(PROD_ID);
+    var sheet = ss.getSheetByName('Production');
+    if (!sheet) return 'ERROR: Production sheet not found';
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) return 'ERROR: Production headers empty';
+    var prodData = {};
+    for (var i = 0; i < headers.length; i++) prodData[headers[i]] = '';
+    prodData['Sr No']         = lastRow;
+    prodData['Order ID']      = orderID;
+    prodData['Order Date']    = data['Date'] || '';
+    prodData['Customer Name'] = data['Customer Name'] || '';
+    prodData['Product Model'] = '';
+    prodData['Battery Type']  = '';
+    prodData['Qty']           = data['Total Qty'] || '';
+    prodData['Charger Qty']   = data['Charger Qty'] || '';
+    prodData['Sales Person']  = data['Sales Person Name'] || '';
+    prodData['Assigned CRM']  = data['Assigned CRM'] || '';
+    prodData['Status']        = 'Pending';
+    prodData['Remarks']       = '';
+    var row = headers.map(function(h) { return prodData[h] !== undefined ? prodData[h] : ''; });
+    sheet.appendRow(row);
+    return 'OK';
+  } catch(e) {
+    return 'ERROR: ' + e.toString();
+  }
+}
+
+// =============================================
+// ADD CUSTOMER
+// =============================================
+
+function addCustomer(data) {
+  var ss    = SS_SALES();
+  var sheet = ss.getSheetByName('Customers');
+  if (!sheet) return { success: false, message: 'Customers tab not found' };
+  var lastRow = sheet.getLastRow();
+  var custID  = 'C' + String(lastRow).padStart(3, '0');
+  data['CustomerID'] = custID;
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var row     = headers.map(function(h) { return data[h] !== undefined ? data[h] : ''; });
+  sheet.appendRow(row);
+  return { success: true, message: 'Customer added', customerID: custID };
+}
+
+// =============================================
+// UPDATE CUSTOMER (Customers tab — CustomerID match)
+// =============================================
+function updateCustomer(data) {
+  var ss    = SS_SALES();
+  var sheet = ss.getSheetByName('Customers');
+  if (!sheet) return { success: false, message: 'Customers tab not found' };
+  var all     = sheet.getDataRange().getValues();
+  var headers = all[0].map(function(h){ return h.toString().trim(); });
+  var idIdx   = headers.indexOf('CustomerID');
+  if (idIdx < 0) return { success: false, message: 'CustomerID column not found' };
+  var idVal = String(data['CustomerID'] || '').trim();
+  if (!idVal) return { success: false, message: 'CustomerID missing' };
+  for (var i = 1; i < all.length; i++) {
+    if (String(all[i][idIdx]).trim() === idVal) {
+      headers.forEach(function(h, j) {
+        if (h === 'CustomerID') return;                 // ID kabhi change nahi
+        if (data[h] !== undefined) sheet.getRange(i + 1, j + 1).setValue(data[h]);
+      });
+      return { success: true, message: 'Customer updated' };
+    }
+  }
+  return { success: false, message: 'Customer not found: ' + idVal };
+}
+
+
+// =============================================
+// AUTO-SAVE CUSTOMER FROM ORDER (duplicate check ke sath)
+// =============================================
+
+function autoSaveCustomerFromOrder(orderData) {
+  try {
+    var custName = (orderData['Customer Name'] || '').trim();
+    if (!custName) return;
+
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('Customers');
+    if (!sheet) return;
+
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0];
+    var nameIdx  = headers.indexOf('CompanyName');
+    var phoneIdx = headers.indexOf('Phone');
+    if (nameIdx === -1) return;
+
+    var newPhone = String(orderData['Customer Phone'] || '').trim();
+
+    // Duplicate check — Name (case-insensitive) YA Phone match ho to skip
+    for (var i = 1; i < vals.length; i++) {
+      var existName  = String(vals[i][nameIdx] || '').trim().toLowerCase();
+      var existPhone = phoneIdx >= 0 ? String(vals[i][phoneIdx] || '').trim() : '';
+      if (existName === custName.toLowerCase()) return;               // naam same → skip
+      if (newPhone && existPhone && existPhone === newPhone) return;  // phone same → skip
+    }
+
+    // Naya customer add karo
+    var lastRow = sheet.getLastRow();
+    var custID  = 'C' + String(lastRow).padStart(3, '0');
+    var custData = {
+      'CustomerID':    custID,
+      'CompanyName':   custName,
+      'ContactPerson': custName,
+      'Phone':         newPhone,
+      'GSTIN':         '',
+      'City':          orderData['City'] || '',
+      'CreditDays':    '',
+      'Added By':      orderData['Sales Person Name'] || ''
+    };
+    var row = headers.map(function(h) {
+      var key = h.toString().trim();
+      return custData[key] !== undefined ? custData[key] : '';
+    });
+    sheet.appendRow(row);
+  } catch(e) {
+    Logger.log('autoSaveCustomerFromOrder ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// ORDER ITEM CHARGER
+// =============================================
+
+function addChargerItem(data) {
+  try {
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('OrderItemCharger');
+    if (!sheet) return { success: false, message: 'OrderItemCharger tab not found' };
+    var chargerID = 'CHR-' + new Date().getTime().toString().slice(-7);
+    data['Charger ID'] = chargerID;
+    var now = new Date();
+    data['Date'] = now.getDate().toString().padStart(2,'0') + '/' +
+                   (now.getMonth()+1).toString().padStart(2,'0') + '/' +
+                   now.getFullYear();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var row     = headers.map(function(h) { return data[h] !== undefined ? data[h] : ''; });
+    sheet.appendRow(row);
+
+    var orderID      = data['Order ID'] || '';
+    var chargerTotal = parseFloat(data['Total']) || 0;
+    var chargerQty   = parseFloat(data['Qty']) || 0;
+
+    if (orderID && chargerTotal > 0) {
+      var oSheet   = ss.getSheetByName('Orders');
+      var oVals    = oSheet.getDataRange().getValues();
+      var oHeaders = oVals[0];
+      var ordIdx = -1, valIdx = -1, chrIdx = -1;
+      for (var m = 0; m < oHeaders.length; m++) {
+        var h = oHeaders[m].toString().trim();
+        if (h === 'Order ID')          ordIdx = m;
+        if (h === 'Total Order Value') valIdx = m;
+        if (h === 'Charger Qty')       chrIdx = m;
+      }
+      for (var r = 1; r < oVals.length; r++) {
+        if (oVals[r][ordIdx] == orderID) {
+          var currentTotal = parseFloat(oVals[r][valIdx]) || 0;
+          if (valIdx >= 0) oSheet.getRange(r + 1, valIdx + 1).setValue(Math.round(currentTotal + chargerTotal));
+          if (chrIdx >= 0) oSheet.getRange(r + 1, chrIdx + 1).setValue(chargerQty);
+          break;
+        }
+      }
+    }
+
+    var allModels = [];
+    var cSheet2 = ss.getSheetByName('OrderItemCharger');
+    if (cSheet2 && cSheet2.getLastRow() > 1) {
+      var cV2 = cSheet2.getDataRange().getValues();
+      var cH2 = cV2[0];
+      var cO2 = cH2.indexOf('Order ID');
+      var cM2 = cH2.indexOf('Charger Model');
+      var cQ2 = cH2.indexOf('Qty');
+      var totalCQty = 0;
+      for (var cx = 1; cx < cV2.length; cx++) {
+        if (cV2[cx][cO2] == orderID) {
+          totalCQty += parseFloat(cV2[cx][cQ2]) || 0;
+          var m2 = cM2 >= 0 ? (cV2[cx][cM2] || '') : '';
+          if (m2 && allModels.indexOf(m2) === -1) allModels.push(m2);
+        }
+      }
+      chargerQty = totalCQty;
+    }
+    var modelStr = allModels.join(', ');
+
+    if (orderID && chargerQty > 0) {
+      try {
+        var pss    = SpreadsheetApp.openById(PROD_ID);
+        var pSheet = pss.getSheetByName('Production');
+        if (pSheet && pSheet.getLastRow() > 1) {
+          var pVals    = pSheet.getDataRange().getValues();
+          var pHeaders = pVals[0];
+          var pOIdx    = pHeaders.indexOf('Order ID');
+          var pCIdx    = pHeaders.indexOf('Charger Qty');
+          var pMIdx    = pHeaders.indexOf('Charger Model');
+          for (var p = 1; p < pVals.length; p++) {
+            if (pVals[p][pOIdx] == orderID) {
+              if (pCIdx >= 0) pSheet.getRange(p + 1, pCIdx + 1).setValue(chargerQty);
+              if (pMIdx >= 0) pSheet.getRange(p + 1, pMIdx + 1).setValue(modelStr);
+              break;
+            }
+          }
+        }
+      } catch(pe) { Logger.log('Production charger update error: ' + pe); }
+    }
+
+    if (orderID && chargerQty > 0) {
+      try {
+        var accSheet = SS_ACC().getSheetByName('Accounts');
+        if (accSheet && accSheet.getLastRow() > 1) {
+          var aVals    = accSheet.getDataRange().getValues();
+          var aHeaders = aVals[0];
+          var aOIdx    = aHeaders.indexOf('Order ID');
+          var aCIdx    = aHeaders.indexOf('Charger Qty');
+          var aMIdx    = aHeaders.indexOf('Charger Model');
+          for (var a = 1; a < aVals.length; a++) {
+            if (aVals[a][aOIdx] == orderID) {
+              if (aCIdx >= 0) accSheet.getRange(a + 1, aCIdx + 1).setValue(chargerQty);
+              if (aMIdx >= 0) accSheet.getRange(a + 1, aMIdx + 1).setValue(modelStr);
+            }
+          }
+        }
+      } catch(ae) { Logger.log('Accounts charger update error: ' + ae); }
+    }
+
+    return { success: true, chargerID: chargerID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getChargersByOrder(data) {
+  try {
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('OrderItemCharger');
+    if (!sheet) return { success: true, data: [] };
+    var vals    = sheet.getDataRange().getValues();
+    if (vals.length <= 1) return { success: true, data: [] };
+    var headers = vals[0];
+    var oIdx    = headers.indexOf('Order ID');
+    var rows    = vals.slice(1)
+      .filter(function(r) { return r[oIdx] == data['Order ID']; })
+      .map(function(r) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = r[i]; });
+        return obj;
+      });
+    return { success: true, data: rows };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+
+// =============================================
+// UPDATE CHARGER ITEM (edit existing charger)
+// =============================================
+function updateChargerItem(data) {
+  try {
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('OrderItemCharger');
+    if (!sheet) return { success: false, message: 'OrderItemCharger tab not found' };
+    var all     = sheet.getDataRange().getValues();
+    var headers = all[0];
+    var idIdx   = headers.indexOf('Charger ID');
+    var chargerID = data['Charger ID'] || '';
+    var orderID   = data['Order ID'] || '';
+    for (var i = 1; i < all.length; i++) {
+      if (String(all[i][idIdx]) === String(chargerID)) {
+        headers.forEach(function(h, j) {
+          if (data[h] !== undefined) sheet.getRange(i + 1, j + 1).setValue(data[h]);
+        });
+        recalcChargerTotals(orderID);
+        return { success: true, message: 'Charger updated' };
+      }
+    }
+    return { success: false, message: 'Charger not found: ' + chargerID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// DELETE CHARGER ITEM
+// =============================================
+function deleteChargerItem(data) {
+  try {
+    var ss    = SS_SALES();
+    var sheet = ss.getSheetByName('OrderItemCharger');
+    if (!sheet) return { success: false, message: 'OrderItemCharger tab not found' };
+    var all     = sheet.getDataRange().getValues();
+    var headers = all[0];
+    var idIdx   = headers.indexOf('Charger ID');
+    var chargerID = data['Charger ID'] || '';
+    var orderID   = data['Order ID'] || '';
+    for (var i = 1; i < all.length; i++) {
+      if (String(all[i][idIdx]) === String(chargerID)) {
+        sheet.deleteRow(i + 1);
+        recalcChargerTotals(orderID);
+        return { success: true, message: 'Charger deleted' };
+      }
+    }
+    return { success: false, message: 'Charger not found: ' + chargerID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// RECALC CHARGER TOTALS across Order/Production/Accounts
+// (charger edit/delete ke baad qty + model + order value theek karo)
+// =============================================
+function recalcChargerTotals(orderID) {
+  try {
+    if (!orderID) return;
+    var ss = SS_SALES();
+
+    // 1) OrderItemCharger se is order ke saare charger padho
+    var cSheet = ss.getSheetByName('OrderItemCharger');
+    var totalCQty = 0, chargerTotal = 0, models = [];
+    if (cSheet && cSheet.getLastRow() > 1) {
+      var cV = cSheet.getDataRange().getValues();
+      var cH = cV[0];
+      var cO = cH.indexOf('Order ID');
+      var cQ = cH.indexOf('Qty');
+      var cT = cH.indexOf('Total');
+      var cM = cH.indexOf('Charger Model');
+      for (var i = 1; i < cV.length; i++) {
+        if (cV[i][cO] == orderID) {
+          totalCQty    += parseFloat(cV[i][cQ]) || 0;
+          chargerTotal += parseFloat(cV[i][cT]) || 0;
+          var m = cM >= 0 ? (cV[i][cM] || '') : '';
+          if (m && models.indexOf(m) === -1) models.push(m);
+        }
+      }
+    }
+    var modelStr = models.join(', ');
+
+    // 2) Orders sheet — Charger Qty set karo, phir pura order value recompute
+    var oSheet = ss.getSheetByName('Orders');
+    var oV = oSheet.getDataRange().getValues();
+    var oH = oV[0];
+    var ordIdx   = oH.indexOf('Order ID');
+    var chrIdx   = oH.indexOf('Charger Qty');
+    var valIdx   = oH.indexOf('Total Order Value');
+    var transIdx = oH.indexOf('Transportation Charges');
+
+    var itemSheet = ss.getSheetByName('OrderItems');
+    var iV = itemSheet.getDataRange().getValues();
+    var iH = iV[0];
+    var iO = iH.indexOf('Order ID');
+    var iT = iH.indexOf('Total');
+    var batteryTotal = 0;
+    for (var b = 1; b < iV.length; b++) {
+      if (iV[b][iO] == orderID) batteryTotal += parseFloat(iV[b][iT]) || 0;
+    }
+
+    for (var r = 1; r < oV.length; r++) {
+      if (oV[r][ordIdx] == orderID) {
+        var trans = transIdx >= 0 ? (parseFloat(oV[r][transIdx]) || 0) : 0;
+        if (chrIdx >= 0) oSheet.getRange(r + 1, chrIdx + 1).setValue(totalCQty);
+        if (valIdx >= 0) oSheet.getRange(r + 1, valIdx + 1).setValue(Math.round(batteryTotal * 1.18 + chargerTotal + trans));
+        break;
+      }
+    }
+
+    // 3) Production sheet — Charger Qty + Model
+    try {
+      var pSheet = SpreadsheetApp.openById(PROD_ID).getSheetByName('Production');
+      if (pSheet && pSheet.getLastRow() > 1) {
+        var pV = pSheet.getDataRange().getValues();
+        var pH = pV[0];
+        var pO = pH.indexOf('Order ID');
+        var pC = pH.indexOf('Charger Qty');
+        var pM = pH.indexOf('Charger Model');
+        for (var p = 1; p < pV.length; p++) {
+          if (pV[p][pO] == orderID) {
+            if (pC >= 0) pSheet.getRange(p + 1, pC + 1).setValue(totalCQty);
+            if (pM >= 0) pSheet.getRange(p + 1, pM + 1).setValue(modelStr);
+            break;
+          }
+        }
+      }
+    } catch(pe) { Logger.log('recalc prod charger error: ' + pe); }
+
+    // 4) Accounts sheet — Charger Qty + Model
+    try {
+      var aSheet = SS_ACC().getSheetByName('Accounts');
+      if (aSheet && aSheet.getLastRow() > 1) {
+        var aV = aSheet.getDataRange().getValues();
+        var aH = aV[0];
+        var aO = aH.indexOf('Order ID');
+        var aC = aH.indexOf('Charger Qty');
+        var aM = aH.indexOf('Charger Model');
+        for (var a = 1; a < aV.length; a++) {
+          if (aV[a][aO] == orderID) {
+            if (aC >= 0) aSheet.getRange(a + 1, aC + 1).setValue(totalCQty);
+            if (aM >= 0) aSheet.getRange(a + 1, aM + 1).setValue(modelStr);
+          }
+        }
+      }
+    } catch(ae) { Logger.log('recalc acc charger error: ' + ae); }
+
+  } catch(e) {
+    Logger.log('recalcChargerTotals ERROR: ' + e.toString());
+  }
+}
+
+// =============================================
+// UPDATE CHARGER IN ORDER
+// =============================================
+
+function updateChargerInOrder(data) {
+  try {
+    var orderID      = data['Order ID'] || '';
+    var chargerQty   = parseFloat(data['Charger Qty']) || 0;
+    var chargerTotal = parseFloat(data['Charger Total']) || 0;
+    var ss     = SS_SALES();
+    var oSheet = ss.getSheetByName('Orders');
+    if (!oSheet) return { success: false, message: 'Orders sheet not found' };
+    var oVals    = oSheet.getDataRange().getValues();
+    var oHeaders = oVals[0];
+    var ordIdx = -1, chrIdx = -1, valIdx = -1, transIdx = -1;
+    for (var m = 0; m < oHeaders.length; m++) {
+      var h = oHeaders[m].toString().trim();
+      if (h === 'Order ID')               ordIdx   = m;
+      if (h === 'Charger Qty')            chrIdx   = m;
+      if (h === 'Total Order Value')      valIdx   = m;
+      if (h === 'Transportation Charges') transIdx = m;
+    }
+    for (var j = 1; j < oVals.length; j++) {
+      if (oVals[j][ordIdx] == orderID) {
+        if (chrIdx >= 0) oSheet.getRange(j + 1, chrIdx + 1).setValue(chargerQty);
+        var itemSheet = ss.getSheetByName('OrderItems');
+        var iVals     = itemSheet.getDataRange().getValues();
+        var iHeaders  = iVals[0];
+        var iOIdx     = iHeaders.indexOf('Order ID');
+        var iTIdx     = iHeaders.indexOf('Total');
+        var batteryTotal = 0;
+        for (var i = 1; i < iVals.length; i++) {
+          if (iVals[i][iOIdx] == orderID) batteryTotal += parseFloat(iVals[i][iTIdx]) || 0;
+        }
+        var transCharge = transIdx >= 0 ? (parseFloat(oVals[j][transIdx]) || 0) : 0;
+        var totalOrderValue = Math.round(batteryTotal * 1.18 + chargerTotal + transCharge);
+        if (valIdx >= 0) oSheet.getRange(j + 1, valIdx + 1).setValue(totalOrderValue);
+        return { success: true, message: 'Charger updated' };
+      }
+    }
+    return { success: false, message: 'Order not found' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// PAYMENT SLIP / DRIVE UPLOAD
+// =============================================
+
+const SLIP_FOLDER_NAME = 'Payments Screenshots of sales Orders';
+const CUST_FOLDER_NAME = 'LitpaxERP_Customer_Docs';
+
+function getCustFolderId() {
+  var token = ScriptApp.getOAuthToken();
+  var q = encodeURIComponent('name="' + CUST_FOLDER_NAME + '" and mimeType="application/vnd.google-apps.folder" and trashed=false');
+  var res   = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)', { headers: { 'Authorization': 'Bearer ' + token } });
+  var files = JSON.parse(res.getContentText()).files;
+  if (files && files.length > 0) return files[0].id;
+  var createRes = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    payload: JSON.stringify({ name: CUST_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  return JSON.parse(createRes.getContentText()).id;
+}
+
+function uploadCustomerDoc(data) {
+  try {
+    var token    = ScriptApp.getOAuthToken();
+    var custName = (data['customerName'] || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_');
+    var fileName = custName + '_' + (data['fileName'] || 'doc');
+    var mimeType = data['mimeType'] || 'application/pdf';
+    var base64   = data['base64'] || '';
+    var folderId = getCustFolderId();
+    if (!base64) return { success: false, message: 'No file data' };
+    var boundary = 'litpax_cust';
+    var meta     = JSON.stringify({ name: fileName, parents: [folderId] });
+    var CRLF     = '\r\n';
+    var body     = '--' + boundary + CRLF + 'Content-Type: application/json' + CRLF + CRLF + meta + CRLF +
+                   '--' + boundary + CRLF + 'Content-Type: ' + mimeType + CRLF + 'Content-Transfer-Encoding: base64' + CRLF + CRLF + base64 + CRLF +
+                   '--' + boundary + '--';
+    var uploadRes = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+      payload: body
+    });
+    var fileData = JSON.parse(uploadRes.getContentText());
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileData.id + '/permissions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      payload: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+    return { success: true, fileId: fileData.id, url: 'https://drive.google.com/file/d/' + fileData.id + '/view', name: fileName };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getCustomerDocs(data) {
+  try {
+    var token    = ScriptApp.getOAuthToken();
+    var custName = (data['customerName'] || '').replace(/[^a-zA-Z0-9]/g, '_');
+    var folderId = getCustFolderId();
+    var q   = encodeURIComponent('"' + folderId + '" in parents and trashed=false');
+    var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,createdTime,webViewLink)', { headers: { 'Authorization': 'Bearer ' + token } });
+    var files = JSON.parse(res.getContentText()).files || [];
+    var docs  = files
+      .filter(function(f) { return !custName || f.name.startsWith(custName + '_'); })
+      .map(function(f) { return { id: f.id, name: f.name, url: f.webViewLink, date: new Date(f.createdTime).toLocaleDateString('en-IN') }; });
+    return { success: true, data: docs };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getSlipFolderId() {
+  var token = ScriptApp.getOAuthToken();
+  var q = encodeURIComponent('name="' + SLIP_FOLDER_NAME + '" and mimeType="application/vnd.google-apps.folder" and trashed=false');
+  var res   = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)', { headers: { 'Authorization': 'Bearer ' + token } });
+  var files = JSON.parse(res.getContentText()).files;
+  if (files && files.length > 0) return files[0].id;
+  var createRes = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    payload: JSON.stringify({ name: SLIP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  return JSON.parse(createRes.getContentText()).id;
+}
+
+function getUploadUrl(data) {
+  try {
+    var token    = ScriptApp.getOAuthToken();
+    var folderId = getSlipFolderId();
+    return { success: true, folderId: folderId, token: token, name: data['fileName'] || 'slip' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// 👇 UPDATED — slip note (description) support
+function uploadSlip(data) {
+  try {
+    var token    = ScriptApp.getOAuthToken();
+    var fileName = data['fileName'] || 'slip';
+    var mimeType = data['mimeType'] || 'image/jpeg';
+    var base64   = data['base64'] || '';
+    var folderId = getSlipFolderId();
+    if (!base64) return { success: false, message: 'No file data received' };
+    var boundary = 'litpax_slip';
+    var meta     = JSON.stringify({ name: fileName, parents: [folderId], description: data['note'] || '' });
+    var CRLF     = '\r\n';
+    var body     = '--' + boundary + CRLF + 'Content-Type: application/json' + CRLF + CRLF + meta + CRLF +
+                   '--' + boundary + CRLF + 'Content-Type: ' + mimeType + CRLF + 'Content-Transfer-Encoding: base64' + CRLF + CRLF + base64 + CRLF +
+                   '--' + boundary + '--';
+    var uploadRes = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+      payload: body
+    });
+    var fileData = JSON.parse(uploadRes.getContentText());
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileData.id + '/permissions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      payload: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+    return { success: true, fileId: fileData.id, url: 'https://drive.google.com/file/d/' + fileData.id + '/view', name: fileName };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// 👇 UPDATED — slip note (description) return karta hai
+function getSlips(data) {
+  try {
+    var token    = ScriptApp.getOAuthToken();
+    var orderID  = data['orderID'] || '';
+    var folderId = getSlipFolderId();
+    var q   = encodeURIComponent('"' + folderId + '" in parents and trashed=false');
+    var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,createdTime,webViewLink,description)', { headers: { 'Authorization': 'Bearer ' + token } });
+    var files = JSON.parse(res.getContentText()).files || [];
+    var slips = files
+      .filter(function(f) { return !orderID || f.name.startsWith(orderID + '_'); })
+      .map(function(f) { return { id: f.id, name: f.name, url: f.webViewLink, date: new Date(f.createdTime).toLocaleDateString('en-IN'), note: f.description || '' }; });
+    return { success: true, data: slips };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// PAYMENTS (CRM sheet — Payments tab)
+// =============================================
+
+function addPayment(data) {
+  try {
+    var ss    = SS_CRM();
+    var sheet = ss.getSheetByName('Payments');
+    if (!sheet) return { success: false, message: 'Payments tab not found' };
+    var payID = 'PAY-' + new Date().getTime().toString().slice(-7);
+    var now   = new Date();
+    var date  = data['Date'] || (
+      now.getDate().toString().padStart(2,'0') + '/' +
+      (now.getMonth()+1).toString().padStart(2,'0') + '/' +
+      now.getFullYear()
+    );
+    if (/^\d{4}-\d{2}-\d{2}/.test(date)) date = fixDateFormat(date);
+    var row = [
+      payID,
+      data['Order ID']  || '',
+      parseFloat(data['Amount']) || 0,
+      date,
+      data['Mode']      || '',
+      data['Reference'] || '',
+      data['Remarks']   || '',
+      data['Added By']  || ''
+    ];
+    sheet.appendRow(row);
+
+    // Accounts sheet update — Total Received aur Balance
+    try {
+      var orderID  = data['Order ID'] || '';
+      var accSheet = SS_ACC().getSheetByName('Accounts');
+      if (accSheet && orderID) {
+        // Total received recalculate karo
+        var allPays = getPayments({ 'Order ID': orderID });
+        var totalReceived = allPays.totalReceived || 0;
+
+        var aVals    = accSheet.getDataRange().getValues();
+        var aHeaders = aVals[0].map(function(h) { return h.toString().trim(); });
+        var aOIdx    = aHeaders.indexOf('Order ID');
+        var aTRIdx   = aHeaders.indexOf('Total Received');
+        var aBalIdx  = aHeaders.indexOf('Balance');
+        var aOVIdx   = aHeaders.indexOf('Order Value');
+
+        for (var ax = 1; ax < aVals.length; ax++) {
+          if (String(aVals[ax][aOIdx]).trim() == String(orderID).trim()) {
+            var orderVal = parseFloat(aVals[ax][aOVIdx]) || 0;
+            if (aTRIdx >= 0) accSheet.getRange(ax + 1, aTRIdx + 1).setValue(totalReceived);
+            if (aBalIdx >= 0) accSheet.getRange(ax + 1, aBalIdx + 1).setValue(orderVal - totalReceived);
+          }
+        }
+      }
+    } catch(ae) { Logger.log('Accounts payment update error: ' + ae); }
+
+    return { success: true, payID: payID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getPayments(data) {
+  try {
+    var ss    = SS_CRM();
+    var sheet = ss.getSheetByName('Payments');
+    if (!sheet) return { success: true, data: [], totalReceived: 0 };
+    var vals = sheet.getDataRange().getValues();
+    if (vals.length <= 1) return { success: true, data: [], totalReceived: 0 };
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var oIdx    = headers.indexOf('Order ID');
+    var rows    = vals.slice(1)
+      .filter(function(r) { return String(r[oIdx]).trim() == String(data['Order ID']).trim(); })
+      .map(function(r) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = r[i]; });
+        return obj;
+      });
+    var totalReceived = rows.reduce(function(s, r) {
+      return s + (parseFloat(r['Amount']) || 0);
+    }, 0);
+    return { success: true, data: rows, totalReceived: totalReceived };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function deletePayment(data) {
+  try {
+    var payID   = String(data['Payment ID'] || '').trim();
+    var orderID = String(data['Order ID'] || '').trim();
+    if (!payID) return { success: false, message: 'Payment ID missing' };
+
+    var ss    = SS_CRM();
+    var sheet = ss.getSheetByName('Payments');
+    if (!sheet) return { success: false, message: 'Payments tab not found' };
+
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var idIdx   = headers.indexOf('Payment ID');
+    if (idIdx < 0) return { success: false, message: 'Payment ID column not found' };
+
+    var deleted = false;
+    var rowOrderID = orderID;
+    var oIdx = headers.indexOf('Order ID');
+    for (var i = vals.length - 1; i >= 1; i--) {
+      if (String(vals[i][idIdx]).trim() === payID) {
+        if (!rowOrderID && oIdx >= 0) rowOrderID = String(vals[i][oIdx]).trim();
+        sheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    if (!deleted) return { success: false, message: 'Payment not found: ' + payID };
+
+    // Accounts sheet — Total Received aur Balance recalc (addPayment jaisa)
+    try {
+      if (rowOrderID) {
+        var accSheet = SS_ACC().getSheetByName('Accounts');
+        if (accSheet) {
+          var allPays = getPayments({ 'Order ID': rowOrderID });
+          var totalReceived = allPays.totalReceived || 0;
+
+          var aVals    = accSheet.getDataRange().getValues();
+          var aHeaders = aVals[0].map(function(h) { return h.toString().trim(); });
+          var aOIdx    = aHeaders.indexOf('Order ID');
+          var aTRIdx   = aHeaders.indexOf('Total Received');
+          var aBalIdx  = aHeaders.indexOf('Balance');
+          var aOVIdx   = aHeaders.indexOf('Order Value');
+          for (var ax = 1; ax < aVals.length; ax++) {
+            if (String(aVals[ax][aOIdx]).trim() == String(rowOrderID).trim()) {
+              var orderVal = parseFloat(aVals[ax][aOVIdx]) || 0;
+              if (aTRIdx >= 0)  accSheet.getRange(ax + 1, aTRIdx + 1).setValue(totalReceived);
+              if (aBalIdx >= 0) accSheet.getRange(ax + 1, aBalIdx + 1).setValue(orderVal - totalReceived);
+            }
+          }
+        }
+      }
+    } catch(ae) { Logger.log('Accounts payment delete update error: ' + ae); }
+
+    return { success: true, message: 'Payment deleted' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+
+
+// =============================================
+// BILLINGS (Accounts sheet — Billings tab)
+// =============================================
+
+function addBilling(data) {
+  try {
+    var ss    = SS_ACC();
+    var sheet = ss.getSheetByName('Billings');
+    if (!sheet) return { success: false, message: 'Billings tab not found' };
+
+    var billingID = 'BIL-' + new Date().getTime().toString().slice(-7);
+    var now       = new Date();
+    var date      = data['Invoice Date'] || (
+      now.getDate().toString().padStart(2,'0') + '/' +
+      (now.getMonth()+1).toString().padStart(2,'0') + '/' +
+      now.getFullYear()
+    );
+    if (/^\d{4}-\d{2}-\d{2}/.test(date)) date = fixDateFormat(date);
+
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var rowMap  = {};
+    rowMap['Billing ID']      = billingID;
+    rowMap['Order ID']        = data['Order ID']       || '';
+    rowMap['Item ID']         = data['Item ID']        || '';
+    rowMap['Invoice No']      = data['Invoice No']     || '';
+    rowMap['Invoice Date']    = date;
+    rowMap['Billed Qty']      = parseFloat(data['Billed Qty'])      || 0;
+    rowMap['Invoice Amount']  = parseFloat(data['Invoice Amount'])  || 0;
+    rowMap['Remarks']         = data['Remarks']        || '';
+    rowMap['Added By']        = data['Added By']       || '';
+
+    var row = headers.map(function(h) {
+      var key = h.toString().trim();
+      return rowMap[key] !== undefined ? rowMap[key] : '';
+    });
+    sheet.appendRow(row);
+
+    // CRM sheet — Billing Actual date update
+    try {
+      var crmSheet = SS_CRM().getSheetByName('CRM1');
+      if (crmSheet) {
+        var cVals    = crmSheet.getDataRange().getValues();
+        var cHeaders = cVals[0];
+        var cOIdx    = cHeaders.indexOf('Order ID');
+        var cIIdx    = cHeaders.indexOf('Item ID');
+        var cBAIdx   = cHeaders.indexOf('Billing Docs Actual');
+        var cStIdx   = cHeaders.indexOf('Current Stage');
+        for (var c = 1; c < cVals.length; c++) {
+          var matchOrder = cVals[c][cOIdx] == data['Order ID'];
+          var matchItem  = data['Item ID'] ? String(cVals[c][cIIdx]) === String(data['Item ID']) : true;
+          if (matchOrder && matchItem) {
+            if (cBAIdx >= 0) crmSheet.getRange(c + 1, cBAIdx + 1).setValue(date);
+            if (cStIdx >= 0) crmSheet.getRange(c + 1, cStIdx + 1).setValue('Billed');
+          }
+        }
+      }
+    } catch(ce) { Logger.log('CRM billing update error: ' + ce); }
+
+    // Accounts sheet — Billed Qty update
+    try {
+      var accSheet = SS_ACC().getSheetByName('Accounts');
+      if (accSheet && accSheet.getLastRow() > 1) {
+        // Total billed qty calculate karo is item ke liye
+        var billedTotal = 0;
+        var bVals = sheet.getDataRange().getValues();
+        var bH    = bVals[0].map(function(h) { return h.toString().trim(); });
+        var bOIdx = bH.indexOf('Order ID');
+        var bIIdx = bH.indexOf('Item ID');
+        var bQIdx = bH.indexOf('Billed Qty');
+        for (var b = 1; b < bVals.length; b++) {
+          if (bVals[b][bOIdx] == data['Order ID'] && String(bVals[b][bIIdx]) === String(data['Item ID'])) {
+            billedTotal += parseFloat(bVals[b][bQIdx]) || 0;
+          }
+        }
+        var aVals    = accSheet.getDataRange().getValues();
+        var aHeaders = aVals[0].map(function(h) { return h.toString().trim(); });
+        var aIIdx    = aHeaders.indexOf('Item ID');
+        var aBQIdx   = aHeaders.indexOf('Billed Qty');
+        for (var a = 1; a < aVals.length; a++) {
+          if (String(aVals[a][aIIdx]).trim() === String(data['Item ID']).trim()) {
+            if (aBQIdx >= 0) accSheet.getRange(a + 1, aBQIdx + 1).setValue(billedTotal);
+            break;
+          }
+        }
+      }
+    } catch(ae) { Logger.log('Accounts billing update error: ' + ae); }
+
+    return { success: true, billingID: billingID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getBillings(data) {
+  try {
+    var ss    = SS_ACC();
+    var sheet = ss.getSheetByName('Billings');
+    if (!sheet) return { success: true, data: [], totalBilled: 0 };
+    var vals = sheet.getDataRange().getValues();
+    if (vals.length <= 1) return { success: true, data: [], totalBilled: 0 };
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var oIdx    = headers.indexOf('Order ID');
+    var iIdx    = headers.indexOf('Item ID');
+    var qIdx    = headers.indexOf('Billed Qty');
+    var orderID = data['Order ID'] || '';
+    var itemID  = data['Item ID']  || '';
+    var rows = vals.slice(1).filter(function(r) {
+      var matchOrder = String(r[oIdx]).trim() == String(orderID).trim();
+      var matchItem  = itemID ? String(r[iIdx]).trim() === String(itemID).trim() : true;
+      return matchOrder && matchItem;
+    }).map(function(r) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    var totalBilled = rows.reduce(function(s, r) {
+      return s + (parseFloat(r['Billed Qty']) || 0);
+    }, 0);
+    return { success: true, data: rows, totalBilled: totalBilled };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getAllBillings() {
+  try {
+    var ss    = SS_ACC();
+    var sheet = ss.getSheetByName('Billings');
+    if (!sheet || sheet.getLastRow() <= 1) return { success: true, data: [] };
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var rows    = vals.slice(1).map(function(r) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    return { success: true, data: rows };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getAllPayments() {
+  try {
+    var ss    = SS_CRM();
+    var sheet = ss.getSheetByName('Payments');
+    if (!sheet || sheet.getLastRow() <= 1) return { success: true, data: [], totals: {} };
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var oIdx    = headers.indexOf('Order ID');
+    var aIdx    = headers.indexOf('Amount');
+    var rows = [], totals = {};
+    for (var i = 1; i < vals.length; i++) {
+      var obj = {};
+      headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
+      rows.push(obj);
+      var oid = String(vals[i][oIdx]).trim();
+      totals[oid] = (totals[oid] || 0) + (parseFloat(vals[i][aIdx]) || 0);
+    }
+    return { success: true, data: rows, totals: totals };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// BUNDLE ENDPOINTS — ek call me poora page (fast load)
+// =============================================
+
+function getAccountsBundle() {
+  try {
+    var accounts = getSheet('Accounts', SS_ACC).data || [];
+    var orders   = getSheet('Orders', SS_SALES).data || [];
+    var items    = getSheet('OrderItems', SS_SALES).data || [];
+
+    var prodMap = {};
+    (getSheet('Production', SS_PROD).data || []).forEach(function(p) {
+      prodMap[String(p['Item ID']).trim()] = {
+        status:      p['Status'] || 'Pending',
+        producedQty: parseFloat(p['Produced Qty']) || 0,
+        pendingQty:  parseFloat(p['Pending Qty'])  || 0
+      };
+    });
+
+    var orderValMap = {};
+    orders.forEach(function(o) { orderValMap[o['Order ID']] = parseFloat(o['Total Order Value']) || 0; });
+
+    var payTotals = (getAllPayments().totals) || {};
+
+    var itemMap = {};
+    items.forEach(function(i) { if (i['Item ID']) itemMap[i['Item ID']] = i; });
+
+    return { success: true, accounts: accounts, prodMap: prodMap, orderValMap: orderValMap, payTotals: payTotals, itemMap: itemMap };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getDispatchBundle() {
+  try {
+    var production = getSheet('Production', SS_PROD).data || [];
+    var orders     = getSheet('Orders', SS_SALES).data || [];
+
+    var orderMap = {};
+    orders.forEach(function(o) { orderMap[o['Order ID']] = o; });
+
+    var dispTotals = {};
+    (getAllDispatches().data || []).forEach(function(d) {
+      var iid = String(d['Item ID']).trim();
+      dispTotals[iid] = (dispTotals[iid] || 0) + (parseFloat(d['Dispatch Qty']) || 0);
+    });
+
+    var billed = {};
+    (getAllBillings().data || []).forEach(function(b) {
+      var iid = String(b['Item ID']).trim();
+      billed[iid] = (billed[iid] || 0) + (parseFloat(b['Billed Qty']) || 0);
+    });
+
+    var payTotals = (getAllPayments().totals) || {};
+
+    return { success: true, production: production, orderMap: orderMap, dispTotals: dispTotals, billed: billed, payTotals: payTotals };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getProductionBundle() {
+  try {
+    var production = getSheet('Production', SS_PROD).data || [];
+    var billed = {};
+    (getAllBillings().data || []).forEach(function(b) {
+      var iid = String(b['Item ID']).trim();
+      billed[iid] = (billed[iid] || 0) + (parseFloat(b['Billed Qty']) || 0);
+    });
+    return { success: true, production: production, billed: billed };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getCRMBundle() {
+  try {
+    var crm = getSheet('CRM1', SS_CRM).data || [];
+    var billed = {};
+    (getAllBillings().data || []).forEach(function(b) {
+      var iid = String(b['Item ID']).trim();
+      billed[iid] = (billed[iid] || 0) + (parseFloat(b['Billed Qty']) || 0);
+    });
+    return { success: true, crm: crm, billed: billed };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+
+// =============================================
+// BACKFILL ACCOUNTS
+// =============================================
+
+function backfillAccounts() {
+  var salesSS = SS_SALES();
+  var crmSS   = SS_CRM();
+  var accSS   = SS_ACC();
+
+  var itemSheet = salesSS.getSheetByName('OrderItems');
+  var accSheet  = accSS.getSheetByName('Accounts');
+  var ordSheet  = salesSS.getSheetByName('Orders');
+  var paySheet  = crmSS.getSheetByName('Payments');
+
+  if (!itemSheet || !accSheet || !ordSheet) { Logger.log('Sheet not found'); return; }
+
+  // Clear existing data (keep headers)
+  if (accSheet.getLastRow() > 1) {
+    accSheet.getRange(2, 1, accSheet.getLastRow() - 1, accSheet.getLastColumn()).clearContent();
+  }
+
+  // Orders map
+  var oVals = ordSheet.getDataRange().getValues();
+  var oH    = oVals[0];
+  var orderMap = {};
+  for (var i = 1; i < oVals.length; i++) {
+    var obj = {};
+    oH.forEach(function(h, j) { obj[h] = oVals[i][j]; });
+    orderMap[obj['Order ID']] = obj;
+  }
+
+  // Payments map — total received per order
+  var payMap = {};
+  if (paySheet && paySheet.getLastRow() > 1) {
+    var pVals = paySheet.getDataRange().getValues();
+    var pH    = pVals[0].map(function(h) { return h.toString().trim(); });
+    var pOIdx = pH.indexOf('Order ID');
+    var pAIdx = pH.indexOf('Amount');
+    for (var p = 1; p < pVals.length; p++) {
+      var oid = String(pVals[p][pOIdx]).trim();
+      if (!payMap[oid]) payMap[oid] = 0;
+      payMap[oid] += parseFloat(pVals[p][pAIdx]) || 0;
+    }
+  }
+
+  // Production map — item ID se produced/pending qty
+  var prodSheet = SpreadsheetApp.openById(PROD_ID).getSheetByName('Production');
+  var prodMap   = {};
+  if (prodSheet && prodSheet.getLastRow() > 1) {
+    var prVals = prodSheet.getDataRange().getValues();
+    var prH    = prVals[0];
+    var prIIdx = prH.indexOf('Item ID');
+    var prPIdx = prH.indexOf('Produced Qty');
+    var prNIdx = prH.indexOf('Pending Qty');
+    for (var pr = 1; pr < prVals.length; pr++) {
+      var iid = String(prVals[pr][prIIdx]).trim();
+      prodMap[iid] = {
+        producedQty: parseFloat(prVals[pr][prPIdx]) || 0,
+        pendingQty:  parseFloat(prVals[pr][prNIdx]) || 0
+      };
+    }
+  }
+
+  // Items
+  var iVals = itemSheet.getDataRange().getValues();
+  var iH    = iVals[0];
+  var headers = accSheet.getRange(1, 1, 1, accSheet.getLastColumn()).getValues()[0];
+
+  var count = 0;
+  for (var r = 1; r < iVals.length; r++) {
+    var item = {};
+    iH.forEach(function(h, j) { item[h] = iVals[r][j]; });
+    var order       = orderMap[item['Order ID']] || {};
+    var orderVal    = parseFloat(order['Total Order Value']) || 0;
+    var received    = payMap[item['Order ID']] || 0;
+    var balance     = orderVal - received;
+    var prodData    = prodMap[item['Item ID']] || {};
+    var producedQty = prodData.producedQty || 0;
+    var pendingQty  = prodData.pendingQty  || (parseFloat(item['Qty']) || 0);
+
+    var accData = {};
+    headers.forEach(function(h) { accData[h.toString().trim()] = ''; });
+    accData['Sr No']          = r;
+    accData['Item ID']        = item['Item ID'] || '';
+    accData['Order ID']       = item['Order ID'] || '';
+    accData['Order Date']     = order['Date'] || '';
+    accData['Customer Name']  = order['Customer Name'] || '';
+    accData['Product Model']  = item['Product Model'] || '';
+    accData['Battery Type']   = item['Battery Type'] || '';
+    accData['Qty']            = item['Qty'] || '';
+    accData['Charger Model']  = order['Charger Model'] || '';
+    accData['Charger Qty']    = order['Charger Qty'] || '';
+    accData['Sales Person']   = order['Sales Person Name'] || '';
+    accData['Assigned CRM']   = order['Assigned CRM'] || '';
+    accData['Order Value']    = orderVal;
+    accData['Total Received'] = received;
+    accData['Balance']        = balance;
+    accData['Produced Qty']   = producedQty;
+    accData['Pending Qty']    = pendingQty;
+
+    var row = headers.map(function(h) { return accData[h.toString().trim()] !== undefined ? accData[h.toString().trim()] : ''; });
+    accSheet.appendRow(row);
+    count++;
+  }
+  Logger.log('Done — ' + count + ' rows added');
+}
+
+// =============================================
+// SETUP
+// =============================================
+
+function setupSalesSheet() {
+  const ss = SS_SALES();
+  let users = ss.getSheetByName('Users');
+  if (!users) users = ss.insertSheet('Users');
+  if (users.getLastRow() === 0) {
+    users.appendRow(['UserID','Name','Username','Password','Role','IsActive','SalesName']);
+    users.appendRow(['U001','Darpan','darpan','admin123','Admin',true,'']);
+    users.appendRow(['U002','Mohit','mohit','mohit123','Sales',true,'Mohit']);
+    users.appendRow(['U003','Vijay','vijay','vijay123','Sales',true,'Vijay']);
+    users.appendRow(['U004','Sahil','sahil','sahil123','Sales',true,'Sahil']);
+    users.appendRow(['U005','Sneha','sneha','sneha123','Sales',true,'Sneha']);
+    users.appendRow(['U006','Surender','surender','surender123','Production',true,'']);
+    users.appendRow(['U007','Kamal','kamal','kamal123','CRM',true,'']);
+  }
+  let cust = ss.getSheetByName('Customers');
+  if (!cust) cust = ss.insertSheet('Customers');
+  if (cust.getLastRow() === 0) {
+    cust.appendRow(['CustomerID','CompanyName','ContactPerson','Phone','GSTIN','City','CreditDays','Added By']);
+    cust.appendRow(['C001','EV Motors Ltd.','Rajesh Sharma','9876543210','07AAAAA0000A1Z5','Delhi',30]);
+    cust.appendRow(['C002','SolarTech India','Amit Patel','9876543211','24BBBBB0000B1Z5','Ahmedabad',45]);
+  }
+  let prod = ss.getSheetByName('Products');
+  if (!prod) prod = ss.insertSheet('Products');
+  if (prod.getLastRow() === 0) {
+    prod.appendRow(['ProductID','ProductName','Category','SalePrice','HSNCode','GSTPercent','Unit']);
+    prod.appendRow(['P001','18650 Cell 3.6V','Cell',450,'85076000',18,'pcs']);
+    prod.appendRow(['P002','EV Pack 48V/100Ah','Pack',45000,'85044090',18,'pcs']);
+    prod.appendRow(['P003','LFP Cell 3.2V/100Ah','Cell',2800,'85076000',18,'pcs']);
+  }
+  let supp = ss.getSheetByName('Suppliers');
+  if (!supp) supp = ss.insertSheet('Suppliers');
+  if (supp.getLastRow() === 0) {
+    supp.appendRow(['SupplierID','CompanyName','ContactPerson','Phone','GSTIN','City']);
+    supp.appendRow(['S001','ChemCorp India','Vikas Gupta','9812345670','07DDDDD0000D1Z5','Delhi']);
+  }
+  return { success: true, message: 'Setup complete!' };
+}
+
+// =============================================
+// DISPATCH
+// =============================================
+
+function getDispatchSheet() {
+  var ss = SS_DISP();
+  var sheet = ss.getSheetByName('Dispatch');
+  if (!sheet) sheet = ss.insertSheet('Dispatch');
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Dispatch ID','Order ID','Item ID','Dispatch Qty','Dispatch Date',
+                     'Transport Name','Vehicle No','LR No','Driver No','Remarks','Added By','Timestamp']);
+  }
+  return sheet;
+}
+
+function addDispatch(data) {
+  try {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      var sheet = getDispatchSheet();
+
+      // Dispatch ID — max existing number + 1 (addOrder jaisa pattern)
+      var maxNum = 0;
+      if (sheet.getLastRow() > 1) {
+        var idVals = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+        for (var i = 0; i < idVals.length; i++) {
+          var m = String(idVals[i][0]).match(/DSP-(\d+)/);
+          if (m) { var n = parseInt(m[1], 10); if (n > maxNum) maxNum = n; }
+        }
+      }
+      var dispatchID = 'DSP-' + String(maxNum + 1).padStart(4, '0');
+
+      var date = data['Dispatch Date'] || '';
+      if (/^\d{4}-\d{2}-\d{2}/.test(date)) date = fixDateFormat(date);
+      if (!date) {
+        var now = new Date();
+        date = now.getDate().toString().padStart(2,'0') + '/' +
+               (now.getMonth()+1).toString().padStart(2,'0') + '/' +
+               now.getFullYear();
+      }
+
+      sheet.appendRow([
+        dispatchID,
+        data['Order ID']       || '',
+        data['Item ID']        || '',
+        parseFloat(data['Dispatch Qty']) || 0,
+        date,
+        data['Transport Name'] || '',
+        data['Vehicle No']     || '',
+        data['LR No']          || '',
+        data['Driver No']      || '',
+        data['Remarks']        || '',
+        data['Added By']       || '',
+        new Date()
+      ]);
+
+      var orderDispatched = false;
+      try { orderDispatched = checkOrderFullyDispatched(data['Order ID'] || '', date); } catch(e) { Logger.log('checkOrderFullyDispatched: ' + e); }
+
+      return { success: true, dispatchID: dispatchID, orderDispatched: orderDispatched };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getAllDispatches() {
+  try {
+    var sheet = getDispatchSheet();
+    if (sheet.getLastRow() <= 1) return { success: true, data: [] };
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var rows    = vals.slice(1).map(function(r) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    return { success: true, data: rows };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// Saare items fully dispatched? → Order Status "<prefix> - Dispatched" + CRM update
+function checkOrderFullyDispatched(orderID, dispDate) {
+  if (!orderID) return false;
+
+  // 1. Order ke items ki total qty (OrderItems se)
+  var itemSheet = SS_SALES().getSheetByName('OrderItems');
+  if (!itemSheet || itemSheet.getLastRow() <= 1) return false;
+  var iVals = itemSheet.getDataRange().getValues();
+  var iH    = iVals[0];
+  var iOIdx = iH.indexOf('Order ID');
+  var iIIdx = iH.indexOf('Item ID');
+  var iQIdx = -1;
+  for (var k = 0; k < iH.length; k++) {
+    if (iH[k].toString().trim() === 'Qty') { iQIdx = k; break; }
+  }
+  var itemQty = {};
+  for (var i = 1; i < iVals.length; i++) {
+    if (iVals[i][iOIdx] == orderID) {
+      itemQty[String(iVals[i][iIIdx]).trim()] = parseFloat(iVals[i][iQIdx]) || 0;
+    }
+  }
+  if (Object.keys(itemQty).length === 0) return false;
+
+  // 2. Ab tak dispatched totals
+  var dSheet = getDispatchSheet();
+  var dVals  = dSheet.getDataRange().getValues();
+  var dH     = dVals[0];
+  var dOIdx  = dH.indexOf('Order ID');
+  var dIIdx  = dH.indexOf('Item ID');
+  var dQIdx  = dH.indexOf('Dispatch Qty');
+  var dispatched = {};
+  for (var d = 1; d < dVals.length; d++) {
+    if (dVals[d][dOIdx] == orderID) {
+      var iid = String(dVals[d][dIIdx]).trim();
+      dispatched[iid] = (dispatched[iid] || 0) + (parseFloat(dVals[d][dQIdx]) || 0);
+    }
+  }
+
+  // 3. Har item fully dispatched?
+  var allDone = Object.keys(itemQty).every(function(iid) {
+    return (dispatched[iid] || 0) >= itemQty[iid];
+  });
+  if (!allDone) return false;
+
+  // 4. Order Status → "<prefix> - Dispatched"
+  var oSheet = SS_SALES().getSheetByName('Orders');
+  if (oSheet) {
+    var oVals = oSheet.getDataRange().getValues();
+    var oH    = oVals[0];
+    var oOIdx = oH.indexOf('Order ID');
+    var oSIdx = oH.indexOf('Order Status');
+    for (var r = 1; r < oVals.length; r++) {
+      if (oVals[r][oOIdx] == orderID) {
+        var cur = String(oVals[r][oSIdx] || '');
+        var pfx = cur.indexOf(' - ') > -1 ? cur.split(' - ')[0] : 'Advance';
+        if (oSIdx >= 0) oSheet.getRange(r + 1, oSIdx + 1).setValue(pfx + ' - Dispatched');
+        break;
+      }
+    }
+  }
+
+  // 5. CRM — Ready to Dispatch Actual (jahan khaali hai) + Current Stage
+  try {
+    var crmSheet = SS_CRM().getSheetByName('CRM1');
+    if (crmSheet && crmSheet.getLastRow() > 1) {
+      var cVals = crmSheet.getDataRange().getValues();
+      var cH    = cVals[0];
+      var cOIdx = cH.indexOf('Order ID');
+      var cRIdx = cH.indexOf('Ready to Dispatch Actual');
+      var cSIdx = cH.indexOf('Current Stage');
+      for (var c = 1; c < cVals.length; c++) {
+        if (cVals[c][cOIdx] == orderID) {
+          if (cRIdx >= 0 && !cVals[c][cRIdx]) crmSheet.getRange(c + 1, cRIdx + 1).setValue(dispDate);
+          if (cSIdx >= 0) crmSheet.getRange(c + 1, cSIdx + 1).setValue('Dispatched');
+        }
+      }
+    }
+  } catch(ce) { Logger.log('CRM dispatch update error: ' + ce); }
+
+  return true;
+}
+
+// =============================================
+// SYNC: ITEM EDIT → Production + Accounts + CRM1 (Item ID match)
+// =============================================
+function syncItemToLinkedSheets(data) {
+  var itemID = String(data['Item ID'] || '').trim();
+  if (!itemID) return;
+  var syncFields = ['Product Model', 'Battery Type', 'Qty'];
+
+  function syncSheet(sheet) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var iIdx    = headers.indexOf('Item ID');
+    if (iIdx < 0) return;
+    for (var r = 1; r < vals.length; r++) {
+      if (String(vals[r][iIdx]).trim() === itemID) {
+        syncFields.forEach(function(f) {
+          var col = headers.indexOf(f);
+          if (col >= 0 && data[f] !== undefined) sheet.getRange(r + 1, col + 1).setValue(data[f]);
+        });
+        // Qty badli to Pending Qty recalc (Produced Qty wahi rehta hai)
+        var qCol  = headers.indexOf('Qty');
+        var pqCol = headers.indexOf('Produced Qty');
+        var pdCol = headers.indexOf('Pending Qty');
+        if (qCol >= 0 && pdCol >= 0 && data['Qty'] !== undefined) {
+          var newQty   = parseFloat(data['Qty']) || 0;
+          var produced = pqCol >= 0 ? (parseFloat(vals[r][pqCol]) || 0) : 0;
+          var pend     = newQty - produced;
+          sheet.getRange(r + 1, pdCol + 1).setValue(pend < 0 ? 0 : pend);
+        }
+        break;
+      }
+    }
+  }
+
+  try { syncSheet(SpreadsheetApp.openById(PROD_ID).getSheetByName('Production')); } catch(e) { Logger.log('itemsync prod: ' + e); }
+  try { syncSheet(SS_ACC().getSheetByName('Accounts')); } catch(e) { Logger.log('itemsync acc: ' + e); }
+  try { syncSheet(SS_CRM().getSheetByName('CRM1')); } catch(e) { Logger.log('itemsync crm: ' + e); }
+}
+
+// =============================================
+// SYNC: ORDER EDIT → Production + Accounts + CRM1 (Order ID match, saari rows)
+// =============================================
+function syncOrderToLinkedSheets(data) {
+  var orderID = String(data['Order ID'] || '').trim();
+  if (!orderID) return;
+
+  // sheetField : orderField mapping
+  var commonMap = {
+    'Customer Name': 'Customer Name',
+    'Sales Person':  'Sales Person Name',
+    'Assigned CRM':  'Assigned CRM',
+    'Order Date':    'Date'
+  };
+  var crmMap = {
+    'Customer Name':      'Customer Name',
+    'Customer No':        'Customer Phone',
+    'Sales Person':       'Sales Person Name',
+    'Payment Mode':       'Payment Mode',
+    'Plan Payment Date':  'Plan Payment Date',
+    'Payment Status':     'Payment Status',
+    'Plan Dispatch Date': 'Plan Dispatch Date'
+  };
+
+  function syncSheet(sheet, map) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    var vals    = sheet.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var oIdx    = headers.indexOf('Order ID');
+    if (oIdx < 0) return;
+    for (var r = 1; r < vals.length; r++) {
+      if (String(vals[r][oIdx]).trim() === orderID) {
+        Object.keys(map).forEach(function(sheetField) {
+          var orderField = map[sheetField];
+          if (data[orderField] === undefined) return;
+          var col = headers.indexOf(sheetField);
+          if (col < 0) return;
+          var val = data[orderField];
+          if (typeof val === 'string' && (val.indexOf('T') > -1 || /^\d{4}-\d{2}-\d{2}$/.test(val))) val = fixDateFormat(val);
+          sheet.getRange(r + 1, col + 1).setValue(val);
+        });
+        // saari rows update karni hain — break NAHI
+      }
+    }
+  }
+
+  try { syncSheet(SpreadsheetApp.openById(PROD_ID).getSheetByName('Production'), commonMap); } catch(e) { Logger.log('ordersync prod: ' + e); }
+  try { syncSheet(SS_ACC().getSheetByName('Accounts'), commonMap); } catch(e) { Logger.log('ordersync acc: ' + e); }
+  try { syncSheet(SS_CRM().getSheetByName('CRM1'), crmMap); } catch(e) { Logger.log('ordersync crm: ' + e); }
+}
+
+// =============================================
+// ONE-TIME BACKFILL — OrderItems se CRM1/Production/Accounts sync karo
+// GAS editor se manually Run karo, deploy ki zaroorat nahi
+// =============================================
+function backfillItemSync() {
+  var itemSheet = SS_SALES().getSheetByName('OrderItems');
+  if (!itemSheet || itemSheet.getLastRow() <= 1) { Logger.log('No items'); return; }
+
+  // 1. OrderItems ka master map banao
+  var iVals = itemSheet.getDataRange().getValues();
+  var iH    = iVals[0].map(function(h){ return h.toString().trim(); });
+  var iI = iH.indexOf('Item ID'), iM = iH.indexOf('Product Model'),
+      iB = iH.indexOf('Battery Type'), iQ = iH.indexOf('Qty');
+  var master = {};
+  for (var r = 1; r < iVals.length; r++) {
+    var iid = String(iVals[r][iI]).trim();
+    if (!iid) continue;
+    master[iid] = {
+      model: iVals[r][iM] || '',
+      btype: iVals[r][iB] || '',
+      qty:   parseFloat(iVals[r][iQ]) || 0
+    };
+  }
+
+  var totalFixed = 0;
+
+  function fixSheet(sheet, label) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    var vals = sheet.getDataRange().getValues();
+    var h    = vals[0].map(function(x){ return x.toString().trim(); });
+    var cI = h.indexOf('Item ID'), cM = h.indexOf('Product Model'),
+        cB = h.indexOf('Battery Type'), cQ = h.indexOf('Qty'),
+        cPQ = h.indexOf('Produced Qty'), cPD = h.indexOf('Pending Qty');
+    if (cI < 0) return;
+    var fixed = 0;
+    for (var r = 1; r < vals.length; r++) {
+      var iid = String(vals[r][cI]).trim();
+      var m = master[iid];
+      if (!m) continue;
+      var changed = false;
+      if (cM >= 0 && String(vals[r][cM]) !== String(m.model)) { sheet.getRange(r+1, cM+1).setValue(m.model); changed = true; }
+      if (cB >= 0 && String(vals[r][cB]) !== String(m.btype)) { sheet.getRange(r+1, cB+1).setValue(m.btype); changed = true; }
+      if (cQ >= 0 && (parseFloat(vals[r][cQ])||0) !== m.qty)  {
+        sheet.getRange(r+1, cQ+1).setValue(m.qty);
+        changed = true;
+        // Pending Qty recalc
+        if (cPD >= 0) {
+          var produced = cPQ >= 0 ? (parseFloat(vals[r][cPQ]) || 0) : 0;
+          var pend = m.qty - produced;
+          sheet.getRange(r+1, cPD+1).setValue(pend < 0 ? 0 : pend);
+        }
+      }
+      if (changed) fixed++;
+    }
+    Logger.log(label + ': ' + fixed + ' rows fixed');
+    totalFixed += fixed;
+  }
+
+  fixSheet(SS_CRM().getSheetByName('CRM1'), 'CRM1');
+  fixSheet(SpreadsheetApp.openById(PROD_ID).getSheetByName('Production'), 'Production');
+  fixSheet(SS_ACC().getSheetByName('Accounts'), 'Accounts');
+
+  Logger.log('DONE — Total ' + totalFixed + ' rows corrected');
+}
+
+// =============================================
+// ONE-TIME: Jo orders fully produced hain, unka Final Status set karo
+// GAS editor se Run karo — deploy ki zaroorat nahi
+// =============================================
+function backfillOrderFinalStatus() {
+  var pSheet = SpreadsheetApp.openById(PROD_ID).getSheetByName('Production');
+  if (!pSheet || pSheet.getLastRow() <= 1) { Logger.log('No production rows'); return; }
+
+  var pV = pSheet.getDataRange().getValues();
+  var pH = pV[0].map(function(x){ return x.toString().trim(); });
+  var oIdx = pH.indexOf('Order ID');
+  var qIdx = pH.indexOf('Qty');
+  var pqIdx= pH.indexOf('Produced Qty');
+
+  // Order-wise total vs completed count
+  var stat = {};
+  for (var r = 1; r < pV.length; r++) {
+    var oid = String(pV[r][oIdx] || '').trim();
+    if (!oid) continue;
+    if (!stat[oid]) stat[oid] = { total: 0, done: 0 };
+    stat[oid].total++;
+    var tq = parseFloat(pV[r][qIdx])  || 0;
+    var pq = pqIdx >= 0 ? (parseFloat(pV[r][pqIdx]) || 0) : 0;
+    if (tq > 0 && pq >= tq) stat[oid].done++;
+  }
+
+  // Orders sheet — Final Status
+  var oSheet = SS_SALES().getSheetByName('Orders');
+  var oV = oSheet.getDataRange().getValues();
+  var oH = oV[0].map(function(x){ return x.toString().trim(); });
+  var ordIdx = oH.indexOf('Order ID');
+  var fsIdx  = oH.indexOf('Final Status');
+  var fixed = 0;
+  if (fsIdx >= 0) {
+    for (var i = 1; i < oV.length; i++) {
+      var oid2 = String(oV[i][ordIdx] || '').trim();
+      var s = stat[oid2];
+      if (!s || s.total === 0) continue;
+      if (s.done === s.total && String(oV[i][fsIdx]).trim() !== 'Production Completed') {
+        oSheet.getRange(i + 1, fsIdx + 1).setValue('Production Completed');
+        fixed++;
+      }
+    }
+  }
+
+  // CRM1 — Current Stage
+  try {
+    var cSheet = SS_CRM().getSheetByName('CRM1');
+    if (cSheet && cSheet.getLastRow() > 1) {
+      var cV = cSheet.getDataRange().getValues();
+      var cH = cV[0].map(function(x){ return x.toString().trim(); });
+      var cOIdx = cH.indexOf('Order ID');
+      var cSIdx = cH.indexOf('Current Stage');
+      if (cSIdx >= 0) {
+        for (var c = 1; c < cV.length; c++) {
+          var oid3 = String(cV[c][cOIdx] || '').trim();
+          var s3 = stat[oid3];
+          if (s3 && s3.total > 0 && s3.done === s3.total) {
+            cSheet.getRange(c + 1, cSIdx + 1).setValue('Production Complete');
+          }
+        }
+      }
+    }
+  } catch(e) { Logger.log('CRM update error: ' + e); }
+
+  Logger.log('DONE — ' + fixed + ' orders ka Final Status set hua');
+}
+
+// =============================================
+// PLANNED PRODUCTION (Production sheet — "Planned Production" tab)
+// =============================================
+
+var PLANNED_HEADERS = ['Plan ID','Plan Date','Order ID','Item ID','Customer Name',
+                       'Product Model','Battery Type','Total Qty','Planned Qty',
+                       'Produced Qty','Status','Added By','Timestamp'];
+
+function getPlannedSheet_() {
+  var ss = SS_PROD();
+  var sh = ss.getSheetByName('Planned Production');
+  if (!sh) {
+    sh = ss.insertSheet('Planned Production');
+    sh.getRange(1, 1, 1, PLANNED_HEADERS.length).setValues([PLANNED_HEADERS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function addPlannedProduction(data) {
+  try {
+    var sh = getPlannedSheet_();
+    var planID = 'PP-' + String(sh.getLastRow()).padStart(4, '0');
+    var planDate = data['Plan Date'] || '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(planDate)) planDate = fixDateFormat(planDate);
+    sh.appendRow([
+      planID,
+      planDate,
+      data['Order ID']      || '',
+      data['Item ID']       || '',
+      data['Customer Name'] || '',
+      data['Product Model'] || '',
+      data['Battery Type']  || '',
+      data['Total Qty']     || '',
+      data['Planned Qty']   || '',
+      data['Produced Qty']  || '',
+      'Planned',
+      data['Added By']      || '',
+      new Date()
+    ]);
+    return { success: true, planID: planID };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getPlannedProduction() {
+  try {
+    var sh = getPlannedSheet_();
+    if (sh.getLastRow() <= 1) return { success: true, data: [] };
+    var vals    = sh.getDataRange().getValues();
+    var headers = vals[0].map(function(h) { return h.toString().trim(); });
+    var rows    = vals.slice(1).map(function(r) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    return { success: true, data: rows };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// =============================================
+// DELETE ORDER (full cascade — Sales/CRM/Production/Accounts/Payments/Billings/Dispatch)
+// =============================================
+
+function deleteRowsByOrderId_(ss, sheetName, orderID) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() <= 1) return 0;
+  var vals    = sheet.getDataRange().getValues();
+  var headers = vals[0];
+  var idCol   = headers.indexOf('Order ID');
+  if (idCol < 0) return 0;
+  var deleted = 0;
+  for (var r = vals.length - 1; r >= 1; r--) {
+    if (String(vals[r][idCol]).trim() === String(orderID).trim()) {
+      sheet.deleteRow(r + 1);
+      deleted++;
+    }
+  }
+  return deleted;
+}
+
+function deleteOrder(data) {
+  var orderID = data['Order ID'] || '';
+  if (!orderID) return { success: false, message: 'Order ID missing' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var salesDeleted = deleteRowsByOrderId_(SS_SALES(), 'Orders', orderID);
+    if (salesDeleted === 0) return { success: false, message: 'Order not found: ' + orderID };
+
+    deleteRowsByOrderId_(SS_SALES(), 'OrderItems', orderID);
+    deleteRowsByOrderId_(SS_SALES(), 'OrderItemCharger', orderID);
+    deleteRowsByOrderId_(SS_PROD(),  'Production', orderID);
+    deleteRowsByOrderId_(SS_PROD(),  'Planned Production', orderID);
+    deleteRowsByOrderId_(SS_ACC(),   'Accounts', orderID);
+    deleteRowsByOrderId_(SS_ACC(),   'Billings', orderID);
+    deleteRowsByOrderId_(SS_CRM(),   'CRM1', orderID);
+    deleteRowsByOrderId_(SS_CRM(),   'Payments', orderID);
+    deleteRowsByOrderId_(SS_DISP(),  'Dispatch', orderID);
+
+    return { success: true, message: 'Order ' + orderID + ' deleted from all sheets' };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =============================================
+// BATTERY SPEC (customer-wise, sheet-driven columns)
+// Sales spreadsheet me "BatterySpec" tab. Header row hi column definition hai.
+// Naya column chahiye? Sheet me "Customer Name" ke baad, "Updated By" se pehle header add karo.
+// =============================================
+
+var BATTERY_SPEC_SHEET = 'BatterySpec';
+
+function getBatterySpecSheet_() {
+  var ss = SS_SALES();
+  var sh = ss.getSheetByName(BATTERY_SPEC_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(BATTERY_SPEC_SHEET);
+    // Sirf pehli baar ka default header — baad me sheet me hi columns add/rename/hata sakte ho
+    sh.appendRow(['Customer Name','Battery Model','Sticker','BMS','Cell','Connector','Remarks','Updated By','Updated At']);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+// Header se dynamic columns nikaalo — meta columns chhod ke baaki sab spec columns
+function getSpecColumns_(header) {
+  var meta = ['Customer Name','Updated By','Updated At'];
+  return header.filter(function(h) { return h && meta.indexOf(h) === -1; });
+}
+
+function getBatterySpec(data) {
+  try {
+    var sh = getBatterySpecSheet_();
+    var cust = (data['customerName'] || '').toString().trim().toLowerCase();
+    var values = sh.getDataRange().getValues();
+    var header = values.length ? values[0] : [];
+    var cols = getSpecColumns_(header);
+    var out = [];
+    for (var i = 1; i < values.length; i++) {
+      if ((values[i][0] || '').toString().trim().toLowerCase() !== cust) continue;
+      var obj = {};
+      cols.forEach(function(c) {
+        var idx = header.indexOf(c);
+        obj[c] = idx > -1 ? values[i][idx] : '';
+      });
+      out.push(obj);
+    }
+    return { success: true, columns: cols, data: out };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function saveBatterySpec(data) {
+  try {
+    var sh = getBatterySpecSheet_();
+    var cust = (data['customerName'] || '').toString().trim();
+    if (!cust) return { success: false, message: 'Customer name missing' };
+    var rows = [];
+    try { rows = JSON.parse(data['rows'] || '[]'); } catch (e) { return { success: false, message: 'Bad rows data' }; }
+
+    var header = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    var values = sh.getDataRange().getValues();
+
+    // is customer ki purani rows hatao (neeche se upar)
+    for (var i = values.length - 1; i >= 1; i--) {
+      if ((values[i][0] || '').toString().trim().toLowerCase() === cust.toLowerCase()) sh.deleteRow(i + 1);
+    }
+
+    // nayi rows append
+    var now = new Date(), addedBy = data['Added By'] || '';
+    rows.forEach(function(r) {
+      var line = header.map(function(h) {
+        if (h === 'Customer Name') return cust;
+        if (h === 'Updated By')    return addedBy;
+        if (h === 'Updated At')    return now;
+        return r[h] != null ? r[h] : '';
+      });
+      sh.appendRow(line);
+    });
+    return { success: true, count: rows.length };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// Column headers set karo — rename/add/delete sab. Data preserve hota hai:
+// jo columns naam same rehta hai uska data as-is; naya column khaali; hataya column ka data gayab.
+function setBatterySpecColumns(data) {
+  try {
+    var sh = getBatterySpecSheet_();
+    var newCols = [];
+    try { newCols = JSON.parse(data['columns'] || '[]'); } catch (e) { return { success: false, message: 'Bad columns data' }; }
+    newCols = newCols.filter(function(c) { return c && c.toString().trim(); }).map(function(c) { return c.toString().trim(); });
+    if (!newCols.length) return { success: false, message: 'At least one column required' };
+
+    var values = sh.getDataRange().getValues();
+    var oldHeader = values.length ? values[0] : [];
+    var oldCols   = getSpecColumns_(oldHeader);   // purane spec columns (meta chhod ke)
+
+    // Naya poora header banao: Customer Name + newCols + Updated By + Updated At
+    var finalHeader = ['Customer Name'].concat(newCols).concat(['Updated By','Updated At']);
+
+    // Purani data rows ko naye header ke hisaab se remap karo (naam se match)
+    var remapped = [];
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      var obj = {};
+      oldHeader.forEach(function(h, j) { obj[h] = row[j]; });
+      var line = finalHeader.map(function(h) {
+        // Position-based rename ke liye: agar newCol purane spec-col ki jagah pe hai to purana data uthao
+        if (h === 'Customer Name' || h === 'Updated By' || h === 'Updated At') return obj[h] != null ? obj[h] : '';
+        // Naam same mila? seedha uthao
+        if (obj[h] !== undefined) return obj[h];
+        // Rename case: newCols me is position ka purana col dhundo
+        var pos = newCols.indexOf(h);
+        if (pos > -1 && oldCols[pos] !== undefined && obj[oldCols[pos]] !== undefined) return obj[oldCols[pos]];
+        return '';
+      });
+      remapped.push(line);
+    }
+
+    // Sheet clear karke naya header + remapped data likho
+    sh.clear();
+    sh.getRange(1, 1, 1, finalHeader.length).setValues([finalHeader]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    if (remapped.length) sh.getRange(2, 1, remapped.length, finalHeader.length).setValues(remapped);
+
+    return { success: true, columns: newCols };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function keepWarm() {
+  // kuch bhi halka — sheet ko touch mat karo, bas function chale
+  return true;
+}
+// Ek baar setup:
+function setupWarmTrigger() {
+  ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(5).create();
+}
