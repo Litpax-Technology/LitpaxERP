@@ -2816,21 +2816,9 @@ function toggleBillingFMS() {
   const chk    = document.getElementById('bl-fms-chk');
   const dateEl = document.getElementById('bl-invoice-date');
   if (!chk || !dateEl) return;
-
   if (chk.checked) {
-    // date auto-fill agar khaali ho
     if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
-
-    const itemID = currentBillingData['Item ID'] || '';
-    if (!itemID) { toast('Item ID nahi mila', 'e'); chk.checked = false; return; }
-
-    // FMS Billing step Done — same markFMSProductionDone, Step: 'billing' (O/P columns)
-    api({ action: 'markFMSProductionDone', 'Item ID': itemID, 'Step': 'billing', 'Actual': fmtDisplayDate(dateEl.value) }, r => {
-      if (r && r.success) toast('FMS billing Done ✓');
-      else { toast((r && r.message) || 'FMS update fail', 'e'); chk.checked = false; }
-    });
   } else {
-    // untick → sirf date clear, FMS ka Done rehne do (bill kat gaya to kat gaya)
     dateEl.value = '';
   }
 }
@@ -2878,6 +2866,10 @@ function submitBilling() {
   }, r => {
     if (btn) { btn.disabled = false; btn.textContent = '🧾 Save Billing'; }
     if (r.success) {
+      // FMS: Billing checkbox ticked hai to us step ko Done karo
+      if (document.getElementById('bl-fms-chk')?.checked) {
+        api({ action: 'markFMSProductionDone', 'Item ID': currentBillingData['Item ID'] || '', 'Step': 'billing', 'Actual': fmtDisplayDate(document.getElementById('bl-invoice-date').value) }, () => {});
+      }
       toast('Billing saved! ' + r.billingID);
       document.getElementById('bl-invoice-no').value    = '';
       document.getElementById('bl-billed-qty-input').value = '';
