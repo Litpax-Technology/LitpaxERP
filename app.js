@@ -1981,6 +1981,13 @@ function buildPlannedSlipPrint(rows, planDateDisp) {
 }
 function printOrderRow(o) { currentEditOrder = o; printOrder(); }
 
+function printAccountsOrder(orderID) {
+  const o = accOrderFull[orderID];
+  if (!o) { toast('Order data nahi mila — page refresh karo', 'e'); return; }
+  currentEditOrder = o;
+  printOrder();   // wahi Sales waala PDF/print
+}
+
 // ========== ORDER PRINT / PDF ==========
 function printOrder() {
   if (!currentEditOrder) { toast('Order data nahi mila', 'e'); return; }
@@ -2607,6 +2614,7 @@ function submitUser() {
 // ========== ACCOUNTS ==========
 let allAccounts = [];
 let accFilter = 'all', accProdMap = {}, accOrderValMap = {};
+let accOrderFull = {};   // orderID -> poora order row (Transport Charges + PDF print ke liye)
 
 function accStatus(a) {
   const pd = accProdMap[a['Item ID']] || {};
@@ -2661,9 +2669,15 @@ function loadAccounts() {
       orderPayMap[orderID] = { totalReceived: received, orderVal: ov, balance: ov - received };
     });
 
-    accProdMap = prodMap;
+        accProdMap = prodMap;
     accOrderValMap = orderValMap;
-    renderAccounts(allAccounts, prodMap, orderValMap);
+
+    // Poore order rows laao — Transport Charges dikhane aur PDF print ke liye
+    api({ action: 'getOrders' }, ordRes => {
+      accOrderFull = {};
+      (ordRes.data || []).forEach(o => { accOrderFull[o['Order ID']] = o; });
+      renderAccounts(allAccounts, prodMap, orderValMap);
+    });
   });
 }
 
@@ -2727,6 +2741,7 @@ function renderAccounts(data, prodMap, orderValMap) {
       const chargerModel = firstItem['Charger Model'] || '';
       const chargerQty   = firstItem['Charger Qty'] || '';
 
+      const transCharge = parseFloat((accOrderFull[orderID] || {})['Transportation Charges']) || 0;
       const orderCells = isFirst ? `
         <td class="td-id" rowspan="${count}" style="vertical-align:middle;${borderTop}">${orderID}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${fmtDisplayDate(a['Order Date']||'')}</td>
@@ -2736,10 +2751,12 @@ function renderAccounts(data, prodMap, orderValMap) {
         <td rowspan="${count}" style="font-weight:600;color:var(--accent);vertical-align:middle;${borderTop}">₹${fmt(orderVal)}</td>
         <td rowspan="${count}" style="font-weight:600;color:var(--success);vertical-align:middle;${borderTop}">₹${fmt(received)}</td>
         <td rowspan="${count}" style="font-weight:700;color:${balColor};vertical-align:middle;${borderTop}">₹${fmt(balance)}</td>
+        <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${transCharge ? '₹'+fmt(transCharge) : '—'}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerModel || '—'}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">${chargerQty || '—'}</td>
         <td rowspan="${count}" style="vertical-align:middle;${borderTop}">
           <button class="btn btn-sm btn-info" onclick='openAccSlipsDrawer("${orderID}","${a['Customer Name']||''}")'>📎 Slips</button>
+          <button class="btn btn-sm" style="margin-top:4px;" onclick="printAccountsOrder('${orderID}')">🖨️ Print</button>
         </td>
       ` : '';
 
