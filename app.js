@@ -10,7 +10,7 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
+  Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
   Production: ['production','batteryexchange'],
