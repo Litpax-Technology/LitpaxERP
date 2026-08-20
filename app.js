@@ -1981,7 +1981,12 @@ function buildPlannedSlipPrint(rows, planDateDisp) {
 }
 function printOrderRow(o) { currentEditOrder = o; printOrder(); }
 
-
+function printAccountsOrder(orderID) {
+  const o = accOrderFull[orderID];
+  if (!o) { toast('Order data nahi mila — page refresh karo', 'e'); return; }
+  currentEditOrder = o;
+  printOrder();   // wahi Sales waala PDF/print
+}
 
 // ========== ORDER PRINT / PDF ==========
 function printOrder() {
