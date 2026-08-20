@@ -56,8 +56,10 @@ const roleAccess = {
     document.querySelector('.sidebar').style.display = 'none';
   }
 
-  if (user.role === 'Production') {
+    if (user.role === 'Production') {
     setTimeout(() => nav('production', document.getElementById('nav-production')), 100);
+    loadBetPendingCount();
+    setInterval(loadBetPendingCount, 60000);   // har 1 min auto-refresh
   } else if (user.role === 'CRM') {
     setTimeout(() => nav('crm', document.getElementById('nav-crm')), 100);
   } else if (user.role === 'Accounts') {
@@ -2930,6 +2932,24 @@ function searchAccounts() {
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
+
+// ========== BET — Production pending count (sidebar badge) ==========
+const BET_API = 'https://script.google.com/macros/s/AKfycbxygG0R2tWwYOs3O-9wAXUoHvCE5VFbyUnNCs9WQ4h5u_EyQ6HiiRpR70zfaTu77Bm9RA/exec';
+
+function loadBetPendingCount() {
+  const badge = document.getElementById('bet-req-count');
+  if (!badge) return;
+  fetch(`${BET_API}?action=getAll`)
+    .then(r => r.json())
+    .then(json => {
+      const pending = (json.data || []).filter(row =>
+        ['Forwarded to Production', 'Sent to Production'].includes(row['Status'])
+      ).length;
+      if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-flex'; }
+      else { badge.style.display = 'none'; }
+    })
+    .catch(() => {});
+}
 
 // ========== PAYMENT SLIPS (legacy) ==========
 function loadSlips(orderID) {
