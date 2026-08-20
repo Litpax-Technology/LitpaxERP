@@ -56,10 +56,8 @@ const roleAccess = {
     document.querySelector('.sidebar').style.display = 'none';
   }
 
-    if (user.role === 'Production') {
+      if (user.role === 'Production') {
     setTimeout(() => nav('production', document.getElementById('nav-production')), 100);
-    loadBetPendingCount();
-    setInterval(loadBetPendingCount, 60000);   // har 1 min auto-refresh
   } else if (user.role === 'CRM') {
     setTimeout(() => nav('crm', document.getElementById('nav-crm')), 100);
   } else if (user.role === 'Accounts') {
