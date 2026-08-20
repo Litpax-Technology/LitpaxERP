@@ -13,7 +13,7 @@ const roleAccess = {
   Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
-  Production: ['production'],
+  Production: ['production','batteryexchange'],
   CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
 };
@@ -72,7 +72,8 @@ const pageMeta = {
   admindashboard:{title:'Dashboard',sub:'Admin overview & analytics'},
   orders:{title:'Sales Orders',sub:'Manage all customer orders'},
   crm:{title:'CRM Tracker',sub:'Order lifecycle tracking'},
-  production:{title:'Production',sub:'Production status & updates'},
+    production:{title:'Production',sub:'Production status & updates'},
+  batteryexchange:{title:'Advance Battery Replacement',sub:'Warranty battery exchange tracking'},
   dispatch:{title:'Dispatch',sub:'Dispatch queue & delivery tracking'},
   mydashboard:{title:'My Dashboard',sub:'Your orders & production updates'},
   customers:{title:'Customers',sub:'Customer master data'},
