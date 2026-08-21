@@ -49,6 +49,7 @@
   <div class="nav-item" onclick="nav('production',this)" id="nav-production"><span class="nav-icon">⚙️</span>Production</div>
     <div class="nav-item" onclick="nav('batteryexchange',this)" id="nav-batteryexchange" style="display:none;"><span class="nav-icon">🔋</span>Advance Battery Replacement</div>
   <div class="nav-item" onclick="nav('dispatch',this)" id="nav-dispatch"><span class="nav-icon">🚚</span>Dispatch</div>
+  <div class="nav-item" onclick="nav('deliverychallan',this)" id="nav-deliverychallan"><span class="nav-icon">📄</span>Delivery Challan</div>
   <div class="nav-sec" id="sec-master">Master Data</div>
   <div class="nav-item" onclick="nav('customers',this)" id="nav-customers"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="nav('products',this)" id="nav-products"><span class="nav-icon">⚡</span>Products</div>
@@ -268,6 +269,37 @@
     </div>
   </div>
 </div>
+  
+<!-- ===== DELIVERY CHALLAN PAGE ===== -->
+<div class="page" id="page-deliverychallan">
+  <div class="stats-row">
+    <div class="stat c-blue"><div class="stat-lbl">Total Items</div><div class="stat-val" id="dc-items">0</div></div>
+    <div class="stat c-amber"><div class="stat-lbl">Total DC Sent Qty</div><div class="stat-val" id="dc-sent">0</div></div>
+    <div class="stat c-purple"><div class="stat-lbl">Pending Qty</div><div class="stat-val" id="dc-pending">0</div></div>
+    <div class="stat c-green"><div class="stat-lbl">Challans Made</div><div class="stat-val" id="dc-count">0</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Delivery Challan — Items</div>
+      <div class="card-actions">
+        <input class="search-input" id="dcSearch" placeholder="Search order / customer..." oninput="searchDeliveryChallan()" style="width:200px;padding:6px 10px;font-size:12px;">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th>
+          <th>Product Model</th><th>Battery Type</th><th>Total Qty</th><th>DC Sent</th><th>DC Pending</th><th>Action</th>
+        </tr></thead>
+        <tbody id="dcTable"><tr><td colspan="11"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">📄 Recent Challans</div></div>
+    <div id="dcRecent" style="padding:6px 4px;"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+</div>
 
 <!-- ===== ADVANCE BATTERY REPLACEMENT PAGE ===== -->
 <div class="page" id="page-batteryexchange">
@@ -440,6 +472,9 @@
             <option>PDC</option><option>Credit</option><option>Pending</option>
           </select>
         </div>
+        <div class="form-section">Addresses (for Delivery Challan)</div>
+        <div class="form-group form-full"><label class="form-label">Billing Address</label><textarea class="form-control" id="o-billing" placeholder="Billing address"></textarea></div>
+        <div class="form-group form-full"><label class="form-label">Shipping Address</label><textarea class="form-control" id="o-shipping" placeholder="Shipping address (challan pe yahi jayega)"></textarea></div>
         <div class="form-section">Dispatch & Delivery</div>
         <div class="form-group"><label class="form-label">Suggested Transport</label><input class="form-control" id="o-transport" placeholder="Transport name"></div>
         <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="o-plandispatch"></div>
@@ -890,6 +925,9 @@
             <option>PDC</option><option>Credit</option><option>Pending</option>
           </select>
         </div>
+        <div class="form-section">Addresses (for Delivery Challan)</div>
+        <div class="form-group form-full"><label class="form-label">Billing Address</label><textarea class="form-control" id="e-billing" placeholder="Billing address"></textarea></div>
+        <div class="form-group form-full"><label class="form-label">Shipping Address</label><textarea class="form-control" id="e-shipping" placeholder="Shipping address"></textarea></div>
         <div class="form-section">Dispatch & Other</div>
         <div class="form-group"><label class="form-label">Suggested Transport</label><input class="form-control" id="e-transport" placeholder="Transport"></div>
         <div class="form-group"><label class="form-label">Plan Dispatch Date</label><input class="form-control" type="date" id="e-plandispatch"></div>
@@ -1213,8 +1251,60 @@
     </div>
   </div>
 </div>
-
-
+<!-- ===== DELIVERY CHALLAN MODAL ===== -->
+<div class="modal-overlay" id="challanModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">📄 New Delivery Challan</div>
+      <button class="modal-close" onclick="closeModal('challanModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="background:var(--accent-dim);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Order ID</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;" id="ch-orderid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Item ID</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;" id="ch-itemid-display"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;">Product</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);" id="ch-product-display"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div style="background:var(--info-dim);border:1px solid var(--info-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--info);text-transform:uppercase;font-weight:600;">Total Qty</div>
+          <div style="font-size:16px;font-weight:700;color:var(--info);" id="ch-m-total">0</div>
+        </div>
+        <div style="background:var(--warning-dim);border:1px solid var(--warning-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--warning);text-transform:uppercase;font-weight:600;">Already Sent</div>
+          <div style="font-size:16px;font-weight:700;color:var(--warning);" id="ch-m-sent">0</div>
+        </div>
+        <div style="background:var(--success-dim);border:1px solid var(--success-b);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:9px;color:var(--success);text-transform:uppercase;font-weight:600;">Pending</div>
+          <div style="font-size:16px;font-weight:700;color:var(--success);" id="ch-m-pending">0</div>
+        </div>
+      </div>
+      <div id="ch-history" style="margin-bottom:12px;max-height:140px;overflow-y:auto;"></div>
+      <div style="border-top:2px solid var(--border);padding-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Challan Details</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Challan Qty <span class="req-mark">*</span></label><input class="form-control" type="number" id="ch-qty" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Amount (₹)</label><input class="form-control" type="number" id="ch-amount" placeholder="0"></div>
+          <div class="form-group form-full"><label class="form-label">Name & Address <span class="req-mark">*</span></label><textarea class="form-control" id="ch-address" style="min-height:70px;" placeholder="Ship-to name & address"></textarea></div>
+          <div class="form-group form-full"><label class="form-label">Particulars</label><input class="form-control" id="ch-particulars" placeholder="Product description"></div>
+          <div class="form-group form-full"><label class="form-label">Note</label><input class="form-control" id="ch-note" placeholder="e.g. Replacement / Warranty"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('challanModal')">Cancel</button>
+      <button class="btn btn-primary" id="ch-submit-btn" onclick="submitChallan()">💾 Save & Print Challan</button>
+    </div>
+  </div>
+</div>
 
 <script src="app.js?v=3.1"></script>
 </body>
