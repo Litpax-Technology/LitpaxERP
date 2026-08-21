@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzQAJVsOcZ1u43G-ZqZJwanQgieLl3kIGAgBLjghiXpLpV1HMWjnikD8UuZp2Wpa1ZD/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzZw8Xs5E8DGZXcC7owQVip_egOWi1D6B8fAFzh16r6M72_8dSJ5PgEzeFwESjd00zDRA/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2557,6 +2557,7 @@ function submitChallan() {
   const oid = String(currentChallanItems[0]['Order ID']).trim();
   const cust = currentChallanItems[0]['Customer Name'] || '';
   const note = document.getElementById('dc-note').value.trim();
+  const billNo = document.getElementById('dc-billno').value.trim();
   const dateVal = document.getElementById('dc-date').value; // yyyy-mm-dd or ''
 
   const btn = document.getElementById('dc-save-btn');
@@ -2570,6 +2571,7 @@ function submitChallan() {
     'Customer Name': cust,
     'Address': address,
     'Note': note,
+    'Bill No': billNo,
     'Date': dateVal,
     'Items': JSON.stringify(lines.map(l => ({ itemId: l.itemId, qty: l.qty, amount: l.amount, particulars: l.particulars }))),
     'Created By': (typeof user !== 'undefined' && user.name) ? user.name : ''
@@ -2580,13 +2582,14 @@ function submitChallan() {
       const ch = {
         dcNo: r.dcNo,
         date: fmtDisplayDate(dateVal || new Date().toISOString().split('T')[0]),
-        orderId: oid, customer: cust, address: address, note: note,
+        orderId: oid, customer: cust, address: address, note: note, billNo: billNo,
         items: lines.map(l => ({ itemId: l.itemId, particulars: l.particulars, qty: l.qty, amount: l.amount }))
       };
       const html = buildChallanPrint(ch);
       if (win) { win.document.open(); win.document.write(html); win.document.close(); }
       document.getElementById('dc-items-wrap').style.display = 'none';
       document.getElementById('dc-orderid').value = '';
+      document.getElementById('dc-billno').value = '';
       document.getElementById('dc-order-meta').innerHTML = '';
       reloadDCTotals(renderRecentChallans);
     } else {
@@ -2600,7 +2603,7 @@ function groupDC() {
   const g = {};
   allDC.forEach(d => {
     const no = String(d['DC No']);
-    if (!g[no]) g[no] = { dcNo: d['DC No'], date: d['Date'], orderId: d['Order ID'], customer: d['Customer Name'], address: d['Address'], note: d['Note'], items: [] };
+if (!g[no]) g[no] = { dcNo: d['DC No'], date: d['Date'], orderId: d['Order ID'], customer: d['Customer Name'], address: d['Address'], note: d['Note'], billNo: d['Bill No'], items: [] };
     g[no].items.push({ itemId: d['Item ID'], particulars: d['Particulars'], qty: d['Qty'], amount: d['Amount'] });
   });
   return g;
@@ -2687,6 +2690,7 @@ function buildChallanPrint(ch) {
   <div class="meta">
     <div>Challan No: <b>${esc(ch.dcNo)}</b></div>
     <div>Order ID: <b>${esc(ch.orderId)}</b></div>
+    ${ch.billNo ? `<div>Bill No: <b>${esc(ch.billNo)}</b></div>` : ''}
     <div>Date: <b>${esc(dateDisp)}</b></div>
   </div>
   <div class="addr"><span class="lbl">Name &amp; Address</span>${esc(ch.address)}</div>
