@@ -13,7 +13,7 @@ const roleAccess = {
   Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
-  Production: ['production','batteryexchange'],
+  Production: ['production','batteryexchange','deliverychallan'],
   CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
 };
