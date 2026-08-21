@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbx0cLONZ2H6MJcBRUHWj7oGyHfbvBMfleJ-IE8cR0SN2zltpRQqNopOfWfsTtPdPMHF8A/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbwMhuUYDdcEw_bgRsB5ykw3kwiucDFOv_QXWZFBgsj6U0y2vXcb4jkRTPHrbAj9RTEk9A/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -75,6 +75,7 @@ const pageMeta = {
     production:{title:'Production',sub:'Production status & updates'},
   batteryexchange:{title:'Advance Battery Replacement',sub:'Warranty battery exchange tracking'},
   dispatch:{title:'Dispatch',sub:'Dispatch queue & delivery tracking'},
+  deliverychallan:{title:'Delivery Challan',sub:'Generate & track delivery challans'},
   mydashboard:{title:'My Dashboard',sub:'Your orders & production updates'},
   customers:{title:'Customers',sub:'Customer master data'},
   products:{title:'Products',sub:'Product master data'},
@@ -124,6 +125,7 @@ function loadPage(id) {
   else if (id === 'crm') loadCRM();
   else if (id === 'production') loadProduction();
   else if (id === 'dispatch') loadDispatch();
+  else if (id === 'deliverychallan') loadDeliveryChallan();
   else if (id === 'mydashboard') loadMyDashboard();
   else if (id === 'customers') loadCustomers();
   else if (id === 'products') loadProducts();
@@ -833,6 +835,8 @@ function saveAndAddMore() {
       'Plan Dispatch Date': document.getElementById('o-plandispatch').value,
       'Order Remarks': document.getElementById('o-remarks').value,
       'Transportation Charges': document.getElementById('o-transchg').value,
+      'Billing Address': document.getElementById('o-billing').value,
+      'Shipping Address': document.getElementById('o-shipping').value,
       'Priority': document.getElementById('o-priority').value,
       'Corridor': document.getElementById('o-priority').value,
       'Assigned CRM': document.getElementById('o-crm').value,
@@ -1262,6 +1266,8 @@ function submitOrder() {
     'Plan Dispatch Date': document.getElementById('o-plandispatch').value,
     'Order Remarks': document.getElementById('o-remarks').value,
     'Transportation Charges': document.getElementById('o-transchg').value,
+    'Billing Address': document.getElementById('o-billing').value,
+    'Shipping Address': document.getElementById('o-shipping').value,
     'Priority': document.getElementById('o-priority').value,
     'Assigned CRM': document.getElementById('o-crm').value,
     'Final Status': document.getElementById('o-finalstatus').value
@@ -1322,7 +1328,7 @@ function resetOrderForm() {
   document.getElementById('charger-total').value = '';
   ['o-date','o-sales','o-cust','o-phone','o-city','o-paymode','o-planpay',
    'o-status','o-paystatus','o-transport','o-plandispatch','o-transchg',
-   'o-crm','o-finalstatus','o-remarks'].forEach(id => {
+  'o-crm','o-finalstatus','o-remarks','o-billing','o-shipping'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2418,6 +2424,272 @@ function renderDispatch() {
 }
 
 function searchDispatch() { renderDispatch(); }
+
+// ========== DELIVERY CHALLAN ==========
+// 👇 Apni asli company details bhar do (photo wale challan se)
+const CHALLAN_HEADER = {
+  company: 'Litpax Technology Pvt. Ltd.',
+  gstin:   '06AAECL9497K1ZR',
+  address: 'Sirsa, Haryana',   // 👈 poora address
+  phones:  ''                  // 👈 phone number(s)
+};
+
+let allDC = [];
+let dcSentMap = {};
+let dcItems = [];
+let dcOrderMap = {};
+let currentChallanCtx = null;
+
+function loadDeliveryChallan() {
+  const tbl = document.getElementById('dcTable');
+  if (tbl) tbl.innerHTML = '<tr><td colspan="11"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
+  api({ action: 'getDispatchBundle' }, r => {
+    dcItems    = (r.success && r.production) ? r.production : [];
+    dcOrderMap = (r.success && r.orderMap) ? r.orderMap : {};
+    reloadDCTotals(renderDeliveryChallan);
+  });
+}
+
+function reloadDCTotals(cb) {
+  api({ action: 'getDeliveryChallans' }, r => {
+    allDC = (r.success && r.data) ? r.data : [];
+    dcSentMap = {};
+    allDC.forEach(d => {
+      const iid = String(d['Item ID'] || '').trim();
+      if (!iid) return;
+      dcSentMap[iid] = (dcSentMap[iid] || 0) + (parseFloat(d['Qty']) || 0);
+    });
+    if (cb) cb();
+  });
+}
+
+function searchDeliveryChallan() { renderDeliveryChallan(); }
+
+function renderDeliveryChallan() {
+  const q = (document.getElementById('dcSearch')?.value || '').toLowerCase();
+  let data = dcItems;
+  if (q) data = data.filter(p => (p['Order ID']||'').toLowerCase().includes(q) || (p['Customer Name']||'').toLowerCase().includes(q));
+
+  let sent = 0, pend = 0;
+  dcItems.forEach(p => {
+    const qty = parseFloat(p['Qty']) || 0;
+    const dc  = dcSentMap[String(p['Item ID']||'').trim()] || 0;
+    sent += dc; pend += Math.max(qty - dc, 0);
+  });
+  setText('dc-items', dcItems.length);
+  setText('dc-sent', sent);
+  setText('dc-pending', pend);
+  setText('dc-count', allDC.length);
+
+  if (!data.length) {
+    document.getElementById('dcTable').innerHTML = '<tr><td colspan="11"><div class="empty"><div class="empty-ico">📄</div><div class="empty-txt">Koi item nahi</div></div></td></tr>';
+    renderRecentChallans();
+    return;
+  }
+
+  let rows = '', sr = 1;
+  data.forEach(p => {
+    const iid = String(p['Item ID']||'').trim();
+    const qty = parseFloat(p['Qty']) || 0;
+    const dc  = dcSentMap[iid] || 0;
+    const pen = qty - dc;
+    const sentDisp = dc > 0 ? `<span style="color:var(--warning);font-weight:600;">${dc}</span>` : '<span style="color:var(--text3);">—</span>';
+    const penDisp  = pen <= 0 ? '<span style="color:var(--success);font-weight:600;">0 ✅</span>' : `<span style="color:var(--warning);font-weight:600;">${pen}</span>`;
+    rows += `<tr>
+      <td>${sr++}</td>
+      <td class="td-id">${iid}</td>
+      <td class="td-id">${p['Order ID']||''}</td>
+      <td>${fmtDisplayDate(p['Order Date']||'')}</td>
+      <td class="td-bold">${p['Customer Name']||''}</td>
+      <td>${p['Product Model']||''}</td>
+      <td>${p['Battery Type']||''}</td>
+      <td>${qty}</td>
+      <td>${sentDisp}</td>
+      <td>${penDisp}</td>
+      <td><button class="btn btn-sm btn-primary" onclick='openChallanModal(${JSON.stringify(p)})'>+ Challan</button></td>
+    </tr>`;
+  });
+  document.getElementById('dcTable').innerHTML = rows;
+  renderRecentChallans();
+}
+
+function renderRecentChallans() {
+  const el = document.getElementById('dcRecent');
+  if (!el) return;
+  if (!allDC.length) { el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text3);font-size:13px;">Abhi koi challan nahi bana</div>'; return; }
+  const list = [...allDC].reverse().slice(0, 25);
+  el.innerHTML = list.map(d => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">📄 DC #${d['DC No']||''} <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px;">${d['Order ID']||''} · ${d['Item ID']||''}</span></div>
+        <div style="font-size:11px;color:var(--text3);">${fmtDisplayDate(d['Date']||'')} · ${d['Customer Name']||''} · Qty: ${d['Qty']||0}${d['Amount']?' · ₹'+fmt(d['Amount']):''}${d['Note']?' · '+d['Note']:''}</div>
+      </div>
+      <button class="btn btn-sm btn-info" onclick='reprintChallan(${JSON.stringify(d)})'>🖨️ Reprint</button>
+    </div>`).join('');
+}
+
+function openChallanModal(p) {
+  const oid = p['Order ID']||'';
+  const iid = String(p['Item ID']||'').trim();
+  const qty = parseFloat(p['Qty']) || 0;
+  const sent = dcSentMap[iid] || 0;
+  const pend = qty - sent;
+  const o = dcOrderMap[oid] || {};
+  currentChallanCtx = { p, oid, iid, qty, sent };
+
+  document.getElementById('ch-orderid-display').textContent = oid;
+  document.getElementById('ch-itemid-display').textContent  = iid;
+  document.getElementById('ch-product-display').textContent = p['Product Model']||'';
+  document.getElementById('ch-m-total').textContent   = qty;
+  document.getElementById('ch-m-sent').textContent    = sent;
+  document.getElementById('ch-m-pending').textContent = pend > 0 ? pend : 0;
+
+  document.getElementById('ch-qty').value = pend > 0 ? pend : '';
+  document.getElementById('ch-amount').value = '';
+  document.getElementById('ch-address').value = o['Shipping Address'] || o['Billing Address'] || '';
+  document.getElementById('ch-particulars').value = ((p['Product Model']||'') + ' ' + (p['Battery Type']||'')).trim();
+  document.getElementById('ch-note').value = '';
+  openModal('challanModal');
+  loadChallanHistory(oid, iid);
+}
+
+function loadChallanHistory(orderID, itemID) {
+  const el = document.getElementById('ch-history');
+  const list = allDC.filter(d => String(d['Order ID']).trim() === String(orderID).trim() && String(d['Item ID']).trim() === String(itemID).trim());
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:8px;color:var(--text3);font-size:12px;">Is item ka koi challan nahi abhi</div>'; return; }
+  el.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Previous Challans</div>' +
+    list.map(d => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface);">
+        <div style="font-size:12px;color:var(--text);">DC #${d['DC No']||''} · Qty: ${d['Qty']||0}${d['Amount']?' · ₹'+fmt(d['Amount']):''} <span style="color:var(--text3);">${fmtDisplayDate(d['Date']||'')}</span></div>
+        <button class="btn btn-sm btn-info" onclick='reprintChallan(${JSON.stringify(d)})'>🖨️</button>
+      </div>`).join('');
+}
+
+function submitChallan() {
+  const c = currentChallanCtx;
+  if (!c) return;
+  const btn = document.getElementById('ch-submit-btn');
+  const qty = parseFloat(document.getElementById('ch-qty').value) || 0;
+  if (qty <= 0) { toast('Challan Qty 0 se zyada bharo', 'e'); return; }
+  const address = document.getElementById('ch-address').value.trim();
+  if (!address) { toast('Name & Address bharo', 'e'); return; }
+  const amount = parseFloat(document.getElementById('ch-amount').value) || 0;
+  const particulars = document.getElementById('ch-particulars').value.trim();
+  const note = document.getElementById('ch-note').value.trim();
+  const custName = c.p['Customer Name'] || '';
+
+  const pend = c.qty - c.sent;
+  if (qty > pend) {
+    const ok = confirm(`⚠ Challan qty (${qty}) pending (${pend}) se zyada hai. Fir bhi banayein?`);
+    if (!ok) return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  const win = window.open('', '_blank', 'width=800,height=680');
+  if (win) win.document.write('<p style="font-family:Arial;padding:24px;color:#555;">Challan ban raha hai...</p>');
+
+  api({
+    action: 'addDeliveryChallan',
+    'Order ID': c.oid,
+    'Item ID': c.iid,
+    'Customer Name': custName,
+    'Address': address,
+    'Particulars': particulars,
+    'Qty': qty,
+    'Amount': amount,
+    'Note': note,
+    'Created By': user.name || ''
+  }, r => {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Print Challan'; }
+    if (r && r.success) {
+      toast('Challan saved — DC #' + r.dcNo);
+      const rec = {
+        'DC No': r.dcNo, 'Date': fmtDisplayDate(new Date().toISOString().split('T')[0]),
+        'Order ID': c.oid, 'Item ID': c.iid, 'Customer Name': custName,
+        'Address': address, 'Particulars': particulars, 'Qty': qty, 'Amount': amount, 'Note': note
+      };
+      const html = buildChallanPrint(rec);
+      if (win) { win.document.open(); win.document.write(html); win.document.close(); }
+      closeModal('challanModal');
+      reloadDCTotals(renderDeliveryChallan);
+    } else {
+      if (win) win.close();
+      toast((r && r.message) || 'Save failed', 'e');
+    }
+  });
+}
+
+function reprintChallan(d) {
+  const win = window.open('', '_blank', 'width=800,height=680');
+  if (!win) { toast('Popup block ho gaya — allow karo', 'e'); return; }
+  win.document.write(buildChallanPrint(d));
+  win.document.close();
+}
+
+function buildChallanPrint(d) {
+  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const qty = parseFloat(d['Qty']) || 0;
+  const amount = parseFloat(d['Amount']) || 0;
+  const dateDisp = fmtDisplayDate(d['Date'] || '') || new Date().toLocaleDateString('en-IN');
+  const H = CHALLAN_HEADER;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Delivery Challan #${esc(d['DC No'])}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;padding:22px 26px;color:#1a1a1a;font-size:13px;}
+  .no-print{margin-bottom:14px;}
+  .no-print button{padding:9px 20px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-right:8px;border:none;}
+  .b-print{background:#b91c5c;color:#fff;}
+  .b-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
+  .box{border:2px solid #b91c5c;border-radius:6px;padding:16px 18px;}
+  .head{text-align:center;border-bottom:2px solid #b91c5c;padding-bottom:10px;margin-bottom:12px;}
+  .company{font-size:22px;font-weight:800;color:#b91c5c;letter-spacing:0.5px;}
+  .cinfo{font-size:12px;color:#444;margin-top:4px;line-height:1.6;}
+  .title{text-align:center;font-size:14px;font-weight:700;letter-spacing:2px;margin:6px 0 12px;color:#333;text-transform:uppercase;}
+  .meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px;}
+  .meta b{color:#b91c5c;}
+  .addr{border:1px solid #ddd;border-radius:5px;padding:10px 12px;margin-bottom:14px;font-size:13px;white-space:pre-wrap;min-height:52px;}
+  .addr .lbl{font-size:10px;color:#888;text-transform:uppercase;font-weight:600;display:block;margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px;}
+  th,td{border:1px solid #ccc;padding:8px 10px;}
+  thead tr{background:#fce7f0;}
+  th{text-align:left;font-size:12px;color:#333;}
+  .r{text-align:right;}
+  .warn{margin:14px 0;font-size:13px;font-weight:700;color:#b91c5c;text-align:center;letter-spacing:0.5px;}
+  .sign{display:flex;justify-content:space-between;margin-top:48px;font-size:12px;color:#555;}
+  .sign div{border-top:1px solid #999;padding-top:5px;width:190px;text-align:center;}
+  @media print{.no-print{display:none!important;}body{padding:12px 16px;}}
+</style></head><body>
+<div class="no-print">
+  <button class="b-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  <button class="b-close" onclick="window.close()">✕ Close</button>
+</div>
+<div class="box">
+  <div class="head">
+    <div class="company">${esc(H.company)}</div>
+    <div class="cinfo">${H.gstin ? 'GSTIN: ' + esc(H.gstin) : ''}${H.address ? ' &nbsp;|&nbsp; ' + esc(H.address) : ''}${H.phones ? '<br>' + esc(H.phones) : ''}</div>
+  </div>
+  <div class="title">Delivery Challan</div>
+  <div class="meta">
+    <div>Challan No: <b>${esc(d['DC No'])}</b></div>
+    <div>Date: <b>${esc(dateDisp)}</b></div>
+  </div>
+  <div class="addr"><span class="lbl">Name &amp; Address</span>${esc(d['Address'])}</div>
+  <table>
+    <thead><tr><th style="width:44px;">#</th><th>Particulars</th><th class="r" style="width:90px;">Qty</th><th class="r" style="width:130px;">Amount (₹)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>${esc(d['Particulars']) || '—'}${d['Note'] ? '<br><span style="font-size:11px;color:#888;">('+esc(d['Note'])+')</span>' : ''}</td><td class="r">${qty}</td><td class="r">${amount ? '₹'+fmt(amount) : '—'}</td></tr>
+      <tr><td></td><td class="r" style="font-weight:700;">Total</td><td class="r" style="font-weight:700;">${qty}</td><td class="r" style="font-weight:700;">${amount ? '₹'+fmt(amount) : '—'}</td></tr>
+    </tbody>
+  </table>
+  <div class="warn">Only for Warranty — not for Sale</div>
+  <div class="sign">
+    <div>Customer Signature</div>
+    <div>For ${esc(H.company)}<br>Manager / Prop.</div>
+  </div>
+</div>
+</body></html>`;
+}
 
 function toggleDispatchFMS() {
   const chk    = document.getElementById('dsp-fms-chk');
@@ -3693,6 +3965,8 @@ function openEditOrder() {
   document.getElementById('e-crm').value = o['Assigned CRM'] || '';
   document.getElementById('e-finalstatus').value = o['Final Status'] || '';
   document.getElementById('e-remarks').value = o['Order Remarks'] || '';
+  document.getElementById('e-billing').value = o['Billing Address'] || '';
+  document.getElementById('e-shipping').value = o['Shipping Address'] || '';
   closeModal('orderDetailModal');
   openModal('editOrderModal');
   ensureEditChargerSection();
@@ -3765,8 +4039,11 @@ function submitEditOrder() {
     'Transportation Charges': document.getElementById('e-transchg').value,
     'Assigned CRM': document.getElementById('e-crm').value,
     'Final Status': document.getElementById('e-finalstatus').value,
-    'Order Remarks': document.getElementById('e-remarks').value
+    'Order Remarks': document.getElementById('e-remarks').value,
+    'Billing Address': document.getElementById('e-billing').value,
+    'Shipping Address': document.getElementById('e-shipping').value
   };
+  
   const editBtn = document.getElementById('submitEditBtn');
   if (editBtn) { editBtn.disabled = true; editBtn.textContent = 'Saving...'; }
 
