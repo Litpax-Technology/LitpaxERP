@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzQAJVsOcZ1u43G-ZqZJwanQgieLl3kIGAgBLjghiXpLpV1HMWjnikD8UuZp2Wpa1ZD/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzZw8Xs5E8DGZXcC7owQVip_egOWi1D6B8fAFzh16r6M72_8dSJ5PgEzeFwESjd00zDRA/exec';
 document.getElementById('pword').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
