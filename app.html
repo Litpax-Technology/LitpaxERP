@@ -272,29 +272,50 @@
   
 <!-- ===== DELIVERY CHALLAN PAGE ===== -->
 <div class="page" id="page-deliverychallan">
-  <div class="stats-row">
-    <div class="stat c-blue"><div class="stat-lbl">Total Items</div><div class="stat-val" id="dc-items">0</div></div>
-    <div class="stat c-amber"><div class="stat-lbl">Total DC Sent Qty</div><div class="stat-val" id="dc-sent">0</div></div>
-    <div class="stat c-purple"><div class="stat-lbl">Pending Qty</div><div class="stat-val" id="dc-pending">0</div></div>
-    <div class="stat c-green"><div class="stat-lbl">Challans Made</div><div class="stat-val" id="dc-count">0</div></div>
-  </div>
   <div class="card">
     <div class="card-head">
-      <div class="card-title">Delivery Challan — Items</div>
+      <div class="card-title">📄 Create Delivery Challan</div>
       <div class="card-actions">
-        <input class="search-input" id="dcSearch" placeholder="Search order / customer..." oninput="searchDeliveryChallan()" style="width:200px;padding:6px 10px;font-size:12px;">
+        <span style="font-size:12px;color:var(--text3);">Challans Made: <b id="dc-count" style="color:var(--accent);">0</b></span>
       </div>
     </div>
+    <div style="padding:4px 2px;">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">
+        <div class="form-group" style="flex:1;min-width:240px;margin:0;">
+          <label class="form-label">Order ID <span class="req-mark">*</span></label>
+          <input class="form-control" id="dc-orderid" list="dc-orderlist" placeholder="Order ID select karo ya type karo" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchChallanOrder();}">
+          <datalist id="dc-orderlist"></datalist>
+        </div>
+        <button class="btn btn-primary" onclick="fetchChallanOrder()" style="height:38px;">🔍 Fetch Items</button>
+      </div>
+      <div id="dc-order-meta" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px;"></div>
+    </div>
+  </div>
+
+  <div class="card" id="dc-items-wrap" style="display:none;margin-top:16px;">
+    <div class="card-head"><div class="card-title">Select Items & Enter Challan Qty</div></div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Sr</th><th>Item ID</th><th>Order ID</th><th>Order Date</th><th>Customer</th>
-          <th>Product Model</th><th>Battery Type</th><th>Total Qty</th><th>DC Sent</th><th>DC Pending</th><th>Action</th>
+          <th style="width:44px;">✓</th><th>Item ID</th><th>Product</th><th>Battery</th>
+          <th>Total Qty</th><th>Sent</th><th>Pending</th>
+          <th style="width:110px;">Challan Qty</th><th style="width:120px;">Amount (₹)</th><th>Particulars</th>
         </tr></thead>
-        <tbody id="dcTable"><tr><td colspan="11"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
+        <tbody id="dc-item-rows"></tbody>
       </table>
     </div>
+    <div style="padding:14px 4px 4px;border-top:1px solid var(--border);margin-top:10px;">
+      <div class="form-grid">
+        <div class="form-group form-full"><label class="form-label">Name &amp; Address <span class="req-mark">*</span></label><textarea class="form-control" id="dc-address" style="min-height:64px;" placeholder="Ship-to name & address"></textarea></div>
+        <div class="form-group"><label class="form-label">Note</label><input class="form-control" id="dc-note" placeholder="e.g. Replacement / Warranty"></div>
+        <div class="form-group"><label class="form-label">Date (optional)</label><input class="form-control" type="date" id="dc-date"></div>
+      </div>
+      <div style="text-align:right;margin-top:12px;">
+        <button class="btn btn-primary" id="dc-save-btn" onclick="submitChallan()">💾 Save &amp; Print Challan</button>
+      </div>
+    </div>
   </div>
+
   <div class="card" style="margin-top:16px;">
     <div class="card-head"><div class="card-title">📄 Recent Challans</div></div>
     <div id="dcRecent" style="padding:6px 4px;"><div class="loading"><div class="spin"></div></div></div>
