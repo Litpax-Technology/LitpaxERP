@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbwMhuUYDdcEw_bgRsB5ykw3kwiucDFOv_QXWZFBgsj6U0y2vXcb4jkRTPHrbAj9RTEk9A/exec';
+const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzQAJVsOcZ1u43G-ZqZJwanQgieLl3kIGAgBLjghiXpLpV1HMWjnikD8UuZp2Wpa1ZD/exec';
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
@@ -2434,20 +2434,37 @@ const CHALLAN_HEADER = {
   phones:  ''                  // 👈 phone number(s)
 };
 
-let allDC = [];
-let dcSentMap = {};
-let dcItems = [];
-let dcOrderMap = {};
-let currentChallanCtx = null;
+let allDC = [];               // saare challan rows
+let dcSentMap = {};           // Item ID -> total qty already bheji
+let dcItems = [];             // production rows (item list)
+let dcOrderMap = {};          // Order ID -> order row
+let currentChallanItems = []; // abhi fetch kiye gaye order ke items
 
 function loadDeliveryChallan() {
-  const tbl = document.getElementById('dcTable');
-  if (tbl) tbl.innerHTML = '<tr><td colspan="11"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
+  const rec = document.getElementById('dcRecent');
+  if (rec) rec.innerHTML = '<div class="loading"><div class="spin"></div></div>';
   api({ action: 'getDispatchBundle' }, r => {
     dcItems    = (r.success && r.production) ? r.production : [];
     dcOrderMap = (r.success && r.orderMap) ? r.orderMap : {};
-    reloadDCTotals(renderDeliveryChallan);
+    buildOrderDatalist();
+    reloadDCTotals(renderRecentChallans);
   });
+}
+
+function buildOrderDatalist() {
+  const seen = {}, opts = [];
+  dcItems.forEach(p => {
+    const oid = String(p['Order ID'] || '').trim();
+    if (!oid || seen[oid]) return;
+    const o = dcOrderMap[oid] || {};
+    const st = String(o['Order Status'] || o['Status'] || '');
+    // status pata ho aur "complete" na ho to skip; warna list me rakho
+    if (st && !st.toLowerCase().includes('complet')) return;
+    seen[oid] = true;
+    opts.push(`<option value="${oid}">${(p['Customer Name'] || '')}</option>`);
+  });
+  const dl = document.getElementById('dc-orderlist');
+  if (dl) dl.innerHTML = opts.join('');
 }
 
 function reloadDCTotals(cb) {
@@ -2463,155 +2480,115 @@ function reloadDCTotals(cb) {
   });
 }
 
-function searchDeliveryChallan() { renderDeliveryChallan(); }
-
-function renderDeliveryChallan() {
-  const q = (document.getElementById('dcSearch')?.value || '').toLowerCase();
-  let data = dcItems;
-  if (q) data = data.filter(p => (p['Order ID']||'').toLowerCase().includes(q) || (p['Customer Name']||'').toLowerCase().includes(q));
-
-  let sent = 0, pend = 0;
-  dcItems.forEach(p => {
-    const qty = parseFloat(p['Qty']) || 0;
-    const dc  = dcSentMap[String(p['Item ID']||'').trim()] || 0;
-    sent += dc; pend += Math.max(qty - dc, 0);
-  });
-  setText('dc-items', dcItems.length);
-  setText('dc-sent', sent);
-  setText('dc-pending', pend);
-  setText('dc-count', allDC.length);
-
-  if (!data.length) {
-    document.getElementById('dcTable').innerHTML = '<tr><td colspan="11"><div class="empty"><div class="empty-ico">📄</div><div class="empty-txt">Koi item nahi</div></div></td></tr>';
-    renderRecentChallans();
+function fetchChallanOrder() {
+  const oid = (document.getElementById('dc-orderid').value || '').trim();
+  const wrap = document.getElementById('dc-items-wrap');
+  const meta = document.getElementById('dc-order-meta');
+  if (!oid) { toast('Order ID daalo', 'e'); return; }
+  const items = dcItems.filter(p => String(p['Order ID']).trim().toLowerCase() === oid.toLowerCase());
+  if (!items.length) {
+    wrap.style.display = 'none';
+    meta.innerHTML = '';
+    toast('Is Order ID ke items nahi mile', 'e');
     return;
   }
+  currentChallanItems = items;
+  const o = dcOrderMap[String(items[0]['Order ID']).trim()] || {};
+  meta.innerHTML = `Customer: ${items[0]['Customer Name'] || '—'} &nbsp;·&nbsp; ${items.length} item(s)`;
+  document.getElementById('dc-address').value = o['Shipping Address'] || o['Billing Address'] || '';
+  document.getElementById('dc-note').value = '';
+  document.getElementById('dc-date').value = '';
+  renderChallanItems(items);
+  wrap.style.display = 'block';
+}
 
-  let rows = '', sr = 1;
-  data.forEach(p => {
-    const iid = String(p['Item ID']||'').trim();
+function renderChallanItems(items) {
+  let rows = '';
+  items.forEach((p, i) => {
+    const iid = String(p['Item ID'] || '').trim();
     const qty = parseFloat(p['Qty']) || 0;
-    const dc  = dcSentMap[iid] || 0;
-    const pen = qty - dc;
-    const sentDisp = dc > 0 ? `<span style="color:var(--warning);font-weight:600;">${dc}</span>` : '<span style="color:var(--text3);">—</span>';
-    const penDisp  = pen <= 0 ? '<span style="color:var(--success);font-weight:600;">0 ✅</span>' : `<span style="color:var(--warning);font-weight:600;">${pen}</span>`;
+    const sent = dcSentMap[iid] || 0;
+    const pend = qty - sent;
+    const sentDisp = sent > 0 ? `<span style="color:var(--warning);font-weight:600;">${sent}</span>` : '<span style="color:var(--text3);">—</span>';
+    const penDisp  = pend <= 0 ? '<span style="color:var(--success);font-weight:600;">0 ✅</span>' : `<span style="color:var(--warning);font-weight:600;">${pend}</span>`;
+    const partic = ((p['Product Model'] || '') + ' ' + (p['Battery Type'] || '')).trim();
     rows += `<tr>
-      <td>${sr++}</td>
+      <td><input type="checkbox" id="dc-chk-${i}" ${pend > 0 ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;"></td>
       <td class="td-id">${iid}</td>
-      <td class="td-id">${p['Order ID']||''}</td>
-      <td>${fmtDisplayDate(p['Order Date']||'')}</td>
-      <td class="td-bold">${p['Customer Name']||''}</td>
-      <td>${p['Product Model']||''}</td>
-      <td>${p['Battery Type']||''}</td>
+      <td>${p['Product Model'] || ''}</td>
+      <td>${p['Battery Type'] || ''}</td>
       <td>${qty}</td>
       <td>${sentDisp}</td>
       <td>${penDisp}</td>
-      <td><button class="btn btn-sm btn-primary" onclick='openChallanModal(${JSON.stringify(p)})'>+ Challan</button></td>
+      <td><input class="form-control" type="number" id="dc-qty-${i}" value="${pend > 0 ? pend : ''}" style="padding:5px 8px;font-size:12px;"></td>
+      <td><input class="form-control" type="number" id="dc-amt-${i}" placeholder="0" style="padding:5px 8px;font-size:12px;"></td>
+      <td><input class="form-control" id="dc-part-${i}" value="${partic.replace(/"/g,'&quot;')}" style="padding:5px 8px;font-size:12px;"></td>
     </tr>`;
   });
-  document.getElementById('dcTable').innerHTML = rows;
-  renderRecentChallans();
-}
-
-function renderRecentChallans() {
-  const el = document.getElementById('dcRecent');
-  if (!el) return;
-  if (!allDC.length) { el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text3);font-size:13px;">Abhi koi challan nahi bana</div>'; return; }
-  const list = [...allDC].reverse().slice(0, 25);
-  el.innerHTML = list.map(d => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);">📄 DC #${d['DC No']||''} <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px;">${d['Order ID']||''} · ${d['Item ID']||''}</span></div>
-        <div style="font-size:11px;color:var(--text3);">${fmtDisplayDate(d['Date']||'')} · ${d['Customer Name']||''} · Qty: ${d['Qty']||0}${d['Amount']?' · ₹'+fmt(d['Amount']):''}${d['Note']?' · '+d['Note']:''}</div>
-      </div>
-      <button class="btn btn-sm btn-info" onclick='reprintChallan(${JSON.stringify(d)})'>🖨️ Reprint</button>
-    </div>`).join('');
-}
-
-function openChallanModal(p) {
-  const oid = p['Order ID']||'';
-  const iid = String(p['Item ID']||'').trim();
-  const qty = parseFloat(p['Qty']) || 0;
-  const sent = dcSentMap[iid] || 0;
-  const pend = qty - sent;
-  const o = dcOrderMap[oid] || {};
-  currentChallanCtx = { p, oid, iid, qty, sent };
-
-  document.getElementById('ch-orderid-display').textContent = oid;
-  document.getElementById('ch-itemid-display').textContent  = iid;
-  document.getElementById('ch-product-display').textContent = p['Product Model']||'';
-  document.getElementById('ch-m-total').textContent   = qty;
-  document.getElementById('ch-m-sent').textContent    = sent;
-  document.getElementById('ch-m-pending').textContent = pend > 0 ? pend : 0;
-
-  document.getElementById('ch-qty').value = pend > 0 ? pend : '';
-  document.getElementById('ch-amount').value = '';
-  document.getElementById('ch-address').value = o['Shipping Address'] || o['Billing Address'] || '';
-  document.getElementById('ch-particulars').value = ((p['Product Model']||'') + ' ' + (p['Battery Type']||'')).trim();
-  document.getElementById('ch-note').value = '';
-  openModal('challanModal');
-  loadChallanHistory(oid, iid);
-}
-
-function loadChallanHistory(orderID, itemID) {
-  const el = document.getElementById('ch-history');
-  const list = allDC.filter(d => String(d['Order ID']).trim() === String(orderID).trim() && String(d['Item ID']).trim() === String(itemID).trim());
-  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:8px;color:var(--text3);font-size:12px;">Is item ka koi challan nahi abhi</div>'; return; }
-  el.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Previous Challans</div>' +
-    list.map(d => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface);">
-        <div style="font-size:12px;color:var(--text);">DC #${d['DC No']||''} · Qty: ${d['Qty']||0}${d['Amount']?' · ₹'+fmt(d['Amount']):''} <span style="color:var(--text3);">${fmtDisplayDate(d['Date']||'')}</span></div>
-        <button class="btn btn-sm btn-info" onclick='reprintChallan(${JSON.stringify(d)})'>🖨️</button>
-      </div>`).join('');
+  document.getElementById('dc-item-rows').innerHTML = rows;
 }
 
 function submitChallan() {
-  const c = currentChallanCtx;
-  if (!c) return;
-  const btn = document.getElementById('ch-submit-btn');
-  const qty = parseFloat(document.getElementById('ch-qty').value) || 0;
-  if (qty <= 0) { toast('Challan Qty 0 se zyada bharo', 'e'); return; }
-  const address = document.getElementById('ch-address').value.trim();
-  if (!address) { toast('Name & Address bharo', 'e'); return; }
-  const amount = parseFloat(document.getElementById('ch-amount').value) || 0;
-  const particulars = document.getElementById('ch-particulars').value.trim();
-  const note = document.getElementById('ch-note').value.trim();
-  const custName = c.p['Customer Name'] || '';
+  const lines = [];
+  currentChallanItems.forEach((p, i) => {
+    const chk = document.getElementById('dc-chk-' + i);
+    if (!chk || !chk.checked) return;
+    const q = parseFloat(document.getElementById('dc-qty-' + i).value) || 0;
+    if (q <= 0) return;
+    lines.push({
+      itemId: String(p['Item ID'] || '').trim(),
+      qty: q,
+      amount: parseFloat(document.getElementById('dc-amt-' + i).value) || 0,
+      particulars: document.getElementById('dc-part-' + i).value.trim(),
+      _total: parseFloat(p['Qty']) || 0,
+      _sent: dcSentMap[String(p['Item ID'] || '').trim()] || 0
+    });
+  });
+  if (!lines.length) { toast('Kam se kam ek item select karo + qty daalo', 'e'); return; }
 
-  const pend = c.qty - c.sent;
-  if (qty > pend) {
-    const ok = confirm(`⚠ Challan qty (${qty}) pending (${pend}) se zyada hai. Fir bhi banayein?`);
-    if (!ok) return;
+  const address = document.getElementById('dc-address').value.trim();
+  if (!address) { toast('Name & Address bharo', 'e'); return; }
+
+  const over = lines.filter(l => l.qty > (l._total - l._sent));
+  if (over.length) {
+    if (!confirm(`⚠ ${over.length} item ki challan qty pending se zyada hai. Fir bhi banayein?`)) return;
   }
 
+  const oid = String(currentChallanItems[0]['Order ID']).trim();
+  const cust = currentChallanItems[0]['Customer Name'] || '';
+  const note = document.getElementById('dc-note').value.trim();
+  const dateVal = document.getElementById('dc-date').value; // yyyy-mm-dd or ''
+
+  const btn = document.getElementById('dc-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  const win = window.open('', '_blank', 'width=800,height=680');
+  const win = window.open('', '_blank', 'width=820,height=700');
   if (win) win.document.write('<p style="font-family:Arial;padding:24px;color:#555;">Challan ban raha hai...</p>');
 
   api({
     action: 'addDeliveryChallan',
-    'Order ID': c.oid,
-    'Item ID': c.iid,
-    'Customer Name': custName,
+    'Order ID': oid,
+    'Customer Name': cust,
     'Address': address,
-    'Particulars': particulars,
-    'Qty': qty,
-    'Amount': amount,
     'Note': note,
-    'Created By': user.name || ''
+    'Date': dateVal,
+    'Items': JSON.stringify(lines.map(l => ({ itemId: l.itemId, qty: l.qty, amount: l.amount, particulars: l.particulars }))),
+    'Created By': (typeof user !== 'undefined' && user.name) ? user.name : ''
   }, r => {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Print Challan'; }
     if (r && r.success) {
-      toast('Challan saved — DC #' + r.dcNo);
-      const rec = {
-        'DC No': r.dcNo, 'Date': fmtDisplayDate(new Date().toISOString().split('T')[0]),
-        'Order ID': c.oid, 'Item ID': c.iid, 'Customer Name': custName,
-        'Address': address, 'Particulars': particulars, 'Qty': qty, 'Amount': amount, 'Note': note
+      toast(`Challan saved — DC #${r.dcNo} (${r.lines} item)`);
+      const ch = {
+        dcNo: r.dcNo,
+        date: fmtDisplayDate(dateVal || new Date().toISOString().split('T')[0]),
+        orderId: oid, customer: cust, address: address, note: note,
+        items: lines.map(l => ({ itemId: l.itemId, particulars: l.particulars, qty: l.qty, amount: l.amount }))
       };
-      const html = buildChallanPrint(rec);
+      const html = buildChallanPrint(ch);
       if (win) { win.document.open(); win.document.write(html); win.document.close(); }
-      closeModal('challanModal');
-      reloadDCTotals(renderDeliveryChallan);
+      document.getElementById('dc-items-wrap').style.display = 'none';
+      document.getElementById('dc-orderid').value = '';
+      document.getElementById('dc-order-meta').innerHTML = '';
+      reloadDCTotals(renderRecentChallans);
     } else {
       if (win) win.close();
       toast((r && r.message) || 'Save failed', 'e');
@@ -2619,21 +2596,58 @@ function submitChallan() {
   });
 }
 
-function reprintChallan(d) {
-  const win = window.open('', '_blank', 'width=800,height=680');
+function groupDC() {
+  const g = {};
+  allDC.forEach(d => {
+    const no = String(d['DC No']);
+    if (!g[no]) g[no] = { dcNo: d['DC No'], date: d['Date'], orderId: d['Order ID'], customer: d['Customer Name'], address: d['Address'], note: d['Note'], items: [] };
+    g[no].items.push({ itemId: d['Item ID'], particulars: d['Particulars'], qty: d['Qty'], amount: d['Amount'] });
+  });
+  return g;
+}
+
+function renderRecentChallans() {
+  const el = document.getElementById('dcRecent');
+  setText('dc-count', Object.keys(groupDC()).length);
+  if (!el) return;
+  const g = groupDC();
+  const nos = Object.keys(g).sort((a, b) => Number(b) - Number(a)).slice(0, 30);
+  if (!nos.length) { el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text3);font-size:13px;">Abhi koi challan nahi bana</div>'; return; }
+  el.innerHTML = nos.map(no => {
+    const c = g[no];
+    const totQty = c.items.reduce((s, x) => s + (parseFloat(x.qty) || 0), 0);
+    const totAmt = c.items.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">📄 DC #${c.dcNo} <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px;">${c.orderId || ''} · ${c.items.length} item</span></div>
+        <div style="font-size:11px;color:var(--text3);">${fmtDisplayDate(c.date || '')} · ${c.customer || ''} · Qty: ${totQty}${totAmt ? ' · ₹' + fmt(totAmt) : ''}${c.note ? ' · ' + c.note : ''}</div>
+      </div>
+      <button class="btn btn-sm btn-info" onclick="reprintChallan('${no}')">🖨️ Reprint</button>
+    </div>`;
+  }).join('');
+}
+
+function reprintChallan(no) {
+  const c = groupDC()[String(no)];
+  if (!c) { toast('Challan nahi mila', 'e'); return; }
+  const win = window.open('', '_blank', 'width=820,height=700');
   if (!win) { toast('Popup block ho gaya — allow karo', 'e'); return; }
-  win.document.write(buildChallanPrint(d));
+  win.document.write(buildChallanPrint(c));
   win.document.close();
 }
 
-function buildChallanPrint(d) {
-  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-  const qty = parseFloat(d['Qty']) || 0;
-  const amount = parseFloat(d['Amount']) || 0;
-  const dateDisp = fmtDisplayDate(d['Date'] || '') || new Date().toLocaleDateString('en-IN');
+function buildChallanPrint(ch) {
+  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const dateDisp = fmtDisplayDate(ch.date || '') || new Date().toLocaleDateString('en-IN');
   const H = CHALLAN_HEADER;
+  let totQty = 0, totAmt = 0, body = '';
+  ch.items.forEach((it, idx) => {
+    const q = parseFloat(it.qty) || 0, a = parseFloat(it.amount) || 0;
+    totQty += q; totAmt += a;
+    body += `<tr><td>${idx + 1}</td><td>${esc(it.particulars) || esc(it.itemId) || '—'}</td><td class="r">${q}</td><td class="r">${a ? '₹' + fmt(a) : '—'}</td></tr>`;
+  });
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Delivery Challan #${esc(d['DC No'])}</title>
+<title>Delivery Challan #${esc(ch.dcNo)}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:Arial,Helvetica,sans-serif;padding:22px 26px;color:#1a1a1a;font-size:13px;}
@@ -2671,17 +2685,19 @@ function buildChallanPrint(d) {
   </div>
   <div class="title">Delivery Challan</div>
   <div class="meta">
-    <div>Challan No: <b>${esc(d['DC No'])}</b></div>
+    <div>Challan No: <b>${esc(ch.dcNo)}</b></div>
+    <div>Order ID: <b>${esc(ch.orderId)}</b></div>
     <div>Date: <b>${esc(dateDisp)}</b></div>
   </div>
-  <div class="addr"><span class="lbl">Name &amp; Address</span>${esc(d['Address'])}</div>
+  <div class="addr"><span class="lbl">Name &amp; Address</span>${esc(ch.address)}</div>
   <table>
     <thead><tr><th style="width:44px;">#</th><th>Particulars</th><th class="r" style="width:90px;">Qty</th><th class="r" style="width:130px;">Amount (₹)</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td>${esc(d['Particulars']) || '—'}${d['Note'] ? '<br><span style="font-size:11px;color:#888;">('+esc(d['Note'])+')</span>' : ''}</td><td class="r">${qty}</td><td class="r">${amount ? '₹'+fmt(amount) : '—'}</td></tr>
-      <tr><td></td><td class="r" style="font-weight:700;">Total</td><td class="r" style="font-weight:700;">${qty}</td><td class="r" style="font-weight:700;">${amount ? '₹'+fmt(amount) : '—'}</td></tr>
+      ${body}
+      <tr><td></td><td class="r" style="font-weight:700;">Total</td><td class="r" style="font-weight:700;">${totQty}</td><td class="r" style="font-weight:700;">${totAmt ? '₹' + fmt(totAmt) : '—'}</td></tr>
     </tbody>
   </table>
+  ${ch.note ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">Note: ${esc(ch.note)}</div>` : ''}
   <div class="warn">Only for Warranty — not for Sale</div>
   <div class="sign">
     <div>Customer Signature</div>
