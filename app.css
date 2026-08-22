@@ -1218,8 +1218,8 @@ input.field-error:focus {
 }
 
 /* Track Order — search box hamesha upar chipka rahe (sticky fix) */
-#page-ordertracking {
-  display: block !important;
+#page-ordertracking.active {
+  display: block;
 }
 #page-ordertracking > .card:first-child {
   position: sticky;
