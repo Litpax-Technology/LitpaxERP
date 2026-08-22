@@ -4238,7 +4238,7 @@ loadOrders();
       prod: [], crm: [], billings: [], dispatches: [], challans: [], slips: []
     };
     let pending = 10;
-    const done = () => { if (--pending === 0) render(oid, bag); };
+    const done = () => { if (--pending === 0) { render(oid, bag); document.getElementById('ot-orderid').select(); } };
 
     api({ action: 'getOrders' }, r => { if (r.success) bag.order = (r.data || []).find(o => match(o['Order ID'])) || null; done(); });
     api({ action: 'getItemsByOrder', 'Order ID': oid }, r => { bag.items = (r.success && r.data) ? r.data.filter(i => (i['Battery Type'] || '') !== 'Charger') : []; done(); });
