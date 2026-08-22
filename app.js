@@ -141,10 +141,29 @@ let adAllOrders = [], adAllProd = [], adAllAcc = [];
 
 function parseDMY(s) {
   if (!s) return 0;
-  const parts = String(s).split('/');
-  if (parts.length !== 3) return 0;
-  const d = new Date(parts[2], parseInt(parts[1],10) - 1, parts[0]);
-  return d.getTime() || 0;
+
+  // Date object (sheet se direct aata hai kabhi kabhi)
+  if (s instanceof Date) return isNaN(s.getTime()) ? 0 : s.getTime();
+
+  const str = String(s).trim();
+
+  // dd/mm/yyyy  ya  dd-mm-yyyy
+  let m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) {
+    const d = new Date(parseInt(m[3],10), parseInt(m[2],10) - 1, parseInt(m[1],10));
+    return d.getTime() || 0;
+  }
+
+  // yyyy-mm-dd  ya ISO (2026-08-04T...)
+  m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const d = new Date(parseInt(m[1],10), parseInt(m[2],10) - 1, parseInt(m[3],10));
+    return d.getTime() || 0;
+  }
+
+  // aakhri koshish — jo bhi Date samajh sake
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
 function loadAdminDashboard() {
