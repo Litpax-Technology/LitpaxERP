@@ -1208,6 +1208,15 @@ input.field-error:focus {
   min-height: auto;
 }
 
+/* Track Order — search box hamesha upar chipka rahe */
+#page-ordertracking { position: relative; }
+#page-ordertracking > .card:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--surface);
+}
+
 /* ── 29. REDUCED MOTION (accessibility) ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1216,3 +1225,5 @@ input.field-error:focus {
     transition-duration: 0.001ms !important;
   }
 }
+
+
