@@ -1,4 +1,4 @@
-const API = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzZw8Xs5E8DGZXcC7owQVip_egOWi1D6B8fAFzh16r6M72_8dSJ5PgEzeFwESjd00zDRA/exec';
+const API = window.GAS_URL;
 
 // AUTH
 const uStr = sessionStorage.getItem('erp_user');
