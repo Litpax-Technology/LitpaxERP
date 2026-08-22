@@ -3613,106 +3613,78 @@ function saveSpecColumns() {
   });
 }
 
+
 // ========== MY DASHBOARD ==========
+let myAllOrders = [];
+
 function loadMyDashboard() {
-  const el = document.getElementById('myDashboardContent');
-  el.innerHTML = '<div class="loading"><div class="spin"></div> Loading...</div>';
+  const fromEl = document.getElementById('my-from-date');
+  const toEl   = document.getElementById('my-to-date');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value   = '';
+  setMyRangeActiveBtn('all');
   api({ action: 'getOrders' }, r => {
     let orders = r.data || [];
     if (user.role === 'Sales' && user.salesName) {
       orders = orders.filter(o => (o['Sales Person Name']||'') === user.salesName);
     }
-    if (!orders.length) { el.innerHTML = '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Koi orders nahi hain abhi</div></div>'; return; }
-        const myOrderIDs = new Set(orders.map(o => o['Order ID']));
-
-    // Completed = production complete (isOrderCompleted reuse)
-    const completedOrders = orders.filter(o => isOrderCompleted(o));
-    const pendingOrders   = orders.filter(o => !isOrderCompleted(o));
-
-    const totalSale     = orders.reduce((s,o)        => s + (parseFloat(o['Total Order Value'])||0), 0);
-    const completedSale = completedOrders.reduce((s,o) => s + (parseFloat(o['Total Order Value'])||0), 0);
-    const pendingSale   = pendingOrders.reduce((s,o)   => s + (parseFloat(o['Total Order Value'])||0), 0);
-
-    document.getElementById('my-total-sale').textContent     = '₹' + fmt(totalSale);
-    document.getElementById('my-pending-sale').textContent   = '₹' + fmt(pendingSale);
-    document.getElementById('my-completed-sale').textContent = '₹' + fmt(completedSale);
-    document.getElementById('my-total-orders').textContent     = orders.length;
-    document.getElementById('my-pending-orders').textContent   = pendingOrders.length;
-    document.getElementById('my-completed-orders').textContent = completedOrders.length;
-    api({ action: 'getProduction' }, pr => {
-      const prodMap = {};
-      (pr.data || []).filter(p => myOrderIDs.has(p['Order ID'])).forEach(p => {
-        if (!prodMap[p['Order ID']]) prodMap[p['Order ID']] = [];
-        prodMap[p['Order ID']].push(p);
-      });
-
-      el.innerHTML = orders.map(o => {
-        const oid = o['Order ID'] || '';
-        const prods = prodMap[oid] || [];
-        const oStatus = o['Order Status'] || '';
-        const payStatus = o['Payment Status'] || '';
-        let oColor = 'var(--border2)';
-        if (oStatus.includes('Dispatched')) oColor = 'var(--accent)';
-        else if (oStatus.includes('Ready')) oColor = 'var(--success)';
-        else if (oStatus.includes('Processing') || oStatus.includes('Progressing')) oColor = 'var(--info)';
-        else if (oStatus.includes('Delay')) oColor = 'var(--error)';
-        else if (oStatus.includes('Received')) oColor = 'var(--warning)';
-        let payColor = 'var(--text3)';
-        if (payStatus === 'Paid') payColor = 'var(--success)';
-        else if (payStatus === 'Advance Received') payColor = 'var(--info)';
-        else if (['Pending','Advance Pending','Credit','Request Full Payment'].includes(payStatus)) payColor = 'var(--error)';
-        const prodHTML = prods.length ? prods.map(p => {
-          let pColor = 'var(--border2)', pIcon = '⏳';
-          if (p['Status'] === 'Completed') { pColor = 'var(--success)'; pIcon = '✅'; }
-          else if (p['Status'] === 'In Progress') { pColor = 'var(--info)'; pIcon = '⚙️'; }
-          else if (p['Status'] === 'Delayed') { pColor = 'var(--error)'; pIcon = '⚠️'; }
-          const sp = p['Production Start Plan'] ? fmtDisplayDate(p['Production Start Plan']) : '—';
-          const sa = p['Production Start Actual'] ? fmtDisplayDate(p['Production Start Actual']) : '—';
-          const cp = p['Production Complete Plan'] ? fmtDisplayDate(p['Production Complete Plan']) : '—';
-          const ca = p['Production Complete Actual'] ? fmtDisplayDate(p['Production Complete Actual']) : '—';
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid ${pColor};margin-bottom:6px;">
-            <span style="font-size:16px;margin-top:1px;">${pIcon}</span>
-            <div style="flex:1;">
-              <div style="font-size:12px;font-weight:600;color:var(--text);">${p['Product Model']||''} <span style="color:var(--text3);font-weight:400;">${p['Battery Type']?'('+p['Battery Type']+')':''}</span> — Qty: ${p['Qty']||''}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;">
-                <div style="font-size:10px;color:var(--text3);">Start Plan: <span style="color:var(--text);font-weight:500;">${sp}</span></div>
-                <div style="font-size:10px;color:var(--text3);">Start Actual: <span style="color:var(--text);font-weight:500;">${sa}</span></div>
-                <div style="font-size:10px;color:var(--text3);">Complete Plan: <span style="color:var(--text);font-weight:500;">${cp}</span></div>
-                <div style="font-size:10px;color:var(--text3);">Complete Actual: <span style="color:var(--text);font-weight:500;">${ca}</span></div>
-              </div>
-              ${p['Production Delay'] ? `<div style="font-size:10px;color:var(--error);margin-top:4px;">⚠ Delay: ${p['Production Delay']}</div>` : ''}
-            </div>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:${pColor}20;color:${pColor};white-space:nowrap;">${p['Status']||'Pending'}</span>
-          </div>`;
-        }).join('') : '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Production data nahi hai abhi</div>';
-        return `<div class="card" style="margin-bottom:14px;border-left:3px solid ${oColor};">
-          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--accent);">${oid}</span>
-              <span style="font-size:13px;font-weight:600;color:var(--text);">${o['Customer Name']||''}</span>
-              <span style="font-size:12px;color:var(--text3);">${o['City']||''}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:${oColor}15;color:${oColor};">${oStatus}</span>
-              <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:${payColor}15;color:${payColor};">💳 ${payStatus||'—'}</span>
-            </div>
-          </div>
-          <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:16px;background:var(--surface2);">
-            <div><span style="font-size:10px;color:var(--text3);">DATE </span><span style="font-size:12px;font-weight:500;">${fmtDisplayDate(o['Date']||'')}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">QTY </span><span style="font-size:12px;font-weight:500;">${o['Total Qty']||'0'}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">CHARGER QTY </span><span style="font-size:12px;font-weight:500;">${o['Charger Qty']||'0'}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">VALUE </span><span style="font-size:12px;font-weight:600;color:var(--accent);">₹${fmt(o['Total Order Value']||0)}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">DISPATCH PLAN </span><span style="font-size:12px;font-weight:500;">${fmtDisplayDate(o['Plan Dispatch Date']||'') || '—'}</span></div>
-            <div><span style="font-size:10px;color:var(--text3);">PRIORITY </span><span style="font-size:12px;font-weight:500;">${o['Priority']||'—'}</span></div>
-          </div>
-          <div style="padding:12px 16px;">
-            <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚙️ Production Status</div>
-            ${prodHTML}
-          </div>
-        </div>`;
-      }).join('');
-    });
+    myAllOrders = orders;
+    renderMyDashboard();
   });
+}
+
+function setMyDateRange(preset) {
+  const today = new Date();
+  let from = null, to = null;
+  if (preset === 'today') { from = today; to = today; }
+  else if (preset === 'thismonth') { from = new Date(today.getFullYear(), today.getMonth(), 1); to = today; }
+  else if (preset === 'lastmonth') {
+    from = new Date(today.getFullYear(), today.getMonth()-1, 1);
+    to   = new Date(today.getFullYear(), today.getMonth(), 0);
+  } else if (preset === 'thisyear') { from = new Date(today.getFullYear(), 0, 1); to = today; }
+  document.getElementById('my-from-date').value = from ? toInputDateStr(from) : '';
+  document.getElementById('my-to-date').value   = to   ? toInputDateStr(to)   : '';
+  setMyRangeActiveBtn(preset);
+  renderMyDashboard();
+}
+
+function setMyRangeActiveBtn(preset) {
+  document.querySelectorAll('.my-range-btn').forEach(b => b.classList.remove('btn-primary'));
+  const btn = document.getElementById('my-range-' + preset + '-btn');
+  if (btn) btn.classList.add('btn-primary');
+}
+
+function applyMyDateFilter() {
+  setMyRangeActiveBtn('custom');
+  renderMyDashboard();
+}
+
+function renderMyDashboard() {
+  const fromVal = document.getElementById('my-from-date')?.value;
+  const toVal   = document.getElementById('my-to-date')?.value;
+  const fromTs  = fromVal ? new Date(fromVal).getTime() : null;
+  const toTs    = toVal ? (new Date(toVal).getTime() + 24*60*60*1000 - 1) : null;
+
+  const orders = myAllOrders.filter(o => {
+    const t = parseDMY(o['Date']);
+    if (fromTs !== null && t < fromTs) return false;
+    if (toTs !== null && t > toTs) return false;
+    return true;
+  });
+
+  const completedOrders = orders.filter(o => isOrderCompleted(o));
+  const pendingOrders   = orders.filter(o => !isOrderCompleted(o));
+
+  const totalSale     = orders.reduce((s,o)          => s + (parseFloat(o['Total Order Value'])||0), 0);
+  const completedSale = completedOrders.reduce((s,o) => s + (parseFloat(o['Total Order Value'])||0), 0);
+  const pendingSale   = pendingOrders.reduce((s,o)   => s + (parseFloat(o['Total Order Value'])||0), 0);
+
+  setText('my-total-sale',     '₹' + fmt(Math.round(totalSale)));
+  setText('my-pending-sale',   '₹' + fmt(Math.round(pendingSale)));
+  setText('my-completed-sale', '₹' + fmt(Math.round(completedSale)));
+  setText('my-total-orders',     orders.length);
+  setText('my-pending-orders',   pendingOrders.length);
+  setText('my-completed-orders', completedOrders.length);
 }
 
 // ========== EDIT ORDER ==========
