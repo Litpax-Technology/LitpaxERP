@@ -10,7 +10,7 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-  Admin:      ['admindashboard','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','customers','products','suppliers','users'],
+  Admin:      ['admindashboard','ordertracking','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','customers','products','suppliers','users'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard'],
   Accounts:   ['accounts'],
   Production: ['production','batteryexchange','deliverychallan'],
@@ -70,6 +70,7 @@ const roleAccess = {
 // PAGE META
 const pageMeta = {
   admindashboard:{title:'Dashboard',sub:'Admin overview & analytics'},
+  ordertracking:{title:'Track Order',sub:'Order ID se poori history'},
   orders:{title:'Sales Orders',sub:'Manage all customer orders'},
   crm:{title:'CRM Tracker',sub:'Order lifecycle tracking'},
     production:{title:'Production',sub:'Production status & updates'},
@@ -121,6 +122,7 @@ function navOrdersFiltered(filter, el) {
 
 function loadPage(id) {
   if (id === 'admindashboard') loadAdminDashboard();
+  else if (id === 'ordertracking') loadOrderTracking();
   else if (id === 'orders') loadOrders();
   else if (id === 'crm') loadCRM();
   else if (id === 'production') loadProduction();
@@ -4196,4 +4198,266 @@ if (user.role === 'Sales' && user.salesName) {
 
 loadOrders();
 
+/* ============================================================
+   ORDER TRACKING (Admin) — Order ID daalo, poori history
+   IIFE mein wrapped hai taaki esc/render private rahein.
+   ============================================================ */
+(function () {
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[<>&"']/g, c => ({
+      '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  let otListBuilt = false;
+
+  window.loadOrderTracking = function () {
+    if (otListBuilt) return;
+    api({ action: 'getOrders' }, r => {
+      if (!r.success) return;
+      const dl = document.getElementById('ot-orderlist');
+      if (dl) dl.innerHTML = (r.data || [])
+        .sort((a, b) => String(b['Order ID']).localeCompare(String(a['Order ID'])))
+        .map(o => `<option value="${esc(o['Order ID'] || '')}">${esc(o['Customer Name'] || '')}</option>`).join('');
+      otListBuilt = true;
+    });
+  };
+
+  window.trackOrder = function () {
+    const oid = (document.getElementById('ot-orderid').value || '').trim();
+    if (!oid) { toast('Order ID daalo', 'e'); return; }
+    const box = document.getElementById('ot-result');
+    box.innerHTML = '<div class="loading"><div class="spin"></div> History load ho rahi hai...</div>';
+
+    const low = oid.toLowerCase();
+    const match = v => String(v || '').trim().toLowerCase() === low;
+
+    const bag = {
+      order: null, items: [], chargers: [], payments: [], totalReceived: 0,
+      prod: [], crm: [], billings: [], dispatches: [], challans: [], slips: []
+    };
+    let pending = 10;
+    const done = () => { if (--pending === 0) render(oid, bag); };
+
+    api({ action: 'getOrders' }, r => { if (r.success) bag.order = (r.data || []).find(o => match(o['Order ID'])) || null; done(); });
+    api({ action: 'getItemsByOrder', 'Order ID': oid }, r => { bag.items = (r.success && r.data) ? r.data.filter(i => (i['Battery Type'] || '') !== 'Charger') : []; done(); });
+    api({ action: 'getChargersByOrder', 'Order ID': oid }, r => { bag.chargers = (r.success && r.data) ? r.data : []; done(); });
+    api({ action: 'getPayments', 'Order ID': oid }, r => { bag.payments = (r.success && r.data) ? r.data : []; bag.totalReceived = r.totalReceived || 0; done(); });
+    api({ action: 'getProductionBundle' }, r => { bag.prod = (r.success && r.production) ? r.production.filter(p => match(p['Order ID'])) : []; done(); });
+    api({ action: 'getCRMBundle' }, r => { bag.crm = (r.success && r.crm) ? r.crm.filter(c => match(c['Order ID'])) : []; done(); });
+    api({ action: 'getBillings', 'Order ID': oid }, r => { bag.billings = (r.success && r.data) ? r.data.filter(x => match(x['Order ID'])) : []; done(); });
+    api({ action: 'getAllDispatches' }, r => { bag.dispatches = (r.data || []).filter(d => match(d['Order ID'])); done(); });
+    api({ action: 'getDeliveryChallans' }, r => { bag.challans = (r.success && r.data) ? r.data.filter(d => match(d['Order ID'])) : []; done(); });
+    api({ action: 'getSlips', orderID: oid }, r => { bag.slips = (r.success && r.data) ? r.data : []; done(); });
+  };
+
+  function render(oid, b) {
+    const box = document.getElementById('ot-result');
+    if (!b.order) {
+      box.innerHTML = `<div class="empty"><div class="empty-ico">🔍</div><div class="empty-txt">Order <b>${esc(oid)}</b> nahi mila</div></div>`;
+      return;
+    }
+    const o = b.order;
+
+    const prodBy = {}; b.prod.forEach(p => { prodBy[p['Item ID']] = p; });
+    const billQ = {}; b.billings.forEach(x => { const k = x['Item ID']; billQ[k] = (billQ[k] || 0) + (parseFloat(x['Billed Qty']) || 0); });
+    const dispQ = {}; b.dispatches.forEach(d => { const k = d['Item ID']; dispQ[k] = (dispQ[k] || 0) + (parseFloat(d['Dispatch Qty']) || 0); });
+
+    const orderVal = parseFloat(o['Total Order Value']) || 0;
+    const received = b.totalReceived || 0;
+    const balance  = orderVal - received;
+
+    const totalQ   = b.items.reduce((s, i) => s + (parseFloat(i['Qty']) || 0), 0);
+    const totalDsp = Object.values(dispQ).reduce((s, x) => s + x, 0);
+
+    const anyProdStart = b.prod.some(p => p['Production Start Actual'] || (parseFloat(p['Produced Qty']) || 0) > 0);
+    const allProdDone  = b.prod.length > 0 && b.prod.every(p => { const t = parseFloat(p['Qty']) || 0, q = parseFloat(p['Produced Qty']) || 0; return t > 0 && q >= t; });
+    const anyBilled    = b.billings.length > 0;
+    const anyDsp       = b.dispatches.length > 0;
+    const fullDsp      = totalQ > 0 && totalDsp >= totalQ;
+
+    const steps = [
+      { l: 'Order Received', s: 'done' },
+      { l: 'Production',     s: allProdDone ? 'done' : anyProdStart ? 'active' : 'todo' },
+      { l: 'Billing',       s: anyBilled ? 'done' : 'todo' },
+      { l: 'Dispatch',      s: fullDsp ? 'done' : anyDsp ? 'active' : 'todo' },
+      { l: 'Delivered',     s: fullDsp ? 'done' : 'todo' }
+    ];
+    const stepHTML = steps.map((st, i) => {
+      const col = st.s === 'done' ? 'var(--success)' : st.s === 'active' ? 'var(--warning)' : 'var(--border2)';
+      const ic  = st.s === 'done' ? '✓' : st.s === 'active' ? '•' : (i + 1);
+      const line = i < steps.length - 1
+        ? `<div style="flex:1;height:2px;background:${steps[i + 1].s !== 'todo' ? 'var(--success)' : 'var(--border2)'};margin-top:15px;min-width:20px;"></div>`
+        : '';
+      return `<div style="display:flex;align-items:flex-start;${i < steps.length - 1 ? 'flex:1;' : ''}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:60px;">
+          <div style="width:30px;height:30px;border-radius:50%;background:${col};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">${ic}</div>
+          <div style="font-size:10px;font-weight:600;color:${st.s === 'todo' ? 'var(--text3)' : 'var(--text)'};text-align:center;line-height:1.2;">${st.l}</div>
+        </div>${line}</div>`;
+    }).join('');
+
+    const meta = [
+      ['Order ID', esc(o['Order ID'])],
+      ['Order Date', fmtDisplayDate(o['Date'] || '')],
+      ['Customer', esc(o['Customer Name'])],
+      ['Phone', esc(o['Customer Phone'])],
+      ['City', esc(o['City'])],
+      ['Sales Person', esc(o['Sales Person Name'])],
+      ['Assigned CRM', esc(o['Assigned CRM'])],
+      ['Payment Mode', esc(o['Payment Mode'])],
+      ['Plan Dispatch', fmtDisplayDate(o['Plan Dispatch Date'] || '')]
+    ].map(([l, v]) => `<div class="detail-item"><div class="detail-lbl">${l}</div><div class="detail-val">${v || '—'}</div></div>`).join('');
+
+    const balColor = balance <= 0 ? 'var(--success)' : balance < orderVal ? 'var(--warning)' : 'var(--error)';
+    const moneyStrip = `
+      <div class="stats-row" style="margin-bottom:0;">
+        <div class="stat c-teal"><div class="stat-lbl">Order Value</div><div class="stat-val" style="font-size:18px;">₹${fmt(orderVal)}</div></div>
+        <div class="stat c-green"><div class="stat-lbl">Received</div><div class="stat-val" style="font-size:18px;">₹${fmt(received)}</div></div>
+        <div class="stat ${balance <= 0 ? 'c-green' : 'c-red'}"><div class="stat-lbl">Balance</div><div class="stat-val" style="font-size:18px;color:${balColor};">₹${fmt(balance)}</div></div>
+        <div class="stat c-blue"><div class="stat-lbl">Total Qty</div><div class="stat-val">${totalQ}</div></div>
+      </div>`;
+
+    const itemRows = b.items.map((it, n) => {
+      const iid = it['Item ID'];
+      const p = prodBy[iid] || {};
+      const tq = parseFloat(it['Qty']) || 0;
+      const pq = parseFloat(p['Produced Qty']) || 0;
+      const pend = (tq - pq) > 0 ? (tq - pq) : 0;
+      const bq = billQ[iid] || 0;
+      const dq = dispQ[iid] || 0;
+      const st = (tq > 0 && pq >= tq)
+        ? '<span class="badge b-ready">Done</span>'
+        : (pq > 0 || p['Production Start Actual'])
+        ? '<span class="badge b-processing">In Progress</span>'
+        : '<span class="badge b-pending">Pending</span>';
+      return `<tr>
+        <td>${n + 1}</td>
+        <td class="td-id">${esc(iid)}</td>
+        <td>${esc(it['Product Model'])}</td>
+        <td>${esc(it['Battery Type'])}</td>
+        <td style="text-align:right;">${tq}</td>
+        <td style="text-align:right;color:var(--success);font-weight:600;">${pq}</td>
+        <td style="text-align:right;color:${pend ? 'var(--warning)' : 'var(--success)'};font-weight:600;">${pend || '0 ✅'}</td>
+        <td style="text-align:right;color:var(--purple);font-weight:600;">${bq || '—'}</td>
+        <td style="text-align:right;color:var(--accent);font-weight:600;">${dq || '—'}</td>
+        <td>${st}</td>
+      </tr>`;
+    }).join('');
+
+    const chargerRows = b.chargers.map((c, n) => `
+      <tr>
+        <td>${n + 1}</td>
+        <td class="td-id">${esc(c['Charger ID'])}</td>
+        <td>${esc(c['Charger Model'])}</td>
+        <td style="text-align:right;">${esc(c['Qty'] || 0)}</td>
+        <td style="text-align:right;">₹${fmt(c['Price/Unit'] || 0)}</td>
+        <td style="text-align:right;color:var(--accent);font-weight:600;">₹${fmt(c['Total'] || 0)}</td>
+      </tr>`).join('');
+
+    const prodRows = b.prod.map(p => `
+      <tr>
+        <td class="td-id">${esc(p['Item ID'])}</td>
+        <td>${esc(p['Product Model'])}</td>
+        <td>${fmtDisplayDate(p['Production Start Actual'] || '') || '—'}</td>
+        <td>${fmtDisplayDate(p['Production Complete Actual'] || '') || '—'}</td>
+        <td>${p['Production Delay'] ? '<span class="badge b-delay">' + esc(p['Production Delay']) + '</span>' : '—'}</td>
+      </tr>`).join('');
+
+    const billRows = b.billings.map(x => `
+      <tr>
+        <td>${esc(x['Invoice No'] || '—')}</td>
+        <td>${fmtDisplayDate(x['Invoice Date'] || '') || '—'}</td>
+        <td class="td-id">${esc(x['Item ID'])}</td>
+        <td style="text-align:right;">${esc(x['Billed Qty'] || 0)}</td>
+        <td style="text-align:right;color:var(--accent);font-weight:600;">₹${fmt(x['Invoice Amount'] || 0)}</td>
+      </tr>`).join('');
+
+    const dspRows = b.dispatches.map(d => `
+      <tr>
+        <td class="td-id">${esc(d['Item ID'])}</td>
+        <td style="text-align:right;">${esc(d['Dispatch Qty'] || 0)}</td>
+        <td>${fmtDisplayDate(d['Dispatch Date'] || '') || '—'}</td>
+        <td>${esc(d['Transport Name'] || '—')}</td>
+        <td>${esc(d['Vehicle No'] || '—')}</td>
+        <td>${esc(d['LR No'] || '—')}</td>
+        <td>${esc(d['Driver No'] || '—')}</td>
+      </tr>`).join('');
+
+    const chGroups = {};
+    b.challans.forEach(d => {
+      const no = String(d['DC No']);
+      if (!chGroups[no]) chGroups[no] = { no: d['DC No'], date: d['Date'], qty: 0, amt: 0, n: 0 };
+      chGroups[no].qty += parseFloat(d['Qty']) || 0;
+      chGroups[no].amt += parseFloat(d['Amount']) || 0;
+      chGroups[no].n++;
+    });
+    const chRows = Object.values(chGroups).sort((a, b2) => Number(b2.no) - Number(a.no)).map(c => `
+      <tr>
+        <td class="td-id">DC #${esc(c.no)}</td>
+        <td>${fmtDisplayDate(c.date || '') || '—'}</td>
+        <td style="text-align:right;">${c.n}</td>
+        <td style="text-align:right;">${c.qty}</td>
+        <td style="text-align:right;">${c.amt ? '₹' + fmt(c.amt) : '—'}</td>
+      </tr>`).join('');
+
+    const payRows = b.payments.map(p => `
+      <tr>
+        <td>${fmtDisplayDate(p['Date'] || '') || '—'}</td>
+        <td>${esc(p['Mode'] || '—')}</td>
+        <td>${esc(p['Reference'] || '—')}</td>
+        <td>${esc(p['Remarks'] || '')}</td>
+        <td style="text-align:right;color:var(--success);font-weight:600;">₹${fmt(p['Amount'] || 0)}</td>
+      </tr>`).join('');
+
+    const slipHTML = b.slips.length ? b.slips.map(s => `
+      <a href="${esc(s.url)}" target="_blank" class="slip-item" style="text-decoration:none;">
+        <span class="slip-icon">${String(s.name || '').toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}</span>
+        <div class="slip-info"><div class="slip-name">${esc(s.name)}</div><div class="slip-date">${esc(s.date)}</div></div>
+        <span class="btn btn-sm btn-info">View</span>
+      </a>`).join('') : '<div style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Koi payment slip upload nahi hui</div>';
+
+    const crm0 = b.crm[0] || {};
+    const crmNote = (crm0['Current Stage'] || crm0['Remarks'])
+      ? `<div style="padding:12px 16px;">
+           ${crm0['Current Stage'] ? `<div style="margin-bottom:6px;"><span class="detail-lbl">Current Stage</span> <span class="badge b-processing">${esc(crm0['Current Stage'])}</span></div>` : ''}
+           ${crm0['Follow-up With'] ? `<div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Follow-up: <b>${esc(crm0['Follow-up With'])}</b></div>` : ''}
+           ${crm0['Remarks'] ? `<div style="font-size:12px;color:var(--text2);">📝 ${esc(crm0['Remarks'])}</div>` : ''}
+         </div>`
+      : '';
+
+    const cardTbl = (title, heads, rows, empty) => `
+      <div class="card">
+        <div class="card-head"><div class="card-title">${title}</div></div>
+        ${rows
+          ? `<div class="table-wrap"><table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`
+          : `<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">${empty}</div>`}
+      </div>`;
+
+    box.innerHTML = `
+      <div class="card">
+        <div class="card-head" style="flex-wrap:wrap;gap:8px;">
+          <div class="card-title">${esc(o['Order ID'])} — ${esc(o['Customer Name'])}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">${orderStatusBadge(o['Order Status'])} ${payStatusBadge(o['Payment Status'])}</div>
+        </div>
+        <div style="padding:16px;">
+          <div style="display:flex;align-items:flex-start;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;">${stepHTML}</div>
+          <div class="detail-grid" style="margin-bottom:14px;">${meta}</div>
+          ${moneyStrip}
+          ${o['Order Remarks'] ? `<div style="margin-top:14px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;"><b>Remarks:</b> ${esc(o['Order Remarks'])}</div>` : ''}
+        </div>
+      </div>
+      ${cardTbl('📦 Order Items', ['#', 'Item ID', 'Product Model', 'Battery Type', 'Qty', 'Produced', 'Pending', 'Billed', 'Dispatched', 'Prod Status'], itemRows, 'Koi item nahi')}
+      ${b.chargers.length ? cardTbl('⚡ Chargers', ['#', 'Charger ID', 'Model', 'Qty', 'Rate/Unit', 'Total (incl. GST)'], chargerRows, '') : ''}
+      ${cardTbl('⚙️ Production', ['Item ID', 'Product Model', 'Start Actual', 'Complete Actual', 'Delay'], prodRows, 'Production data nahi hai abhi')}
+      ${cardTbl('🧾 Billing', ['Invoice No', 'Invoice Date', 'Item ID', 'Billed Qty', 'Amount'], billRows, 'Koi billing entry nahi')}
+      ${cardTbl('🚚 Dispatch', ['Item ID', 'Qty', 'Date', 'Transport', 'Vehicle', 'LR No', 'Driver'], dspRows, 'Koi dispatch nahi hua abhi')}
+      ${cardTbl('📄 Delivery Challans', ['DC No', 'Date', 'Items', 'Total Qty', 'Amount'], chRows, 'Koi challan nahi bana')}
+      ${cardTbl('💵 Payments', ['Date', 'Mode', 'Reference', 'Remarks', 'Amount'], payRows, 'Koi payment entry nahi')}
+      <div class="card"><div class="card-head"><div class="card-title">📎 Payment Slips</div></div><div style="padding:12px 16px;">${slipHTML}</div></div>
+      ${crmNote ? `<div class="card"><div class="card-head"><div class="card-title">🎯 CRM</div></div>${crmNote}</div>` : ''}
+    `;
+  }
+
+})();
 
