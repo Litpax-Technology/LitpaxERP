@@ -2522,14 +2522,31 @@ function fetchChallanOrder() {
     toast('Is Order ID ke items nahi mile', 'e');
     return;
   }
-  currentChallanItems = items;
-  const o = dcOrderMap[String(items[0]['Order ID']).trim()] || {};
-  meta.innerHTML = `Customer: ${items[0]['Customer Name'] || '—'} &nbsp;·&nbsp; ${items.length} item(s)`;
+  const orderID = items[0]['Order ID'];
+  const o = dcOrderMap[String(orderID).trim()] || {};
   document.getElementById('dc-address').value = o['Shipping Address'] || o['Billing Address'] || '';
   document.getElementById('dc-note').value = '';
   document.getElementById('dc-date').value = '';
-  renderChallanItems(items);
-  wrap.style.display = 'block';
+
+  // Charger bhi laao — alag row ki tarah dikhega
+  api({ action: 'getChargersByOrder', 'Order ID': orderID }, cr => {
+    const chargers = (cr.success && cr.data) ? cr.data : [];
+    const chargerItems = chargers.map(c => ({
+      'Item ID':       c['Charger ID'] || '',
+      'Order ID':      orderID,
+      'Customer Name': items[0]['Customer Name'] || '',
+      'Product Model': c['Charger Model'] || 'Charger',
+      'Battery Type':  'Charger',
+      'Qty':           c['Qty'] || 0,
+      '_isCharger':    true
+    }));
+    const all = items.concat(chargerItems);
+    currentChallanItems = all;
+    meta.innerHTML = `Customer: ${items[0]['Customer Name'] || '—'} &nbsp;·&nbsp; ${items.length} item(s)` +
+      (chargerItems.length ? ` <span style="color:var(--warning);">+ ${chargerItems.length} charger</span>` : '');
+    renderChallanItems(all);
+    wrap.style.display = 'block';
+  });
 }
 
 function renderChallanItems(items) {
@@ -2541,12 +2558,14 @@ function renderChallanItems(items) {
     const pend = qty - sent;
     const sentDisp = sent > 0 ? `<span style="color:var(--warning);font-weight:600;">${sent}</span>` : '<span style="color:var(--text3);">—</span>';
     const penDisp  = pend <= 0 ? '<span style="color:var(--success);font-weight:600;">0 ✅</span>' : `<span style="color:var(--warning);font-weight:600;">${pend}</span>`;
-    const partic = ((p['Product Model'] || '') + ' ' + (p['Battery Type'] || '')).trim();
+    const partic = p['_isCharger']
+      ? (p['Product Model'] || 'Charger')
+      : ((p['Product Model'] || '') + ' ' + (p['Battery Type'] || '')).trim();
     rows += `<tr>
       <td><input type="checkbox" id="dc-chk-${i}" ${pend > 0 ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;"></td>
       <td class="td-id">${iid}</td>
       <td>${p['Product Model'] || ''}</td>
-      <td>${p['Battery Type'] || ''}</td>
+      <td>${p['_isCharger'] ? '⚡ Charger' : (p['Battery Type'] || '')}</td>
       <td>${qty}</td>
       <td>${sentDisp}</td>
       <td>${penDisp}</td>
