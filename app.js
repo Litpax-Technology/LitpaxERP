@@ -4282,7 +4282,7 @@ loadOrders();
       { l: 'Production',     s: allProdDone ? 'done' : anyProdStart ? 'active' : 'todo' },
       { l: 'Billing',       s: anyBilled ? 'done' : 'todo' },
       { l: 'Dispatch',      s: fullDsp ? 'done' : anyDsp ? 'active' : 'todo' },
-      { l: 'Delivered',     s: fullDsp ? 'done' : 'todo' }
+      
     ];
     const stepHTML = steps.map((st, i) => {
       const col = st.s === 'done' ? 'var(--success)' : st.s === 'active' ? 'var(--warning)' : 'var(--border2)';
