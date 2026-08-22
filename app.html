@@ -337,6 +337,22 @@
 
 <!-- ===== MY DASHBOARD PAGE ===== -->
 <div class="page" id="page-mydashboard">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-head" style="flex-wrap:wrap;gap:10px;">
+      <div class="card-title">📅 Date Range</div>
+      <div class="card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
+        <button class="btn btn-sm my-range-btn" id="my-range-today-btn" onclick="setMyDateRange('today')">Today</button>
+        <button class="btn btn-sm my-range-btn" id="my-range-thismonth-btn" onclick="setMyDateRange('thismonth')">This Month</button>
+        <button class="btn btn-sm my-range-btn" id="my-range-lastmonth-btn" onclick="setMyDateRange('lastmonth')">Last Month</button>
+        <button class="btn btn-sm my-range-btn" id="my-range-thisyear-btn" onclick="setMyDateRange('thisyear')">This Year</button>
+        <button class="btn btn-sm btn-primary my-range-btn" id="my-range-all-btn" onclick="setMyDateRange('all')">All Time</button>
+        <span style="width:1px;height:20px;background:var(--border);margin:0 2px;"></span>
+        <input class="form-control" type="date" id="my-from-date" style="width:140px;padding:6px 8px;font-size:12px;" onchange="applyMyDateFilter()">
+        <span style="color:var(--text3);font-size:12px;">to</span>
+        <input class="form-control" type="date" id="my-to-date" style="width:140px;padding:6px 8px;font-size:12px;" onchange="applyMyDateFilter()">
+      </div>
+    </div>
+  </div>
   <div class="stats-row">
     <div class="stat c-teal"><div class="stat-lbl">Total Sale</div><div class="stat-val" id="my-total-sale" style="font-size:16px;">₹0</div></div>
     <div class="stat c-amber"><div class="stat-lbl">Pending Sale</div><div class="stat-val" id="my-pending-sale" style="font-size:16px;">₹0</div></div>
@@ -345,9 +361,7 @@
     <div class="stat c-red"><div class="stat-lbl">Pending Orders</div><div class="stat-val" id="my-pending-orders">0</div></div>
     <div class="stat c-purple"><div class="stat-lbl">Completed Orders</div><div class="stat-val" id="my-completed-orders">0</div></div>
   </div>
-  <div id="myDashboardContent">
-    <div class="loading"><div class="spin"></div> Loading...</div>
-  </div>
+  <div id="myDashboardContent" style="display:none;"></div>
 </div>
 
 <!-- ===== CUSTOMERS PAGE ===== -->
