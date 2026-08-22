@@ -1202,6 +1202,11 @@ input.field-error:focus {
   margin-left: 2px;
 }
 
+/* DC page: document-style — .main scroll kare, page natural height le */
+#page-deliverychallan.page.active {
+  flex: 0 0 auto;
+  min-height: auto;
+}
 
 /* ── 29. REDUCED MOTION (accessibility) ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
