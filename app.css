@@ -1217,6 +1217,18 @@ input.field-error:focus {
   background: var(--surface);
 }
 
+/* Track Order — search box hamesha upar chipka rahe (sticky fix) */
+#page-ordertracking {
+  display: block !important;
+}
+#page-ordertracking > .card:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--surface);
+  box-shadow: var(--sh-md);
+}
+
 /* ── 29. REDUCED MOTION (accessibility) ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
