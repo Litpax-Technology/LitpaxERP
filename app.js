@@ -3688,10 +3688,20 @@ function applyMyDateFilter() {
 }
 
 function renderMyDashboard() {
-  const fromVal = document.getElementById('my-from-date')?.value;
+  const fromVal = document.getElementById('my-from-date')?.value;  // "2026-08-22"
   const toVal   = document.getElementById('my-to-date')?.value;
-  const fromTs  = fromVal ? new Date(fromVal).getTime() : null;
-  const toTs    = toVal ? (new Date(toVal).getTime() + 24*60*60*1000 - 1) : null;
+
+  // from/to ko bhi parseDMY jaisa local-midnight banao (warna IST/UTC mismatch)
+  function inputToTs(v, endOfDay) {
+    if (!v) return null;
+    const p = v.split('-');   // yyyy-mm-dd
+    const d = new Date(parseInt(p[0],10), parseInt(p[1],10) - 1, parseInt(p[2],10));
+    let ts = d.getTime();
+    if (endOfDay) ts += 24*60*60*1000 - 1;
+    return ts;
+  }
+  const fromTs = inputToTs(fromVal, false);
+  const toTs   = inputToTs(toVal, true);
 
   const orders = myAllOrders.filter(o => {
     const t = parseDMY(o['Date']);
