@@ -3623,19 +3623,29 @@ function loadMyDashboard() {
       orders = orders.filter(o => (o['Sales Person Name']||'') === user.salesName);
     }
     if (!orders.length) { el.innerHTML = '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Koi orders nahi hain abhi</div></div>'; return; }
-    const myOrderIDs = new Set(orders.map(o => o['Order ID']));
-    const totalVal   = orders.reduce((s,o) => s + (parseFloat(o['Total Order Value'])||0), 0);
-    document.getElementById('my-total').textContent     = orders.length;
-    document.getElementById('my-value').textContent     = '₹' + fmt(totalVal);
-    document.getElementById('my-dispatched').textContent= orders.filter(o => (o['Order Status']||'').includes('Dispatched') || (o['Order Status']||'').includes('Ready')).length;
-    document.getElementById('my-paypending').textContent= orders.filter(o => ['Advance Pending','Pending','Request Full Payment','Credit'].includes(o['Payment Status']||'')).length;
+        const myOrderIDs = new Set(orders.map(o => o['Order ID']));
+
+    // Completed = production complete (isOrderCompleted reuse)
+    const completedOrders = orders.filter(o => isOrderCompleted(o));
+    const pendingOrders   = orders.filter(o => !isOrderCompleted(o));
+
+    const totalSale     = orders.reduce((s,o)        => s + (parseFloat(o['Total Order Value'])||0), 0);
+    const completedSale = completedOrders.reduce((s,o) => s + (parseFloat(o['Total Order Value'])||0), 0);
+    const pendingSale   = pendingOrders.reduce((s,o)   => s + (parseFloat(o['Total Order Value'])||0), 0);
+
+    document.getElementById('my-total-sale').textContent     = '₹' + fmt(totalSale);
+    document.getElementById('my-pending-sale').textContent   = '₹' + fmt(pendingSale);
+    document.getElementById('my-completed-sale').textContent = '₹' + fmt(completedSale);
+    document.getElementById('my-total-orders').textContent     = orders.length;
+    document.getElementById('my-pending-orders').textContent   = pendingOrders.length;
+    document.getElementById('my-completed-orders').textContent = completedOrders.length;
     api({ action: 'getProduction' }, pr => {
       const prodMap = {};
       (pr.data || []).filter(p => myOrderIDs.has(p['Order ID'])).forEach(p => {
         if (!prodMap[p['Order ID']]) prodMap[p['Order ID']] = [];
         prodMap[p['Order ID']].push(p);
       });
-      document.getElementById('my-prod').textContent = Object.values(prodMap).flat().filter(p => p['Status'] === 'In Progress').length;
+
       el.innerHTML = orders.map(o => {
         const oid = o['Order ID'] || '';
         const prods = prodMap[oid] || [];
