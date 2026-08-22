@@ -154,8 +154,17 @@ function parseDMY(s) {
     return d.getTime() || 0;
   }
 
-  // yyyy-mm-dd  ya ISO (2026-08-04T...)
-  m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  // ISO with time (2026-08-21T18:30:00.000Z) — IST me convert karke date nikalo
+  if (str.indexOf('T') > -1) {
+    const dt = new Date(str);
+    if (!isNaN(dt.getTime())) {
+      const ist = new Date(dt.getTime() + (5.5 * 60 * 60 * 1000));  // UTC → IST
+      return new Date(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()).getTime();
+    }
+  }
+
+  // yyyy-mm-dd (bina time)
+  m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (m) {
     const d = new Date(parseInt(m[1],10), parseInt(m[2],10) - 1, parseInt(m[3],10));
     return d.getTime() || 0;
