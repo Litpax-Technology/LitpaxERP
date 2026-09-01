@@ -25,6 +25,10 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
+  // Create Lead button — har Sales user ko dikhega
+  const leadBtn = document.getElementById('btnCreateLead');
+  if (leadBtn && user.role === 'Sales') leadBtn.style.display = 'inline-flex';
+
   if (user.role === 'Sales' || user.role === 'Admin') {
     const pipeline = document.getElementById('ordersPipeline');
     if (pipeline) pipeline.style.display = 'none';
@@ -3288,6 +3292,14 @@ function searchAccounts() {
 }
 
 function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
+
+const LEAD_TRACKER_URL = 'https://litpax-technology.github.io/SalesLeadTracker/';
+
+function goToLeadTracker() {
+  window.location.href = LEAD_TRACKER_URL;
+  // Naye tab me kholna ho to upar wali line hata ke ye use karo:
+  // window.open(LEAD_TRACKER_URL, '_blank');
+}
 
 // ========== PAYMENT SLIPS (legacy) ==========
 function loadSlips(orderID) {
