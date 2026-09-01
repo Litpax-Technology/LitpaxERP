@@ -3312,7 +3312,7 @@ function leadTrackerRoleFor(u) {
   if (!u) return null;
   if (u.role === 'Admin') return 'admin';
   const key = (u.salesName || u.name || '').trim().toLowerCase();
-  const known = ['mohit', 'vijay'];   // 👈 naye salesman add karne ho to yahan + Lead Tracker ROLES me daalo
+  const known = ['mohit', 'vijay', 'sahil', 'sneha'];   // 👈 naye salesman add karne ho to yahan + Lead Tracker ROLES me daalo
   return known.includes(key) ? key : null;
 }
 
