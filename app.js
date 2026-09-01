@@ -1,7 +1,14 @@
 const API = window.GAS_URL;
 
-// AUTH
-const uStr = sessionStorage.getItem('erp_user');
+// AUTH — sessionStorage se, warna localStorage se restore (Lead Tracker se wapas aane pe)
+let uStr = sessionStorage.getItem('erp_user');
+if (!uStr) {
+  const backup = localStorage.getItem('erp_user');
+  if (backup) {
+    uStr = backup;
+    sessionStorage.setItem('erp_user', backup);   // session me wapas daal do
+  }
+}
 if (!uStr) window.location.href = 'index.html';
 const user = JSON.parse(uStr || '{}');
 document.getElementById('userNm').textContent = user.name || 'User';
@@ -3291,7 +3298,11 @@ function searchAccounts() {
   renderAccounts(filtered, accProdMap, accOrderValMap);
 }
 
-function logout() { sessionStorage.removeItem('erp_user'); window.location.href = 'index.html'; }
+function logout() {
+  sessionStorage.removeItem('erp_user');
+  localStorage.removeItem('erp_user');   // backup bhi hatao, warna dobara auto-login ho jayega
+  window.location.href = 'index.html';
+}
 
 const LEAD_TRACKER_URL = 'https://litpax-technology.github.io/SalesLeadTracker/';
 
@@ -3306,14 +3317,19 @@ function leadTrackerRoleFor(u) {
 }
 
 function goToLeadTracker() {
+  // ERP login ko localStorage me backup rakho — Lead Tracker se wapas aane pe restore ho jayega
+  try {
+    const cur = sessionStorage.getItem('erp_user');
+    if (cur) localStorage.setItem('erp_user', cur);
+  } catch (e) {}
+
   const ltRole = leadTrackerRoleFor(user);
   if (ltRole) {
-    // Lead Tracker ka session pehle se set → dobara PIN nahi maangega
     try {
       sessionStorage.setItem('ltx_session', JSON.stringify({ role: ltRole, time: Date.now() }));
     } catch (e) {}
   }
-  window.location.href = LEAD_TRACKER_URL;   // same tab zaroori hai (session carry hone ke liye)
+  window.location.href = LEAD_TRACKER_URL;
 }
 
 // ========== PAYMENT SLIPS (legacy) ==========
