@@ -519,6 +519,7 @@ function renderOrders() {
       <td>${o['Final Status'] ? `<span class="badge b-processing">${o['Final Status']}</span>` : '—'}</td>
       <td style="display:flex;gap:4px;">
         <button class="btn btn-sm btn-info" onclick='viewOrder(${JSON.stringify(o)})'>View</button>
+        <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-b);" onclick='openTrackModal("${o['Order ID']||''}")'>🔍 Track</button>
         <button class="btn btn-sm btn-success" onclick='openPaymentModal("${o['Order ID']||''}","${(o['Customer Name']||'').replace(/"/g,'&quot;')}")' title="Payment Entry">💰</button>
         <button class="btn btn-sm" onclick='openPayDrawer(${JSON.stringify(o)})' title="Payment Slips">💳</button>
         <button class="btn btn-sm" onclick='printOrderRow(${JSON.stringify(o)})' title="Print / PDF">🖨️</button>
@@ -4293,6 +4294,15 @@ loadOrders();
   }
 
   let otListBuilt = false;
+
+  window.openTrackModal = function (orderID) {
+    openModal('orderTrackModal');
+    document.getElementById('trackModalTitle').textContent = '🔍 Track Order — ' + orderID;
+    document.getElementById('ot-result').innerHTML = '<div class="loading"><div class="spin"></div> History load ho rahi hai...</div>';
+    const inp = document.getElementById('ot-orderid');
+    if (inp) inp.value = orderID;   // trackOrder isi input se padhta hai
+    trackOrder();
+  };
 
   window.loadOrderTracking = function () {
     if (otListBuilt) return;
