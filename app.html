@@ -449,24 +449,6 @@
   </div>
 </div>
 
-<!-- ===== ORDER TRACKING PAGE ===== -->
-<div class="page" id="page-ordertracking">
-  <div class="card" style="position:sticky;top:0;z-index:30;background:var(--surface);box-shadow:var(--sh-md);">
-    <div class="card-head"><div class="card-title">🔍 Track Order</div></div>
-    <div style="padding:14px 16px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-      <div class="form-group" style="flex:1;min-width:240px;margin:0;">
-        <label class="form-label">Order ID</label>
-        <input class="form-control" id="ot-orderid" list="ot-orderlist" placeholder="Order ID daalo ya select karo" onkeydown="if(event.key==='Enter'){event.preventDefault();trackOrder();}">
-        <datalist id="ot-orderlist"></datalist>
-      </div>
-      <button class="btn btn-primary" onclick="trackOrder()" style="height:38px;">🔍 Track</button>
-    </div>
-  </div>
-  <div id="ot-result">
-    <div class="empty"><div class="empty-ico">🔍</div><div class="empty-txt">Order ID daal ke Track dabao — poori history yahan dikhegi</div></div>
-  </div>
-</div>
-
 </div><!-- end main -->
 </div><!-- end app-body -->
 
@@ -629,6 +611,8 @@
       <div class="modal-title" id="trackModalTitle">🔍 Track Order</div>
       <button class="modal-close" onclick="closeModal('orderTrackModal')">✕</button>
     </div>
+    <input type="hidden" id="ot-orderid">
+    <datalist id="ot-orderlist"></datalist>
     <div class="modal-body" id="ot-result" style="padding:16px;">
       <div class="loading"><div class="spin"></div> History load ho rahi hai...</div>
     </div>
