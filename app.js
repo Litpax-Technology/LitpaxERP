@@ -3295,10 +3295,25 @@ function logout() { sessionStorage.removeItem('erp_user'); window.location.href 
 
 const LEAD_TRACKER_URL = 'https://litpax-technology.github.io/SalesLeadTracker/';
 
+// ERP user ko Lead Tracker ke role se map karo
+// (Lead Tracker me jinke account hain sirf unhe auto-login milega)
+function leadTrackerRoleFor(u) {
+  if (!u) return null;
+  if (u.role === 'Admin') return 'admin';
+  const key = (u.salesName || u.name || '').trim().toLowerCase();
+  const known = ['mohit', 'vijay'];   // 👈 naye salesman add karne ho to yahan + Lead Tracker ROLES me daalo
+  return known.includes(key) ? key : null;
+}
+
 function goToLeadTracker() {
-  window.location.href = LEAD_TRACKER_URL;
-  // Naye tab me kholna ho to upar wali line hata ke ye use karo:
-  // window.open(LEAD_TRACKER_URL, '_blank');
+  const ltRole = leadTrackerRoleFor(user);
+  if (ltRole) {
+    // Lead Tracker ka session pehle se set → dobara PIN nahi maangega
+    try {
+      sessionStorage.setItem('ltx_session', JSON.stringify({ role: ltRole, time: Date.now() }));
+    } catch (e) {}
+  }
+  window.location.href = LEAD_TRACKER_URL;   // same tab zaroori hai (session carry hone ke liye)
 }
 
 // ========== PAYMENT SLIPS (legacy) ==========
