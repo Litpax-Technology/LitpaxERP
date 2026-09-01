@@ -4322,26 +4322,29 @@ loadOrders();
     const box = document.getElementById('ot-result');
     box.innerHTML = '<div class="loading"><div class="spin"></div> History load ho rahi hai...</div>';
 
-    const low = oid.toLowerCase();
-    const match = v => String(v || '').trim().toLowerCase() === low;
-
-    const bag = {
-      order: null, items: [], chargers: [], payments: [], totalReceived: 0,
-      prod: [], crm: [], billings: [], dispatches: [], challans: [], slips: []
-    };
-    let pending = 10;
-    const done = () => { if (--pending === 0) { render(oid, bag); document.getElementById('ot-orderid').select(); } };
-
-    api({ action: 'getOrders' }, r => { if (r.success) bag.order = (r.data || []).find(o => match(o['Order ID'])) || null; done(); });
-    api({ action: 'getItemsByOrder', 'Order ID': oid }, r => { bag.items = (r.success && r.data) ? r.data.filter(i => (i['Battery Type'] || '') !== 'Charger') : []; done(); });
-    api({ action: 'getChargersByOrder', 'Order ID': oid }, r => { bag.chargers = (r.success && r.data) ? r.data : []; done(); });
-    api({ action: 'getPayments', 'Order ID': oid }, r => { bag.payments = (r.success && r.data) ? r.data : []; bag.totalReceived = r.totalReceived || 0; done(); });
-    api({ action: 'getProductionBundle' }, r => { bag.prod = (r.success && r.production) ? r.production.filter(p => match(p['Order ID'])) : []; done(); });
-    api({ action: 'getCRMBundle' }, r => { bag.crm = (r.success && r.crm) ? r.crm.filter(c => match(c['Order ID'])) : []; done(); });
-    api({ action: 'getBillings', 'Order ID': oid }, r => { bag.billings = (r.success && r.data) ? r.data.filter(x => match(x['Order ID'])) : []; done(); });
-    api({ action: 'getAllDispatches' }, r => { bag.dispatches = (r.data || []).filter(d => match(d['Order ID'])); done(); });
-    api({ action: 'getDeliveryChallans' }, r => { bag.challans = (r.success && r.data) ? r.data.filter(d => match(d['Order ID'])) : []; done(); });
-    api({ action: 'getSlips', orderID: oid }, r => { bag.slips = (r.success && r.data) ? r.data : []; done(); });
+    // Ek hi call me poora data — bahut fast
+    api({ action: 'getTrackOrder', 'Order ID': oid }, r => {
+      if (!r || !r.success) {
+        box.innerHTML = `<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-txt">${(r && r.message) || 'History load nahi hui'}</div></div>`;
+        return;
+      }
+      const bag = {
+        order:         r.order || null,
+        items:         r.items || [],
+        chargers:      r.chargers || [],
+        payments:      r.payments || [],
+        totalReceived: r.totalReceived || 0,
+        prod:          r.prod || [],
+        crm:           r.crm || [],
+        billings:      r.billings || [],
+        dispatches:    r.dispatches || [],
+        challans:      r.challans || [],
+        slips:         r.slips || []
+      };
+      render(oid, bag);
+      const inp = document.getElementById('ot-orderid');
+      if (inp) inp.select();
+    });
   };
 
   function render(oid, b) {
