@@ -1887,6 +1887,29 @@ function plannedPending(p) {
 function openPlannedSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
   plannedPickerItems = allProd.filter(p => plannedPending(p) > 0);
+
+  // Charger bhi add karo — Production rows me Charger Qty/Model order-level pe hota hai
+  const chgByOrder = {};
+  allProd.forEach(p => {
+    const oid = p['Order ID'] || '';
+    if (!oid) return;
+    const cQty = parseFloat(p['Charger Qty']) || 0;
+    if (cQty > 0 && !chgByOrder[oid]) {
+      chgByOrder[oid] = {
+        'Order ID':      oid,
+        'Item ID':       'CHG-' + oid,
+        'Customer Name': p['Customer Name'] || '',
+        'Product Model': p['Charger Model'] || 'Charger',
+        'Battery Type':  'Charger',
+        'Qty':           cQty,
+        'Produced Qty':  0,
+        'Pending Qty':   cQty,
+        '_isCharger':    true
+      };
+    }
+  });
+  Object.values(chgByOrder).forEach(c => plannedPickerItems.push(c));
+
   plannedSel = {};
   const d = new Date();
   document.getElementById('ps-plan-date').value =
