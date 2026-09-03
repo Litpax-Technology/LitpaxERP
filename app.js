@@ -1887,23 +1887,6 @@ function plannedPending(p) {
 function openPlannedSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
   plannedPickerItems = allProd.filter(p => plannedPending(p) > 0);
-
-  // Charger wale orders bhi picker me lao (chahe pending 0 ho) — taaki charger slip me daal sake
-  const alreadyIn = {};
-  plannedPickerItems.forEach(p => { alreadyIn[String(p['Order ID']||'').trim()] = true; });
-  const chgOrderSeen = {};
-  allProd.forEach(p => {
-    const oid = String(p['Order ID']||'').trim();
-    if (!oid || chgOrderSeen[oid]) return;
-    const cQty = parseFloat(p['Charger Qty']) || 0;
-    if (cQty > 0 && !alreadyIn[oid]) {
-      chgOrderSeen[oid] = true;
-      // is order ka pehla battery item picker me daalo (pending 0 dikhe to bhi)
-      const firstItem = allProd.find(x => String(x['Order ID']||'').trim() === oid);
-      if (firstItem) plannedPickerItems.push(firstItem);
-    }
-  });
-
   plannedSel = {};
   const d = new Date();
   document.getElementById('ps-plan-date').value =
