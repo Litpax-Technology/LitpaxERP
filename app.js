@@ -1887,6 +1887,32 @@ function plannedPending(p) {
 function openPlannedSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
   plannedPickerItems = allProd.filter(p => plannedPending(p) > 0);
+
+  // Har order ka charger bhi ek row ki tarah picker me daalo (jaise battery)
+  const chgSeen = {};
+  const chargerRows = [];
+  allProd.forEach(p => {
+    const oid = String(p['Order ID']||'').trim();
+    if (!oid || chgSeen[oid]) return;
+    const cQty = parseFloat(p['Charger Qty']) || 0;
+    if (cQty > 0) {
+      chgSeen[oid] = true;
+      chargerRows.push({
+        'Order ID':      oid,
+        'Item ID':       'CHG-' + oid,
+        'Customer Name': p['Customer Name'] || '',
+        'Product Model': p['Charger Model'] || 'Charger',
+        'Battery Type':  '⚡ Charger',
+        'Qty':           cQty,
+        'Produced Qty':  0,
+        'Pending Qty':   cQty,
+        '_isCharger':    true
+      });
+    }
+  });
+  // charger rows ko battery items ke saath mila do
+  plannedPickerItems = plannedPickerItems.concat(chargerRows);
+
   plannedSel = {};
   const d = new Date();
   document.getElementById('ps-plan-date').value =
