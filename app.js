@@ -1910,12 +1910,14 @@ function plannedFiltered() {
 function renderPlannedPicker() {
   const data = plannedFiltered();
   const body = document.getElementById('ps-picker-body');
-  if (!data.length) { body.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
+  if (!data.length) { body.innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
   body.innerHTML = data.map(p => {
     const iid = p['Item ID'] || '';
     const pend = plannedPending(p);
     const checked = plannedSel[iid] !== undefined;
     const val = checked ? plannedSel[iid] : '';
+    const cModel = p['Charger Model'] || '';
+    const cQty   = parseFloat(p['Charger Qty']) || 0;
     return `<tr>
       <td><input type="checkbox" ${checked?'checked':''} onchange="togglePlannedItem('${iid}',this)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"></td>
       <td class="td-id">${p['Order ID']||''}</td>
@@ -1923,6 +1925,8 @@ function renderPlannedPicker() {
       <td class="td-bold">${p['Customer Name']||''}</td>
       <td>${p['Product Model']||''}</td>
       <td>${p['Battery Type']||''}</td>
+      <td>${cModel ? '⚡ '+cModel : '<span style="color:var(--text3);">—</span>'}</td>
+      <td>${cQty > 0 ? '<span style="color:var(--warning);font-weight:600;">'+cQty+'</span>' : '<span style="color:var(--text3);">—</span>'}</td>
       <td>${parseFloat(p['Qty'])||0}</td>
       <td style="color:var(--success);font-weight:600;">${parseFloat(p['Produced Qty'])||0}</td>
       <td style="color:var(--warning);font-weight:600;">${pend}</td>
