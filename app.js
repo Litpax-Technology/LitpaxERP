@@ -1924,10 +1924,10 @@ function plannedFiltered() {
   const q = (document.getElementById('ps-search')?.value || '').toLowerCase();
   if (!q) return plannedPickerItems;
   return plannedPickerItems.filter(p =>
-    (p['Order ID']||'').toLowerCase().includes(q) ||
-    (p['Customer Name']||'').toLowerCase().includes(q) ||
-    (p['Item ID']||'').toLowerCase().includes(q) ||
-    (p['Product Model']||'').toLowerCase().includes(q));
+    String(p['Order ID']||'').toLowerCase().includes(q) ||
+    String(p['Customer Name']||'').toLowerCase().includes(q) ||
+    String(p['Item ID']||'').toLowerCase().includes(q) ||
+    String(p['Product Model']||'').toLowerCase().includes(q));
 }
 
 function renderPlannedPicker() {
