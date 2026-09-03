@@ -2010,28 +2010,8 @@ function confirmPlannedSlip() {
   if (win) win.document.write('<p style="font-family:Arial;padding:24px;color:#555;">Planned slip ban rahi hai...</p>');
 
   const planDateDisp = fmtDisplayDate(planDate);
-  let pending = rows.length, failed = 0;
-  rows.forEach(r => {
-    api({ action: 'addPlannedProduction', ...r, 'Added By': user.name || '' }, res => {
-      if (!res || !res.success) failed++;
-      if (--pending === 0) {
-        if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm & Generate Slip'; }
-        if (failed) toast(failed + ' item save nahi hue (baaki ho gaye)', 'w');
-        else toast('Planned production saved!');
-        const html = buildPlannedSlipPrint(rows, planDateDisp);
-        if (win) { win.document.open(); win.document.write(html); win.document.close(); }
-        closeModal('plannedSlipModal');
-      }
-    });
-  });
-}
 
-function buildPlannedSlipPrint(rows, planDateDisp) {
-  const two = rows.filter(r => (r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
-  const oth = rows.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
-  const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
-
-  // Slip me jo orders aaye, un orders ke chargers automatic nikaalo (allProd se)
+  // Charger data ABHI nikaal lo (allProd se) — taaki print ke waqt available rahe
   const orderIDsInSlip = [...new Set(rows.map(r => String(r['Order ID']||'').trim()).filter(Boolean))];
   const chgSeen = {};
   const chargerList = [];
@@ -2049,6 +2029,28 @@ function buildPlannedSlipPrint(rows, planDateDisp) {
       });
     }
   });
+
+  let pending = rows.length, failed = 0;
+  rows.forEach(r => {
+    api({ action: 'addPlannedProduction', ...r, 'Added By': user.name || '' }, res => {
+      if (!res || !res.success) failed++;
+      if (--pending === 0) {
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm & Generate Slip'; }
+        if (failed) toast(failed + ' item save nahi hue (baaki ho gaye)', 'w');
+        else toast('Planned production saved!');
+        const html = buildPlannedSlipPrint(rows, planDateDisp, chargerList);
+        if (win) { win.document.open(); win.document.write(html); win.document.close(); }
+        closeModal('plannedSlipModal');
+      }
+    });
+  });
+}
+
+function buildPlannedSlipPrint(rows, planDateDisp, chargerList) {
+  chargerList = chargerList || [];
+  const two = rows.filter(r => (r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  const oth = rows.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
 
   function chargerTbl() {
     if (!chargerList.length) return '';
