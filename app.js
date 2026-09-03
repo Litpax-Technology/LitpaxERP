@@ -1887,29 +1887,6 @@ function plannedPending(p) {
 function openPlannedSlip() {
   if (!allProd || !allProd.length) { toast('Pehle Production data load karo', 'w'); return; }
   plannedPickerItems = allProd.filter(p => plannedPending(p) > 0);
-
-  // Charger bhi add karo — Production rows me Charger Qty/Model order-level pe hota hai
-  const chgByOrder = {};
-  allProd.forEach(p => {
-    const oid = p['Order ID'] || '';
-    if (!oid) return;
-    const cQty = parseFloat(p['Charger Qty']) || 0;
-    if (cQty > 0 && !chgByOrder[oid]) {
-      chgByOrder[oid] = {
-        'Order ID':      oid,
-        'Item ID':       'CHG-' + oid,
-        'Customer Name': p['Customer Name'] || '',
-        'Product Model': p['Charger Model'] || 'Charger',
-        'Battery Type':  'Charger',
-        'Qty':           cQty,
-        'Produced Qty':  0,
-        'Pending Qty':   cQty,
-        '_isCharger':    true
-      };
-    }
-  });
-  Object.values(chgByOrder).forEach(c => plannedPickerItems.push(c));
-
   plannedSel = {};
   const d = new Date();
   document.getElementById('ps-plan-date').value =
@@ -2054,6 +2031,42 @@ function buildPlannedSlipPrint(rows, planDateDisp) {
   const oth = rows.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
   const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
 
+  // Slip me jo orders aaye, un orders ke chargers automatic nikaalo (allProd se)
+  const orderIDsInSlip = [...new Set(rows.map(r => String(r['Order ID']||'').trim()).filter(Boolean))];
+  const chgSeen = {};
+  const chargerList = [];
+  (allProd || []).forEach(p => {
+    const oid = String(p['Order ID']||'').trim();
+    if (!oid || chgSeen[oid] || orderIDsInSlip.indexOf(oid) === -1) return;
+    const cQty = parseFloat(p['Charger Qty']) || 0;
+    if (cQty > 0) {
+      chgSeen[oid] = true;
+      chargerList.push({
+        'Order ID': oid,
+        'Customer Name': p['Customer Name'] || '',
+        'Charger Model': p['Charger Model'] || 'Charger',
+        'Charger Qty': cQty
+      });
+    }
+  });
+
+  function chargerTbl() {
+    if (!chargerList.length) return '';
+    const totCharger = chargerList.reduce((s,c)=> s + (parseFloat(c['Charger Qty'])||0), 0);
+    const body = chargerList.map((c,i) => `
+      <tr>
+        <td>${i+1}</td><td>${c['Order ID']||'—'}</td>
+        <td>${c['Customer Name']||'—'}</td><td>${c['Charger Model']||'—'}</td>
+        <td class="pq">${c['Charger Qty']||'—'}</td>
+      </tr>`).join('');
+    return `<div class="section">
+      <div class="section-title">⚡ Chargers <span class="count">${chargerList.length} orders · ${totCharger} qty</span></div>
+      <table>
+        <thead><tr><th>#</th><th>Order ID</th><th>Customer</th><th>Charger Model</th><th>Charger Qty</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table></div>`;
+  }
+
   function tbl(items, label) {
     if (!items.length) return '';
     const sub = items.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
@@ -2106,6 +2119,7 @@ function buildPlannedSlipPrint(rows, planDateDisp) {
   </div>
   ${tbl(two, '🛵 2 Wheeler Battery')}
   ${tbl(oth, '🔋 Other Batteries')}
+  ${chargerTbl()}
   <div class="footer"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0 — ${planDateDisp}</span></div>
   </body></html>`;
 }
