@@ -1768,7 +1768,10 @@ function renderProduction(billedMap) {
         const orderCells = isFirst ? `
           <td class="td-id" rowspan="${count}" style="vertical-align:middle;${bt}">${orderID}</td>
           <td rowspan="${count}" style="vertical-align:middle;${bt}">${fmtDisplayDate(first['Order Date']||'')}</td>
-          <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">${first['Customer Name']||''}</td>
+          <td class="td-bold" rowspan="${count}" style="vertical-align:middle;${bt}">
+            <div>${first['Customer Name']||''}</div>
+            <button class="btn btn-sm" style="margin-top:6px;white-space:nowrap;background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" onclick='showProdSpec(${JSON.stringify(first['Customer Name']||'')})' title="Is customer ki battery spec dekho">🔋 Spec</button>
+          </td>
           <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Model']||'—'}</td>
           <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Charger Qty']||'—'}</td>
           <td rowspan="${count}" style="vertical-align:middle;${bt}">${first['Sales Person']||''}</td>
@@ -1812,6 +1815,62 @@ function renderProduction(billedMap) {
       });
     });
     document.getElementById('prodTable').innerHTML = prodRows;
+}
+
+// ========== PRODUCTION — CUSTOMER BATTERY SPEC (read-only view) ==========
+function ensureProdSpecModal() {
+  if (document.getElementById('prodSpecModal')) return;
+  const html = `
+  <div id="prodSpecModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.55);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;">
+    <div style="background:var(--surface,#fff);border-radius:14px;max-width:840px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border,#e5e7eb);">
+        <div id="prodSpecTitle" style="font-size:15px;font-weight:700;color:var(--text,#111);">🔋 Battery Spec</div>
+        <button onclick="closeProdSpec()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3,#888);">✕</button>
+      </div>
+      <div style="padding:16px 20px;">
+        <div style="font-size:12px;color:var(--text3,#888);margin-bottom:12px;">Is customer ki battery pe kya-kya jayega — Sticker, BMS, Connector, Box waghera. (Sirf dekhne ke liye)</div>
+        <div id="prodSpecBody" style="overflow-x:auto;"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--border,#e5e7eb);">
+        <button class="btn" onclick="closeProdSpec()">Band karo</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('prodSpecModal').addEventListener('click', function (e) {
+    if (e.target === this) closeProdSpec();
+  });
+}
+
+function closeProdSpec() {
+  const m = document.getElementById('prodSpecModal');
+  if (m) m.style.display = 'none';
+}
+
+function showProdSpec(custName) {
+  ensureProdSpecModal();
+  const box = document.getElementById('prodSpecBody');
+  document.getElementById('prodSpecTitle').textContent = '🔋 ' + custName + ' — Battery Spec';
+  box.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+  document.getElementById('prodSpecModal').style.display = 'flex';
+
+  api({ action: 'getBatterySpec', customerName: custName }, r => {
+    const cols = (r.success && r.columns) ? r.columns : [];
+    const rows = (r.success && r.data) ? r.data : [];
+    if (!cols.length || !rows.length) {
+      box.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3,#888);font-size:13px;">Is customer ki battery spec abhi set nahi hui hai.</div>';
+      return;
+    }
+    const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr>' +
+      cols.map(c => `<th style="text-align:left;padding:8px 10px;border-bottom:2px solid var(--border,#e5e7eb);white-space:nowrap;color:var(--text3,#888);text-transform:uppercase;font-size:10px;letter-spacing:0.4px;">${esc(c)}</th>`).join('') +
+      '</tr></thead><tbody>';
+    html += rows.map(row => '<tr>' + cols.map(c =>
+      `<td style="padding:8px 10px;border-bottom:1px solid var(--border,#eee);color:var(--text,#111);">${esc(row[c]) || '—'}</td>`
+    ).join('') + '</tr>').join('');
+    html += '</tbody></table>';
+    box.innerHTML = html;
+  });
 }
 
 // ========== PLANNED PRODUCTION SLIP ==========
