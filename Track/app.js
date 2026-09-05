@@ -12,7 +12,6 @@ var API = CFG.API_URL;
   if (el && CFG.COMPANY) el.textContent = CFG.COMPANY;
 })();
 
-var orderInput = document.getElementById('orderId');
 var phoneInput = document.getElementById('phone');
 var trackBtn   = document.getElementById('trackBtn');
 var formMsg    = document.getElementById('formMsg');
@@ -70,7 +69,7 @@ function clearMsg() {
   formMsg.textContent = '';
   formMsg.classList.remove('show');
 }
-[orderInput, phoneInput].forEach(function (inp) {
+[phoneInput].forEach(function (inp) {
   inp.addEventListener('input', function () {
     inp.classList.remove('err');
     clearMsg();
@@ -86,37 +85,39 @@ function setLoading(on) {
 }
 
 /* ---------- main action ---------- */
-function track() {
-  var orderId = orderInput.value.trim();
-  var phone   = phoneInput.value.trim();
+var currentPhone = '';
 
-  var bad = false;
-  if (!orderId) { orderInput.classList.add('err'); bad = true; }
-  if (phone.replace(/\D/g, '').length < 10) { phoneInput.classList.add('err'); bad = true; }
-  if (bad) { showMsg('Please enter a valid Order ID and phone number.'); return; }
+function track() {
+  var phone = phoneInput.value.trim();
+
+  if (phone.replace(/\D/g, '').length < 10) {
+    phoneInput.classList.add('err');
+    showMsg('Please enter a valid 10-digit phone number.');
+    return;
+  }
 
   if (!API || API.indexOf('PASTE') === 0) {
     showMsg('Tracking is not configured yet.');
     return;
   }
 
+  currentPhone = phone;
   clearMsg();
   setLoading(true);
   resultBox.innerHTML = '';
 
-  jsonp({ action: 'getPublicTrack', 'Order ID': orderId, 'Phone': phone }, function (res) {
+  jsonp({ action: 'getOrdersByPhone', 'Phone': phone }, function (res) {
     setLoading(false);
 
     if (res && res._network) {
-      // network fail — inputs waise hi rehne do, dobara try kar sake
       showMsg('Could not connect. Please check your internet and try again.');
       return;
     }
     if (!res || !res.success) {
-      showMsg((res && res.message) || 'No order found. Please check your details.');
+      showMsg((res && res.message) || 'No orders found for this phone number.');
       return;
     }
-    renderResult(res);
+    renderOrderList(res.orders || []);
   });
 }
 trackBtn.addEventListener('click', track);
@@ -128,8 +129,53 @@ function esc(v) {
   });
 }
 
-function renderResult(r) {
+/* ---------- orders list (phone ke saare orders) ---------- */
+function renderOrderList(orders) {
+  if (!orders.length) { showMsg('No orders found for this phone number.'); return; }
+
+  var rowsHTML = orders.map(function (o) {
+    var cls = o.status === 'Dispatched' ? 'b-dispatched'
+            : o.status === 'Ready'      ? 'b-ready'
+            : o.status === 'In Production' ? 'b-inprod'
+            : 'b-pending';
+    return '<div class="order-row" onclick="openOrder(\'' + esc(o.orderId) + '\')">' +
+        '<div class="order-row-main">' +
+          '<div class="order-row-id">' + esc(o.orderId) + '</div>' +
+          '<div class="order-row-sub">' + esc(o.orderDate || '') +
+            (o.city ? '  ·  ' + esc(o.city) : '') + '</div>' +
+        '</div>' +
+        '<span class="badge ' + cls + '">' + esc(o.status) + '</span>' +
+        '<span class="order-row-arrow">›</span>' +
+      '</div>';
+  }).join('');
+
+  resultBox.innerHTML =
+    '<div class="card">' +
+      '<div class="sec-title">Your Orders (' + orders.length + ')</div>' +
+      rowsHTML +
+    '</div>';
+  resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ek order pe click -> uski poori detail */
+function openOrder(orderId) {
+  clearMsg();
+  setLoading(true);
+  resultBox.innerHTML = '<div class="card"><div class="loading-box">Loading order ' + esc(orderId) + '…</div></div>';
+
+  jsonp({ action: 'getPublicTrack', 'Order ID': orderId, 'Phone': currentPhone }, function (res) {
+    setLoading(false);
+    if (res && res._network) { showMsg('Could not connect. Please try again.'); return; }
+    if (!res || !res.success) { showMsg((res && res.message) || 'Could not load this order.'); return; }
+    renderResult(res, true);
+  });
+}
+
+function renderResult(r, showBack) {
   var o = r.order || {};
+  var backHTML = showBack
+    ? '<button class="btn-back" onclick="track()">‹ Back to all orders</button>'
+    : '';
 
   var meta = [];
   if (o.orderDate)        meta.push(['Order Date', o.orderDate]);
@@ -212,7 +258,7 @@ function renderResult(r) {
       '</div>';
   }
 
-  resultBox.innerHTML = html;
+   resultBox.innerHTML = backHTML + html;
   resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
