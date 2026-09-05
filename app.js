@@ -2285,14 +2285,11 @@ ${payments.length ? `
   ${info('Phone', o['Customer Phone'])}
   ${info('City', o['City'])}
   ${info('Sales Person', o['Sales Person Name'])}
-  ${info('Assigned CRM', o['Assigned CRM'])}
-  ${info('Corridor', o['Corridor'] || o['Priority'])}
-  ${info('Payment Mode', o['Payment Mode'])}
-  ${info('Payment Status', o['Payment Status'])}
-  ${info('Order Status', o['Order Status'])}
   ${info('Plan Payment Date', fmtDisplayDate(o['Plan Payment Date'] || ''))}
   ${info('Plan Dispatch Date', fmtDisplayDate(o['Plan Dispatch Date'] || ''))}
   ${info('Suggested Transport', o['Suggested Transport'])}
+  ${info('Billing Address', o['Billing Address'])}
+  ${info('Shipping Address', o['Shipping Address'])}
 </div>
 
 <div class="sec-t">📦 Order Items</div>
