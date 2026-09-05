@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1e1b4b" />
+  <title>Track Your Order — Litpax Technology</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">Litpax<span>Track</span></div>
+    <div class="brand-sub">Order Status</div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- SEARCH CARD -->
+    <section class="card search-card" id="searchCard">
+      <h1 class="title">Track your order</h1>
+      <p class="subtitle">Enter your Order ID and the phone number on your order.</p>
+
+      <div class="field">
+        <label for="orderId">Order ID</label>
+        <input id="orderId" type="text" autocomplete="off" placeholder="e.g. ORD-2026-001" />
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone Number</label>
+        <input id="phone" type="tel" inputmode="numeric" autocomplete="off" placeholder="Registered mobile number" />
+      </div>
+
+      <button class="btn-primary" id="trackBtn" type="button">
+        <span class="btn-text">Track Order</span>
+        <span class="btn-spin" aria-hidden="true"></span>
+      </button>
+
+      <div class="form-msg" id="formMsg" role="alert"></div>
+    </section>
+
+    <!-- RESULT -->
+    <section id="result" class="result" aria-live="polite"></section>
+
+  </main>
+
+  <footer class="foot">
+    <span id="footCompany">Litpax Technology</span>
+    <span class="dot">·</span>
+    <span>Order tracking</span>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
