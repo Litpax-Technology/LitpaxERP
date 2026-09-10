@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Material vs Production — Litpax</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="tb-left">
+      <div class="tb-title">📦 Material vs Production</div>
+      <div class="tb-sub">Aaj kitna material nikla &nbsp;·&nbsp; aaj kitni production complete hui</div>
+    </div>
+    <div class="tb-right">
+      <span class="dot" id="dot"></span>
+      <span id="dot-lbl">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label class="ctrl-lbl">Date</label>
+      <input type="date" id="anchor-date" class="date-inp" onchange="MPapp.load()">
+    </div>
+
+    <div class="ctrl-group">
+      <label class="ctrl-lbl">Range</label>
+      <div class="pills">
+        <button class="pill active" id="pill-day"   onclick="MPapp.setMode('day')">Aaj</button>
+        <button class="pill"        id="pill-week"  onclick="MPapp.setMode('week')">Is Hafte</button>
+        <button class="pill"        id="pill-month" onclick="MPapp.setMode('month')">Is Mahine</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group ctrl-grow">
+      <span class="range-note" id="range-note">—</span>
+    </div>
+
+    <button class="btn-refresh" onclick="MPapp.load()">↻ Refresh</button>
+  </div>
+
+  <!-- Two panels -->
+  <div class="grid">
+
+    <!-- Material OUT (IMS) -->
+    <section class="panel">
+      <div class="panel-head out">
+        <div class="ph-title">🔩 Material OUT <span class="ph-src">IMS · Production</span></div>
+        <div class="ph-count" id="mat-count">—</div>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr><th>Item</th><th class="r">Qty Out</th><th>Unit</th></tr>
+          </thead>
+          <tbody id="mat-tb">
+            <tr class="lrow"><td colspan="3"><span class="spin"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="empty" id="mat-empty" style="display:none;">
+          <div class="ei">📭</div><div class="et">Is range me koi material out nahi hua</div>
+        </div>
+      </div>
+      <div class="panel-foot" id="mat-foot"></div>
+    </section>
+
+    <!-- Production Complete (ERP) -->
+    <section class="panel">
+      <div class="panel-head made">
+        <div class="ph-title">🔋 Production Complete <span class="ph-src">ERP</span></div>
+        <div class="ph-count" id="prod-count">—</div>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr><th>Order</th><th>Customer</th><th>Model</th><th>Type</th><th class="r">Qty</th></tr>
+          </thead>
+          <tbody id="prod-tb">
+            <tr class="lrow"><td colspan="5"><span class="spin"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="empty" id="prod-empty" style="display:none;">
+          <div class="ei">🏭</div><div class="et">Is range me koi production complete nahi hui</div>
+        </div>
+      </div>
+      <div class="panel-foot" id="prod-foot"></div>
+    </section>
+
+  </div>
+
+  <div class="hint">
+    ℹ️ Ye sirf <b>raw activity</b> hai — jo material nikla wo, jo battery bani wo. Material aksar aage
+    ke dino ki production ke liye bhi nikalta hai, isliye dono ka seedha ghata nikalna theek nahi.
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
