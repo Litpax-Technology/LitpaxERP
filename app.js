@@ -2034,6 +2034,9 @@ function confirmPlannedSlip() {
     }
   });
 
+  // Slip me jitne unique customer hain — unki battery spec bulk laani hai
+  const uniqueCusts = [...new Set(rows.map(r => String(r['Customer Name']||'').trim()).filter(Boolean))];
+
   let pending = rows.length, failed = 0;
   rows.forEach(r => {
     api({ action: 'addPlannedProduction', ...r, 'Added By': user.name || '' }, res => {
@@ -2042,54 +2045,97 @@ function confirmPlannedSlip() {
         if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm & Generate Slip'; }
         if (failed) toast(failed + ' item save nahi hue (baaki ho gaye)', 'w');
         else toast('Planned production saved!');
-        const html = buildPlannedSlipPrint(rows, planDateDisp, chargerList);
-        if (win) { win.document.open(); win.document.write(html); win.document.close(); }
         closeModal('plannedSlipModal');
+
+        // Spec bulk laao, phir slip banao (spec na aaye to bhi slip ban jaayegi)
+        api({ action: 'getBatterySpecsBulk', customerNames: JSON.stringify(uniqueCusts) }, sr => {
+          const specCols = (sr && sr.success && sr.columns) ? sr.columns : [];
+          const specMap  = (sr && sr.success && sr.specs)   ? sr.specs   : {};
+          const html = buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap);
+          if (win) { win.document.open(); win.document.write(html); win.document.close(); }
+        });
       }
     });
   });
 }
 
-function buildPlannedSlipPrint(rows, planDateDisp, chargerList) {
+function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap) {
   chargerList = chargerList || [];
-  const two = rows.filter(r => (r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
-  const oth = rows.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+  specCols = specCols || [];
+  specMap  = specMap || {};
+  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
   const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
 
-  function chargerTbl() {
-    if (!chargerList.length) return '';
-    const totCharger = chargerList.reduce((s,c)=> s + (parseFloat(c['Charger Qty'])||0), 0);
-    const body = chargerList.map((c,i) => `
-      <tr>
-        <td>${i+1}</td><td>${c['Order ID']||'—'}</td>
-        <td>${c['Customer Name']||'—'}</td><td>${c['Charger Model']||'—'}</td>
-        <td class="pq">${c['Charger Qty']||'—'}</td>
-      </tr>`).join('');
-    return `<div class="section">
-      <div class="section-title">⚡ Chargers <span class="count">${chargerList.length} orders · ${totCharger} qty</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Order ID</th><th>Customer</th><th>Charger Model</th><th>Charger Qty</th></tr></thead>
-        <tbody>${body}</tbody>
-      </table></div>`;
-  }
+  // Order-wise group
+  const groups = {}, seq = [];
+  rows.forEach(r => {
+    const oid = String(r['Order ID']||'').trim() || '—';
+    if (!groups[oid]) { groups[oid] = { custName: r['Customer Name']||'', items: [] }; seq.push(oid); }
+    groups[oid].items.push(r);
+  });
 
-  function tbl(items, label) {
-    if (!items.length) return '';
-    const sub = items.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
-    const body = items.map((r,i) => `
+  // Charger order-wise
+  const chgByOrder = {};
+  chargerList.forEach(c => {
+    const oid = String(c['Order ID']||'').trim() || '—';
+    (chgByOrder[oid] = chgByOrder[oid] || []).push(c);
+  });
+
+  function itemsTable(items) {
+    const two = items.filter(r => (r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+    const oth = items.filter(r => !(r['Battery Type']||'').toLowerCase().includes('2 wheeler'));
+    const ordered = two.concat(oth);
+    const body = ordered.map((r,i) => `
       <tr>
-        <td>${i+1}</td><td>${r['Order ID']||'—'}</td><td>${r['Item ID']||'—'}</td>
-        <td>${r['Customer Name']||'—'}</td><td>${r['Product Model']||'—'}</td>
-        <td>${r['Battery Type']||'—'}</td><td>${r['Total Qty']||'—'}</td>
+        <td>${i+1}</td>
+        <td>${esc(r['Item ID'])||'—'}</td>
+        <td>${esc(r['Product Model'])||'—'}</td>
+        <td>${esc(r['Battery Type'])||'—'}</td>
+        <td class="c">${r['Total Qty']||'—'}</td>
         <td class="pq">${r['Planned Qty']||'—'}</td>
       </tr>`).join('');
-    return `<div class="section">
-      <div class="section-title">${label} <span class="count">${items.length} items · ${sub} planned</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Order ID</th><th>Item ID</th><th>Customer</th><th>Product Model</th><th>Battery Type</th><th>Total Qty</th><th>Planned Qty</th></tr></thead>
-        <tbody>${body}</tbody>
-      </table></div>`;
+    return `<table>
+      <thead><tr><th style="width:36px;">#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th class="c">Total</th><th class="c">Planned</th></tr></thead>
+      <tbody>${body}</tbody></table>`;
   }
+
+  function chargerStrip(chgs) {
+    if (!chgs || !chgs.length) return '';
+    const parts = chgs.map(c => `${esc(c['Charger Model']||'Charger')} × ${c['Charger Qty']||0}`).join('  ·  ');
+    return `<div class="charger-line">⚡ Charger: ${parts}</div>`;
+  }
+
+  function specBlock(custName) {
+    const key = String(custName||'').trim();
+    const sRows = specMap[key];
+    if (!sRows || !sRows.length) {
+      return `<div class="spec-none">🔋 <b>Battery Spec:</b> Spec set nahi hai</div>`;
+    }
+    const head = specCols.map(c => `<th>${esc(c)}</th>`).join('');
+    const body = sRows.map(row => '<tr>' + specCols.map(c => `<td>${esc(row[c])||'—'}</td>`).join('') + '</tr>').join('');
+    return `<div class="spec-wrap">
+      <div class="spec-title">🔋 Battery Spec</div>
+      <div class="spec-scroll"><table class="spec-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    </div>`;
+  }
+
+  const blocks = seq.map(oid => {
+    const g = groups[oid];
+    const plannedSum = g.items.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
+    return `<div class="order-block">
+      <div class="order-head">
+        <span class="oid">📋 ${esc(oid)}</span>
+        <span class="ocust">${esc(g.custName)||'—'}</span>
+        <span class="ocount">${g.items.length} item · ${plannedSum} planned</span>
+      </div>
+      <div class="order-body">
+        ${itemsTable(g.items)}
+        ${chargerStrip(chgByOrder[oid])}
+        ${specBlock(g.custName)}
+      </div>
+    </div>`;
+  }).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Planned Production Slip — ${planDateDisp}</title>
@@ -2102,14 +2148,30 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList) {
     .no-print{margin-bottom:14px;}
     .no-print button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px;border:none;}
     .btn-print{background:#1e1b4b;color:#fff;}.btn-close{background:#f0f0f0;color:#333;border:1px solid #ccc !important;}
-    .section{margin-bottom:22px;}
-    .section-title{font-size:13px;font-weight:700;color:#1e1b4b;padding:7px 12px;background:#ede9fe;border-left:4px solid #6366f1;border-radius:4px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-    .count{background:#6366f1;color:#fff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;}
+
+    .order-block{border:1.5px solid #d9d6f0;border-radius:9px;margin-bottom:16px;overflow:hidden;page-break-inside:avoid;}
+    .order-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#1e1b4b;color:#fff;padding:9px 14px;}
+    .order-head .oid{font-size:14px;font-weight:800;letter-spacing:0.3px;}
+    .order-head .ocust{font-size:13px;font-weight:600;color:#c7c3f0;}
+    .order-head .ocount{margin-left:auto;background:#6366f1;font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;}
+    .order-body{padding:12px 14px;}
+
     table{width:100%;border-collapse:collapse;font-size:12px;}
-    thead tr{background:#1e1b4b;color:#fff;}thead th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
-    thead th:last-child{text-align:center;}
-    tbody tr:nth-child(even){background:#f7f7fb;}tbody td{padding:8px 10px;border-bottom:1px solid #e5e5ef;}
+    thead tr{background:#ede9fe;}thead th{padding:7px 9px;text-align:left;font-size:10.5px;font-weight:700;color:#1e1b4b;text-transform:uppercase;letter-spacing:0.3px;}
+    thead th.c{text-align:center;}
+    tbody td{padding:7px 9px;border-bottom:1px solid #eee;}
+    tbody td.c{text-align:center;}
     tbody td.pq{text-align:center;font-weight:700;font-size:14px;color:#6366f1;}
+
+    .charger-line{margin-top:9px;font-size:12px;font-weight:600;color:#b45309;background:#fef3c7;border-left:3px solid #f59e0b;padding:6px 11px;border-radius:4px;}
+
+    .spec-wrap{margin-top:12px;border-top:1px dashed #cbd5e1;padding-top:10px;}
+    .spec-title{font-size:12px;font-weight:700;color:#047857;margin-bottom:6px;}
+    .spec-scroll{overflow-x:auto;}
+    .spec-table thead tr{background:#d1fae5;}
+    .spec-table thead th{color:#065f46;}
+    .spec-none{margin-top:12px;border-top:1px dashed #cbd5e1;padding-top:10px;font-size:12px;color:#b91c1c;}
+
     .footer{margin-top:16px;display:flex;justify-content:space-between;font-size:11px;color:#999;border-top:1px solid #e0e0e0;padding-top:10px;}
     @media print{.no-print{display:none!important;}body{padding:10px 14px;}}
   </style></head><body>
@@ -2117,15 +2179,13 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList) {
     <div><div class="brand">Litpax<span>ERP</span></div>
     <div style="font-size:12px;color:#666;margin-top:2px;">Planned Production Slip</div></div>
     <div class="meta"><strong>📅 ${planDateDisp}</strong><br>
-    Items: <strong>${rows.length}</strong> · Planned Qty: <strong>${totPlanned}</strong></div>
+    Orders: <strong>${seq.length}</strong> · Items: <strong>${rows.length}</strong> · Planned Qty: <strong>${totPlanned}</strong></div>
   </div>
   <div class="no-print">
     <button class="btn-print" onclick="window.print()">🖨️ Print</button>
     <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
-  ${tbl(two, '🛵 2 Wheeler Battery')}
-  ${tbl(oth, '🔋 Other Batteries')}
-  ${chargerTbl()}
+  ${blocks}
   <div class="footer"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0 — ${planDateDisp}</span></div>
   </body></html>`;
 }
