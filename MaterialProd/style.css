@@ -186,3 +186,4 @@ tbody tr:hover td{background:#fafbff;}
   .f-row{grid-template-columns:1fr;}
   .cr-val{font-size:20px;}
 }
+.btn-entry.disp{background:var(--teal);}
