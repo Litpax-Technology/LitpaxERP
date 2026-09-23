@@ -10,6 +10,11 @@ const MPapp = (function () {
   let _mode = 'day';           // 'day' | 'week' | 'month'
   let _view = 'mp';            // 'mp' | 'cell'
   let _models = [];            // BOM models (cell recon)
+  let _entryType = 'Bani';     // 'Bani' | 'Dispatch'
+  let _hadEntries = false;
+  // Link se role: ?type=bani → sirf Bani, ?type=dispatch → sirf Dispatch, bina type → dono
+  const LINK_TYPE = ({ bani: 'Bani', dispatch: 'Dispatch' })[
+    (new URLSearchParams(location.search).get('type') || '').toLowerCase()] || '';
   const GAP_OK_PCT = 5, GAP_WARN_PCT = 15;   // gap % thresholds (card color)
 
   // ── date helpers ──
@@ -182,7 +187,10 @@ const MPapp = (function () {
     document.getElementById('tab-cell').classList.toggle('active', v === 'cell');
     document.getElementById('view-mp').style.display   = v === 'mp' ? '' : 'none';
     document.getElementById('view-cell').style.display = v === 'cell' ? '' : 'none';
-    document.getElementById('btn-entry').style.display = v === 'cell' ? '' : 'none';
+    const allowBani = !LINK_TYPE || LINK_TYPE === 'Bani';
+    const allowDisp = !LINK_TYPE || LINK_TYPE === 'Dispatch';
+    document.getElementById('btn-bani').style.display = (v === 'cell' && allowBani) ? '' : 'none';
+    document.getElementById('btn-disp').style.display = (v === 'cell' && allowDisp) ? '' : 'none';
     load();
   }
 
@@ -266,9 +274,14 @@ const MPapp = (function () {
   }
 
   // ── Entry modal ──
-  function openEntry() {
+  function openEntry(type) {
+    if (LINK_TYPE && type !== LINK_TYPE) return;
+    _entryType = type;
+    const isBani = type === 'Bani';
+    document.getElementById('en-title').textContent = isBani ? '🔋 Bani Entry — Production' : '🚚 Dispatch Entry';
+    document.getElementById('en-qty-h').textContent = isBani ? 'Qty Bani' : 'Qty Dispatch';
     document.getElementById('en-date').value = document.getElementById('anchor-date').value || todayISO();
-    try { document.getElementById('en-by').value = localStorage.getItem('mp_enby') || ''; } catch (e) {}
+    try { document.getElementById('en-by').value = localStorage.getItem('mp_enby_' + type) || ''; } catch (e) {}
     document.getElementById('entry-modal').style.display = 'flex';
     loadEntryFor();
   }
@@ -285,8 +298,7 @@ const MPapp = (function () {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><select class="en-model">${modelOptions(r.model)}</select></td>
-      <td class="r"><input type="number" min="0" class="num-inp en-bani" value="${r.bani != null ? r.bani : ''}"></td>
-      <td class="r"><input type="number" min="0" class="num-inp en-disp" value="${r.dispatch != null ? r.dispatch : ''}"></td>
+      <td class="r"><input type="number" min="0" class="num-inp en-qty" value="${r.qty != null ? r.qty : ''}"></td>
       <td><button class="btn-rm" onclick="MPapp.removeEntryRow(this)">✕</button></td>`;
     document.getElementById('en-tb').appendChild(tr);
   }
@@ -296,16 +308,18 @@ const MPapp = (function () {
     const date = document.getElementById('en-date').value;
     const tb = document.getElementById('en-tb');
     const note = document.getElementById('en-note');
-    tb.innerHTML = `<tr class="lrow"><td colspan="4"><span class="spin"></span> Loading…</td></tr>`;
+    tb.innerHTML = `<tr class="lrow"><td colspan="3"><span class="spin"></span> Loading…</td></tr>`;
     note.textContent = '';
+    _hadEntries = false;
     try {
-      const res = await imsApi('getCellEntry', { date });
+      const res = await imsApi('getCellEntry', { date, type: _entryType });
       if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
       _models = res.models || _models;
       tb.innerHTML = '';
       if (res.entries && res.entries.length) {
+        _hadEntries = true;
         res.entries.forEach(e => addEntryRow(e));
-        note.textContent = 'Is date ki entry pehle se hai — badal ke Save karoge to poori replace hogi.';
+        note.textContent = `Is date ki ${_entryType} entry pehle se hai — badal ke Save karoge to replace hogi.`;
       } else {
         addEntryRow();
       }
@@ -329,25 +343,28 @@ const MPapp = (function () {
       const sel = tr.querySelector('.en-model');
       if (!sel || bad) return;
       const model = sel.value;
-      const q  = tr.querySelector('.en-bani').value;
-      const dq = tr.querySelector('.en-disp').value;
-      if (!model && q === '' && dq === '') return;          // khaali row skip
+      const q = tr.querySelector('.en-qty').value;
+      if (!model && q === '') return;                         // khaali row skip
       if (!model) { bad = 'Har row me model select karo'; return; }
+      if (q === '') { bad = model + ' ki qty daalo'; return; }
+      if (Number(q) < 0) { bad = 'Qty negative nahi ho sakti'; return; }
       if (seen[model]) { bad = model + ' do baar hai'; return; }
-      if (Number(q) < 0 || Number(dq) < 0) { bad = 'Qty negative nahi ho sakti'; return; }
       seen[model] = 1;
-      rows.push({ model, bani: Number(q) || 0, dispatch: Number(dq) || 0 });
+      if (Number(q) > 0) rows.push({ model, qty: Number(q) });
     });
     if (bad) return toast(bad, 'err');
-    if (!rows.length) return toast('Kam se kam ek row bharo', 'err');
+    if (!rows.length) {
+      if (!_hadEntries) return toast('Kam se kam ek row bharo', 'err');
+      if (!confirm(`${date} ki saari ${_entryType} entry hata dein?`)) return;
+    }
 
     const btn = document.getElementById('en-save');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const res = await imsApi('saveCellEntry', { date, enteredBy: by, rows });
+      const res = await imsApi('saveCellEntry', { date, type: _entryType, enteredBy: by, rows });
       if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
-      try { localStorage.setItem('mp_enby', by); } catch (e) {}
-      toast(`Saved ✓ ${res.saved} model`, 'ok');
+      try { localStorage.setItem('mp_enby_' + _entryType, by); } catch (e) {}
+      toast(rows.length ? `${_entryType} saved ✓ ${res.saved} model` : `${_entryType} entry hata di ✓`, 'ok');
       closeEntry();
       load();
     } catch (e) {
@@ -385,6 +402,11 @@ const MPapp = (function () {
   // ── init ──
   function init() {
     document.getElementById('anchor-date').value = todayISO();
+    if (LINK_TYPE) {                                   // role link: tabs chhupao, seedha Cell tab
+      document.querySelector('.tabs').style.display = 'none';
+      switchView('cell');
+      return;
+    }
     if (!MP.ERP_URL || MP.ERP_URL.indexOf('PASTE') > -1) {
       toast('ERP_URL config.js me daalo', 'err');
     }
