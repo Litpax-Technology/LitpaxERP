@@ -48,7 +48,8 @@
       <span class="range-note" id="range-note">—</span>
     </div>
 
-    <button class="btn-entry" id="btn-entry" style="display:none;" onclick="MPapp.openEntry()">+ Entry</button>
+    <button class="btn-entry" id="btn-bani" style="display:none;" onclick="MPapp.openEntry('Bani')">+ Bani Entry</button>
+    <button class="btn-entry disp" id="btn-disp" style="display:none;" onclick="MPapp.openEntry('Dispatch')">+ Dispatch Entry</button>
     <button class="btn-refresh" onclick="MPapp.load()">↻ Refresh</button>
   </div>
 
@@ -154,14 +155,14 @@
   <!-- Entry modal -->
   <div class="modal-bg" id="entry-modal" style="display:none;" onclick="if(event.target===this)MPapp.closeEntry()">
     <div class="modal">
-      <div class="modal-head"><span>🔋 Daily Entry</span><button class="modal-x" onclick="MPapp.closeEntry()">✕</button></div>
+      <div class="modal-head"><span id="en-title">🔋 Entry</span><button class="modal-x" onclick="MPapp.closeEntry()">✕</button></div>
       <div class="modal-body">
         <div class="f-row">
           <div class="f-col"><label class="ctrl-lbl">Date</label><input type="date" id="en-date" class="date-inp" onchange="MPapp.loadEntryFor()"></div>
           <div class="f-col"><label class="ctrl-lbl">Entered By</label><input type="text" id="en-by" class="txt-inp" placeholder="Naam"></div>
         </div>
         <table class="en-table">
-          <thead><tr><th>Model</th><th class="r">Bani</th><th class="r">Dispatch</th><th></th></tr></thead>
+          <thead><tr><th>Model</th><th class="r" id="en-qty-h">Qty</th><th></th></tr></thead>
           <tbody id="en-tb"></tbody>
         </table>
         <button class="btn-addrow" onclick="MPapp.addEntryRow()">+ Row</button>
