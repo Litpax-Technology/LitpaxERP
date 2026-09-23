@@ -235,8 +235,8 @@ const MPapp = (function () {
 
     // notes / warnings
     const notes = [];
-    if (!d.startDate) notes.push('Abhi koi entry nahi hai — pehli entry se hisaab shuru hoga.');
-    else if (d.startDate > d.from) notes.push(`Hisaab ${fmtD(parseISO(d.startDate))} (pehli entry) se shuru hai — usse pehle ke din count nahi hue.`);
+    if (!d.startDate) notes.push('Abhi koi production entry nahi hai — Floor Balance pehli entry se shuru hoga.');
+    else if (d.startDate > d.from) notes.push(`Floor Balance ${fmtD(parseISO(d.startDate))} (pehli entry) se gina ja raha hai.`);
     (d.warnings || []).forEach(x => notes.push('⚠️ ' + x));
     const w = document.getElementById('cr-warn');
     w.innerHTML = notes.map(esc).join('<br>');
