@@ -8,9 +8,12 @@
 const MPapp = (function () {
 
   let _mode = 'day';           // 'day' | 'week' | 'month'
+  let _view = 'mp';            // 'mp' | 'cell'
+  let _models = [];            // BOM models (cell recon)
+  const GAP_OK_PCT = 5, GAP_WARN_PCT = 15;   // gap % thresholds (card color)
 
   // ── date helpers ──
-  function todayISO() { return new Date().toISOString().slice(0, 10); }
+  function todayISO() { return toISO(new Date()); }
   function toISO(d) {
     return d.getFullYear() + '-' +
       String(d.getMonth() + 1).padStart(2, '0') + '-' +
@@ -71,6 +74,7 @@ const MPapp = (function () {
 
   // ── main load ──
   async function load() {
+    if (_view === 'cell') return loadCell();
     const R = computeRange();
     document.getElementById('range-note').textContent =
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
@@ -169,6 +173,190 @@ const MPapp = (function () {
     ft.innerHTML = `${orders} order · total battery <b>${totalBatt}</b>`;
   }
 
+    // ============================================================
+  // CELL RECONCILIATION
+  // ============================================================
+  function switchView(v) {
+    _view = v;
+    document.getElementById('tab-mp').classList.toggle('active', v === 'mp');
+    document.getElementById('tab-cell').classList.toggle('active', v === 'cell');
+    document.getElementById('view-mp').style.display   = v === 'mp' ? '' : 'none';
+    document.getElementById('view-cell').style.display = v === 'cell' ? '' : 'none';
+    document.getElementById('btn-entry').style.display = v === 'cell' ? '' : 'none';
+    load();
+  }
+
+  function num(n) { return (Number(n) || 0).toLocaleString('en-IN'); }
+
+  async function loadCell() {
+    const R = computeRange();
+    document.getElementById('range-note').textContent =
+      _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
+    ['cr-issued', 'cr-bani', 'cr-consumed', 'cr-gap', 'cr-disp', 'cr-fg']
+      .forEach(id => { document.getElementById(id).textContent = '…'; });
+    document.getElementById('crm-tb').innerHTML = `<tr class="lrow"><td colspan="5"><span class="spin"></span> Loading…</td></tr>`;
+    document.getElementById('crd-tb').innerHTML = `<tr class="lrow"><td colspan="6"><span class="spin"></span> Loading…</td></tr>`;
+    try {
+      const res = await imsApi('getCellRecon', { from: R.fromISO, to: R.toISO });
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      _models = res.models || [];
+      renderCell(res);
+      setDot('ok', 'Connected');
+    } catch (e) {
+      setDot('err', 'Error');
+      toast('Cell data load nahi hua: ' + e.message, 'err');
+      document.getElementById('crm-tb').innerHTML = '';
+      document.getElementById('crd-tb').innerHTML = '';
+    }
+  }
+
+  function renderCell(d) {
+    const t = d.totals || {};
+    const set = (id, v) => { document.getElementById(id).textContent = v; };
+    set('cr-issued', num(t.netIssued));
+    set('cr-issued-sub', `Out ${num(t.issuedOut)} − Wapas ${num(t.returned)}`);
+    set('cr-bani', num(t.bani));
+    set('cr-consumed', num(t.consumed));
+    set('cr-gap', (t.gap > 0 ? '+' : '') + num(t.gap));
+    set('cr-disp', num(t.dispatched));
+    set('cr-fg', num(t.fgPending));
+
+    // gap card color
+    const card = document.getElementById('cr-gap-card');
+    card.classList.remove('ok', 'warn', 'bad');
+    const pct = t.netIssued ? (t.gap / t.netIssued) * 100 : 0;
+    let cls, msg;
+    if (t.gap < 0)                { cls = 'bad';  msg = 'Issued se zyada consume — entry/BOM check karo'; }
+    else if (pct <= GAP_OK_PCT)   { cls = 'ok';   msg = 'Theek hai'; }
+    else if (pct <= GAP_WARN_PCT) { cls = 'warn'; msg = pct.toFixed(1) + '% cells ka hisaab baaki'; }
+    else                          { cls = 'bad';  msg = pct.toFixed(1) + '% cells ka hisaab baaki'; }
+    card.classList.add(cls);
+    set('cr-gap-sub', msg + ' · Floor balance ' + num(t.closingBalance));
+
+    // notes / warnings
+    const notes = [];
+    if (!d.startDate) notes.push('Abhi koi entry nahi hai — pehli entry se hisaab shuru hoga.');
+    else if (d.startDate > d.from) notes.push(`Hisaab ${fmtD(parseISO(d.startDate))} (pehli entry) se shuru hai — usse pehle ke din count nahi hue.`);
+    (d.warnings || []).forEach(x => notes.push('⚠️ ' + x));
+    const w = document.getElementById('cr-warn');
+    w.innerHTML = notes.map(esc).join('<br>');
+    w.style.display = notes.length ? '' : 'none';
+
+    // model-wise
+    const bm = d.byModel || [];
+    document.getElementById('crm-count').textContent = bm.length + ' models';
+    document.getElementById('crm-tb').innerHTML = bm.length ? bm.map(m => `<tr>
+      <td class="td-name">${esc(m.model)}</td>
+      <td class="r">${m.cpb ? m.cpb : '<span class="neg">0 ⚠️</span>'}</td>
+      <td class="r"><span class="qty made">${num(m.bani)}</span></td>
+      <td class="r">${num(m.dispatch)}</td>
+      <td class="r">${num(m.consumed)}</td>
+    </tr>`).join('') : `<tr class="lrow"><td colspan="5">Is range me koi entry nahi</td></tr>`;
+
+    // daily (latest upar)
+    const days = (d.daily || []).slice().reverse();
+    document.getElementById('crd-tb').innerHTML = days.map(x => `<tr>
+      <td>${fmtD(parseISO(x.date))}</td>
+      <td class="r">${num(x.issued)}</td>
+      <td class="r">${num(x.bani)}</td>
+      <td class="r">${num(x.consumed)}</td>
+      <td class="r ${x.gap < 0 ? 'neg' : ''}">${num(x.gap)}</td>
+      <td class="r ${x.balance != null && x.balance < 0 ? 'neg' : ''}">${x.balance == null ? '—' : num(x.balance)}</td>
+    </tr>`).join('');
+  }
+
+  // ── Entry modal ──
+  function openEntry() {
+    document.getElementById('en-date').value = document.getElementById('anchor-date').value || todayISO();
+    try { document.getElementById('en-by').value = localStorage.getItem('mp_enby') || ''; } catch (e) {}
+    document.getElementById('entry-modal').style.display = 'flex';
+    loadEntryFor();
+  }
+  function closeEntry() { document.getElementById('entry-modal').style.display = 'none'; }
+
+  function modelOptions(sel) {
+    return '<option value="">— Model —</option>' + _models.map(m =>
+      `<option value="${esc(m.bomName)}"${m.bomName === sel ? ' selected' : ''}>${esc(m.bomName)}${m.cpb ? ' (' + m.cpb + ' cells)' : ' ⚠️'}</option>`
+    ).join('');
+  }
+
+  function addEntryRow(r) {
+    r = r || {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select class="en-model">${modelOptions(r.model)}</select></td>
+      <td class="r"><input type="number" min="0" class="num-inp en-bani" value="${r.bani != null ? r.bani : ''}"></td>
+      <td class="r"><input type="number" min="0" class="num-inp en-disp" value="${r.dispatch != null ? r.dispatch : ''}"></td>
+      <td><button class="btn-rm" onclick="MPapp.removeEntryRow(this)">✕</button></td>`;
+    document.getElementById('en-tb').appendChild(tr);
+  }
+  function removeEntryRow(btn) { btn.closest('tr').remove(); }
+
+  async function loadEntryFor() {
+    const date = document.getElementById('en-date').value;
+    const tb = document.getElementById('en-tb');
+    const note = document.getElementById('en-note');
+    tb.innerHTML = `<tr class="lrow"><td colspan="4"><span class="spin"></span> Loading…</td></tr>`;
+    note.textContent = '';
+    try {
+      const res = await imsApi('getCellEntry', { date });
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      _models = res.models || _models;
+      tb.innerHTML = '';
+      if (res.entries && res.entries.length) {
+        res.entries.forEach(e => addEntryRow(e));
+        note.textContent = 'Is date ki entry pehle se hai — badal ke Save karoge to poori replace hogi.';
+      } else {
+        addEntryRow();
+      }
+    } catch (e) {
+      tb.innerHTML = '';
+      addEntryRow();
+      toast('Purani entry load nahi hui: ' + e.message, 'err');
+    }
+  }
+
+  async function saveEntry() {
+    const date = document.getElementById('en-date').value;
+    const by = document.getElementById('en-by').value.trim();
+    if (!date) return toast('Date daalo', 'err');
+    if (date > todayISO()) return toast('Future date ki entry nahi', 'err');
+    if (!by) return toast('Entered By daalo', 'err');
+
+    const rows = [], seen = {};
+    let bad = '';
+    document.querySelectorAll('#en-tb tr').forEach(tr => {
+      const sel = tr.querySelector('.en-model');
+      if (!sel || bad) return;
+      const model = sel.value;
+      const q  = tr.querySelector('.en-bani').value;
+      const dq = tr.querySelector('.en-disp').value;
+      if (!model && q === '' && dq === '') return;          // khaali row skip
+      if (!model) { bad = 'Har row me model select karo'; return; }
+      if (seen[model]) { bad = model + ' do baar hai'; return; }
+      if (Number(q) < 0 || Number(dq) < 0) { bad = 'Qty negative nahi ho sakti'; return; }
+      seen[model] = 1;
+      rows.push({ model, bani: Number(q) || 0, dispatch: Number(dq) || 0 });
+    });
+    if (bad) return toast(bad, 'err');
+    if (!rows.length) return toast('Kam se kam ek row bharo', 'err');
+
+    const btn = document.getElementById('en-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await imsApi('saveCellEntry', { date, enteredBy: by, rows });
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      try { localStorage.setItem('mp_enby', by); } catch (e) {}
+      toast(`Saved ✓ ${res.saved} model`, 'ok');
+      closeEntry();
+      load();
+    } catch (e) {
+      toast('Save fail: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  }
+
   // ── mode toggle ──
   function setMode(mode) {
     _mode = mode;
@@ -204,5 +392,5 @@ const MPapp = (function () {
   }
 
   window.addEventListener('load', init);
-  return { load, setMode };
+  return { load, setMode, switchView, openEntry, closeEntry, loadEntryFor, addEntryRow, removeEntryRow, saveEntry };
 })();
