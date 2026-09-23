@@ -22,6 +22,12 @@
     </div>
   </header>
 
+  <!-- Tabs -->
+  <nav class="tabs">
+    <button class="tab active" id="tab-mp"   onclick="MPapp.switchView('mp')">📦 Material vs Production</button>
+    <button class="tab"        id="tab-cell" onclick="MPapp.switchView('cell')">🔋 Cell Reconciliation</button>
+  </nav>
+
   <!-- Controls -->
   <div class="controls">
     <div class="ctrl-group">
@@ -42,9 +48,11 @@
       <span class="range-note" id="range-note">—</span>
     </div>
 
+    <button class="btn-entry" id="btn-entry" style="display:none;" onclick="MPapp.openEntry()">+ Entry</button>
     <button class="btn-refresh" onclick="MPapp.load()">↻ Refresh</button>
   </div>
 
+  <div id="view-mp">
   <!-- Two panels -->
   <div class="grid">
 
@@ -97,6 +105,76 @@
   <div class="hint">
     ℹ️ Ye sirf <b>raw activity</b> hai — jo material nikla wo, jo battery bani wo. Material aksar aage
     ke dino ki production ke liye bhi nikalta hai, isliye dono ka seedha ghata nikalna theek nahi.
+  </div>
+  </div><!-- /view-mp -->
+
+  <!-- ===== CELL RECONCILIATION ===== -->
+  <div id="view-cell" style="display:none;">
+    <div class="cr-warn" id="cr-warn" style="display:none;"></div>
+
+    <div class="cr-cards">
+      <div class="cr-card"><div class="cr-lbl">Cells Issued (net)</div><div class="cr-val" id="cr-issued">—</div><div class="cr-sub" id="cr-issued-sub"></div></div>
+      <div class="cr-card"><div class="cr-lbl">Batteries Bani</div><div class="cr-val" id="cr-bani">—</div></div>
+      <div class="cr-card"><div class="cr-lbl">Cells Consumed</div><div class="cr-val" id="cr-consumed">—</div><div class="cr-sub">Bani × Cells/Battery</div></div>
+      <div class="cr-card gap" id="cr-gap-card"><div class="cr-lbl">Gap (Issued − Consumed)</div><div class="cr-val" id="cr-gap">—</div><div class="cr-sub" id="cr-gap-sub"></div></div>
+      <div class="cr-card"><div class="cr-lbl">Dispatched</div><div class="cr-val" id="cr-disp">—</div></div>
+      <div class="cr-card"><div class="cr-lbl">FG Pending</div><div class="cr-val" id="cr-fg">—</div><div class="cr-sub">Bani − Dispatch (shuru se)</div></div>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head made">
+          <div class="ph-title">🔋 Model-wise <span class="ph-src">Manual Entry</span></div>
+          <div class="ph-count" id="crm-count">—</div>
+        </div>
+        <div class="panel-body">
+          <table>
+            <thead><tr><th>Model</th><th class="r">Cells/Batt</th><th class="r">Bani</th><th class="r">Dispatch</th><th class="r">Cells Consumed</th></tr></thead>
+            <tbody id="crm-tb"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head out">
+          <div class="ph-title">📅 Daily Trend <span class="ph-src">IMS + Entry</span></div>
+        </div>
+        <div class="panel-body">
+          <table>
+            <thead><tr><th>Date</th><th class="r">Issued</th><th class="r">Bani</th><th class="r">Consumed</th><th class="r">Gap</th><th class="r">Floor Bal.</th></tr></thead>
+            <tbody id="crd-tb"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="hint">
+      ℹ️ Cells aksar production se pehle issue hote hain, isliye ek din ka gap upar-neeche hoga.
+      Asli signal <b>Floor Balance</b> ka trend hai — agar ye lagatar badh raha hai to cells kahin ruk rahe hain.
+    </div>
+  </div><!-- /view-cell -->
+
+  <!-- Entry modal -->
+  <div class="modal-bg" id="entry-modal" style="display:none;" onclick="if(event.target===this)MPapp.closeEntry()">
+    <div class="modal">
+      <div class="modal-head"><span>🔋 Daily Entry</span><button class="modal-x" onclick="MPapp.closeEntry()">✕</button></div>
+      <div class="modal-body">
+        <div class="f-row">
+          <div class="f-col"><label class="ctrl-lbl">Date</label><input type="date" id="en-date" class="date-inp" onchange="MPapp.loadEntryFor()"></div>
+          <div class="f-col"><label class="ctrl-lbl">Entered By</label><input type="text" id="en-by" class="txt-inp" placeholder="Naam"></div>
+        </div>
+        <table class="en-table">
+          <thead><tr><th>Model</th><th class="r">Bani</th><th class="r">Dispatch</th><th></th></tr></thead>
+          <tbody id="en-tb"></tbody>
+        </table>
+        <button class="btn-addrow" onclick="MPapp.addEntryRow()">+ Row</button>
+        <div class="en-note" id="en-note"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="MPapp.closeEntry()">Cancel</button>
+        <button class="btn-save" id="en-save" onclick="MPapp.saveEntry()">Save</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
