@@ -12,6 +12,7 @@ const MPapp = (function () {
   let _models = [];            // BOM models (cell recon)
   let _entryType = 'Bani';     // 'Bani' | 'Dispatch'
   let _hadEntries = false;
+  let _fgRows = [];            // FG stock model-wise (last load)
   // Link se role: ?type=bani → sirf Bani, ?type=dispatch → sirf Dispatch, bina type → dono
   const LINK_TYPE = ({ bani: 'Bani', dispatch: 'Dispatch' })[
     (new URLSearchParams(location.search).get('type') || '').toLowerCase()] || '';
@@ -191,6 +192,7 @@ const MPapp = (function () {
     const allowDisp = !LINK_TYPE || LINK_TYPE === 'Dispatch';
     document.getElementById('btn-bani').style.display = (v === 'cell' && allowBani) ? '' : 'none';
     document.getElementById('btn-disp').style.display = (v === 'cell' && allowDisp) ? '' : 'none';
+    document.getElementById('btn-open').style.display = (v === 'cell' && !LINK_TYPE) ? '' : 'none';
     load();
   }
 
@@ -241,10 +243,22 @@ const MPapp = (function () {
     card.classList.add(cls);
     set('cr-gap-sub', msg + ' · Floor balance ' + num(t.closingBalance));
 
+    // opening line
+    const ol = document.getElementById('cr-open');
+    if (d.opening && d.opening.startDate) {
+      ol.innerHTML = `Hisaab <b>${fmtD(parseISO(d.opening.startDate))}</b> se · Opening: Floor <b>${num(d.opening.floorCells)}</b> cells · FG <b>${num(d.opening.fgTotal)}</b> batteries`;
+      ol.style.display = '';
+    } else {
+      ol.style.display = 'none';
+    }
+
     // notes / warnings
     const notes = [];
-    if (!d.startDate) notes.push('Abhi koi production entry nahi hai — Floor Balance pehli entry se shuru hoga.');
-    else if (d.startDate > d.from) notes.push(`Floor Balance ${fmtD(parseISO(d.startDate))} (pehli entry) se gina ja raha hai.`);
+    if (!(d.opening && d.opening.startDate)) {
+      if (!d.startDate) notes.push('Opening set nahi hai aur koi entry bhi nahi — ⚙️ Opening se start date set karo.');
+      else notes.push(`Opening set nahi hai — Floor Balance aur FG ${fmtD(parseISO(d.startDate))} (pehli entry) se 0 maan ke gine ja rahe hain.`);
+    }
+    if (d.startDate && d.startDate > d.from) notes.push(`${fmtD(parseISO(d.startDate))} se pehle ke din balance me nahi gine gaye.`);
     (d.warnings || []).forEach(x => notes.push('⚠️ ' + x));
     const w = document.getElementById('cr-warn');
     w.innerHTML = notes.map(esc).join('<br>');
@@ -271,6 +285,43 @@ const MPapp = (function () {
       <td class="r ${x.gap < 0 ? 'neg' : ''}">${num(x.gap)}</td>
       <td class="r ${x.balance != null && x.balance < 0 ? 'neg' : ''}">${x.balance == null ? '—' : num(x.balance)}</td>
     </tr>`).join('');
+
+    // FG stock
+    _fgRows = d.fgStock || [];
+    document.getElementById('fg-asof').textContent = fmtD(parseISO(d.to)) + ' tak';
+    fillFGFilter();
+    renderFG();
+  }
+
+  function fillFGFilter() {
+    const sel = document.getElementById('fg-model');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Sabhi Models</option>' +
+      _fgRows.map(r => `<option value="${esc(r.model)}">${esc(r.model)}</option>`).join('');
+    if (_fgRows.some(r => r.model === cur)) sel.value = cur;
+  }
+
+  function renderFG() {
+    const m = document.getElementById('fg-model').value;
+    const showZero = document.getElementById('fg-zero').checked;
+    const rows = _fgRows.filter(r => (!m || r.model === m) && (showZero || r.stock !== 0));
+    const tb = document.getElementById('fg-tb');
+    const ft = document.getElementById('fg-foot');
+    if (!rows.length) {
+      tb.innerHTML = `<tr class="lrow"><td colspan="5">Koi FG stock nahi</td></tr>`;
+      ft.textContent = '';
+      return;
+    }
+    const tot = rows.reduce((s, r) => s + r.stock, 0);
+    tb.innerHTML = rows.map(r => `<tr>
+      <td class="td-name">${esc(r.model)}</td>
+      <td class="r">${num(r.opening)}</td>
+      <td class="r">${num(r.bani)}</td>
+      <td class="r">${num(r.dispatch)}</td>
+      <td class="r"><span class="qty ${r.stock < 0 ? 'neg' : 'made'}">${num(r.stock)}</span></td>
+    </tr>`).join('') +
+      `<tr class="fg-total"><td>Total</td><td></td><td></td><td></td><td class="r"><span class="qty">${num(tot)}</span></td></tr>`;
+    ft.innerHTML = `${rows.length} model · FG stock <b>${num(tot)}</b>`;
   }
 
   // ── Entry modal ──
@@ -374,6 +425,91 @@ const MPapp = (function () {
     }
   }
 
+    // ── Opening modal ──
+  async function openOpening() {
+    if (LINK_TYPE) return;
+    document.getElementById('open-modal').style.display = 'flex';
+    const tb = document.getElementById('op-tb');
+    const hintEl = document.getElementById('op-hint');
+    tb.innerHTML = `<tr class="lrow"><td colspan="3"><span class="spin"></span> Loading…</td></tr>`;
+    hintEl.textContent = '';
+    try { document.getElementById('op-by').value = localStorage.getItem('mp_opby') || ''; } catch (e) {}
+    try {
+      const res = await imsApi('getCellOpening', {});
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      _models = res.models || _models;
+      document.getElementById('op-date').value = res.startDate || res.suggestedDate || todayISO();
+      document.getElementById('op-floor').value = res.startDate ? res.floorCells : 0;
+      const hint = [];
+      if (res.suggestedDate) hint.push(`IMS me cells ka opening ${fmtD(parseISO(res.suggestedDate))} ko liya gaya tha.`);
+      if (res.startDate) hint.push(`Abhi set: ${fmtD(parseISO(res.startDate))}${res.updatedBy ? ' (' + res.updatedBy + ')' : ''}`);
+      hintEl.textContent = hint.join(' · ');
+      tb.innerHTML = '';
+      const fg = res.fg || {};
+      const keys = Object.keys(fg);
+      if (keys.length) keys.forEach(k => addOpeningRow({ model: k, qty: fg[k] }));
+      else addOpeningRow();
+    } catch (e) {
+      tb.innerHTML = '';
+      addOpeningRow();
+      toast('Opening load nahi hua: ' + e.message, 'err');
+    }
+  }
+  function closeOpening() { document.getElementById('open-modal').style.display = 'none'; }
+
+  function addOpeningRow(r) {
+    r = r || {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select class="en-model">${modelOptions(r.model)}</select></td>
+      <td class="r"><input type="number" min="0" class="num-inp op-qty" value="${r.qty != null ? r.qty : ''}"></td>
+      <td><button class="btn-rm" onclick="MPapp.removeEntryRow(this)">✕</button></td>`;
+    document.getElementById('op-tb').appendChild(tr);
+  }
+
+  async function saveOpening() {
+    const startDate = document.getElementById('op-date').value;
+    const floorVal = document.getElementById('op-floor').value;
+    const by = document.getElementById('op-by').value.trim();
+    if (!startDate) return toast('Start date daalo', 'err');
+    if (startDate > todayISO()) return toast('Start date future ki nahi ho sakti', 'err');
+    if (Number(floorVal) < 0) return toast('Floor cells negative nahi ho sakte', 'err');
+    if (!by) return toast('Updated By daalo', 'err');
+
+    const fg = [], seen = {};
+    let bad = '';
+    document.querySelectorAll('#op-tb tr').forEach(tr => {
+      const sel = tr.querySelector('.en-model');
+      if (!sel || bad) return;
+      const model = sel.value;
+      const q = tr.querySelector('.op-qty').value;
+      if (!model && q === '') return;
+      if (!model) { bad = 'Har row me model select karo'; return; }
+      if (q === '') { bad = model + ' ki qty daalo'; return; }
+      if (Number(q) < 0) { bad = 'Qty negative nahi ho sakti'; return; }
+      if (seen[model]) { bad = model + ' do baar hai'; return; }
+      seen[model] = 1;
+      if (Number(q) > 0) fg.push({ model, qty: Number(q) });
+    });
+    if (bad) return toast(bad, 'err');
+    if (!confirm('Opening save karne se Floor Balance aur FG ka poora hisaab is date se dobara banega. Save karein?')) return;
+
+    const btn = document.getElementById('op-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await imsApi('saveCellOpening', { startDate, floorCells: Number(floorVal) || 0, updatedBy: by, fg });
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      try { localStorage.setItem('mp_opby', by); } catch (e) {}
+      toast(`Opening saved ✓ (${res.fgModels} FG models)`, 'ok');
+      closeOpening();
+      load();
+    } catch (e) {
+      toast('Save fail: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  }
+
   // ── mode toggle ──
   function setMode(mode) {
     _mode = mode;
@@ -414,5 +550,6 @@ const MPapp = (function () {
   }
 
   window.addEventListener('load', init);
-  return { load, setMode, switchView, openEntry, closeEntry, loadEntryFor, addEntryRow, removeEntryRow, saveEntry };
+  return { load, setMode, switchView, openEntry, closeEntry, loadEntryFor, addEntryRow, removeEntryRow, saveEntry,
+           openOpening, closeOpening, addOpeningRow, saveOpening, renderFG };
 })();
