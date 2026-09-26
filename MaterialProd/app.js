@@ -12,6 +12,8 @@ const MPapp = (function () {
   let _models = [];            // BOM models (cell recon)
   let _entryType = 'Bani';     // 'Bani' | 'Dispatch'
   let _hadEntries = false;
+  let _loadedFor = '';         // form me kis date|type ki entry load hui
+  let _entryReq = 0;           // race guard
   let _fgRows = [];            // FG stock model-wise (last load)
   // Link se role: ?type=bani → sirf Bani, ?type=dispatch → sirf Dispatch, bina type → dono
   const LINK_TYPE = ({ bani: 'Bani', dispatch: 'Dispatch' })[
@@ -362,9 +364,13 @@ const MPapp = (function () {
     tb.innerHTML = `<tr class="lrow"><td colspan="3"><span class="spin"></span> Loading…</td></tr>`;
     note.textContent = '';
     _hadEntries = false;
+    _loadedFor = '';
+    const reqId = ++_entryReq;
     try {
       const res = await imsApi('getCellEntry', { date, type: _entryType });
+      if (reqId !== _entryReq) return;                 // purana response, ignore
       if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      _loadedFor = date + '|' + _entryType;
       _models = res.models || _models;
       tb.innerHTML = '';
       if (res.entries && res.entries.length) {
@@ -375,6 +381,7 @@ const MPapp = (function () {
         addEntryRow();
       }
     } catch (e) {
+      if (reqId !== _entryReq) return;
       tb.innerHTML = '';
       addEntryRow();
       toast('Purani entry load nahi hui: ' + e.message, 'err');
@@ -404,6 +411,23 @@ const MPapp = (function () {
       if (Number(q) > 0) rows.push({ model, qty: Number(q) });
     });
     if (bad) return toast(bad, 'err');
+
+    // form me purani entry load nahi hui thi → server se check karke merge
+    if (_loadedFor !== date + '|' + _entryType) {
+      try {
+        const chk = await imsApi('getCellEntry', { date, type: _entryType });
+        if (!chk || chk.error) throw new Error(chk && chk.error ? chk.error : 'IMS error');
+        const missing = (chk.entries || []).filter(e => !seen[e.model]);
+        if (missing.length) {
+          const list = missing.map(e => e.model + ' (' + e.qty + ')').join(', ');
+          if (!confirm(`${date} ki ${_entryType} me pehle se ye model saved hain jo form me nahi hain:\n${list}\n\nOK = inhe bhi rakho (merge)\nCancel = save mat karo`)) return;
+          missing.forEach(e => rows.push({ model: e.model, qty: Number(e.qty) || 0 }));
+        }
+      } catch (e) {
+        return toast('Purani entry check nahi hui, save roka: ' + e.message, 'err');
+      }
+    }
+
     if (!rows.length) {
       if (!_hadEntries) return toast('Kam se kam ek row bharo', 'err');
       if (!confirm(`${date} ki saari ${_entryType} entry hata dein?`)) return;
