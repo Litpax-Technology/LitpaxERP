@@ -360,11 +360,11 @@ function openModal(id) {
   document.getElementById(id).classList.add('show');
   if (id === 'orderModal') {
     if (!custCache.length) loadCustCache();
-    const body = document.getElementById('itemsBody');
-    if (body && body.children.length === 0) {
-      itemRowCount = 0;
-      addItemRow();
-    }
+    loadMasterModels(() => {
+      const body = document.getElementById('itemsBody');
+      if (body && body.children.length === 0) { itemRowCount = 0; addItemRow(); }
+      else refreshModelPickers();
+    });
   }
 }
 function closeModal(id) {
@@ -626,6 +626,80 @@ function viewOrder(o) {
   });
 }
 
+// ========== MASTER MODELS (Common Sheet) ==========
+let masterModels = [];
+
+function loadMasterModels(cb) {
+  if (masterModels.length) { if (cb) cb(); return; }
+  api({ action: 'getMasterModels' }, r => {
+    masterModels = (r.success && r.data) ? r.data : [];
+    if (!r.success) toast('Master models load nahi hue — sirf Other chalega', 'w');
+    if (cb) cb();
+  });
+}
+
+function catToBtype(cat) {
+  const c = String(cat || '').toLowerCase();
+  if (c.includes('cycle'))                        return 'E-Cycle Battery';
+  if (c.includes('rick') || c.includes('riksh'))  return 'E-Rikshaw Battery';
+  if (c.includes('solar'))                        return 'Solar Battery';
+  if (c.includes('invert'))                       return 'Inverter Battery';
+  if (c.startsWith('3') || c.includes('three'))   return '3 Wheeler Battery';
+  if (c.startsWith('2') || c.includes('two'))     return '2 Wheeler Battery';
+  return '';
+}
+
+function modelPickerOptions() {
+  const groups = {};
+  masterModels.forEach(m => { const g = m.category || 'Other'; (groups[g] = groups[g] || []).push(m); });
+  return '<option value="">Select model</option>' +
+    Object.keys(groups).map(g => `<optgroup label="${g}">` +
+      groups[g].map(m => `<option value="${m.code}">${m.code}${m.chemistry ? ' · ' + m.chemistry : ''}</option>`).join('') +
+    '</optgroup>').join('') +
+    '<option value="__other__">➕ Other (Master mein nahi)</option>';
+}
+
+function modelPickerHTML(prefix, id) {
+  return `<select class="form-control" id="${prefix}-msel-${id}" onchange="onModelPick('${prefix}','${id}')" style="font-size:13px;">${modelPickerOptions()}</select>`;
+}
+
+function refreshModelPickers() {
+  document.querySelectorAll('select[id*="-msel-"]').forEach(sel => {
+    if (!sel.value) sel.innerHTML = modelPickerOptions();
+  });
+}
+
+function onModelPick(prefix, id) {
+  const sel     = document.getElementById(`${prefix}-msel-${id}`);
+  const voltEl  = document.getElementById(`${prefix}-volt-${id}`);
+  const ampEl   = document.getElementById(`${prefix}-amp-${id}`);
+  const btEl    = document.getElementById(`${prefix}-btype-${id}`);
+  const modelEl = document.getElementById(`${prefix}-model-${id}`);
+  if (!sel || !modelEl) return;
+  const val = sel.value;
+  const isOther = val === '__other__';
+  const m = masterModels.find(x => x.code === val);
+
+  [voltEl, ampEl].forEach(el => {
+    if (!el) return;
+    el.readOnly = !isOther;
+    el.style.background = isOther ? '' : 'var(--surface2)';
+    if (!m) el.value = '';
+  });
+  modelEl.value = '';
+  modelEl.dataset.source = isOther ? 'Other' : (m ? 'Master' : '');
+  if (btEl) btEl.disabled = false;
+
+  if (m) {
+    voltEl.value  = m.voltage;
+    ampEl.value   = m.capacity;
+    modelEl.value = m.code;
+    const bt = catToBtype(m.category);
+    if (bt && btEl) { btEl.value = bt; btEl.disabled = true; }   // Master → lock
+  }
+  if (prefix === 'im') calcItemAuto(id); else calcEditItemAuto(id);
+}
+
 // ========== ORDER ITEMS LOGIC ==========
 let itemRowCount = 1;
 
@@ -793,7 +867,7 @@ function saveAndAddMore() {
   const id   = card.id.replace('item-row-', '');
 
   const model = document.getElementById(`im-model-${id}`)?.value?.trim();
-  if (!model) { toast('Product Model bharo pehle (Voltage + Ampere bharo)', 'e'); return; }
+  if (!model) { toast('Model select karo (Other ho to Voltage + Ampere bharo)', 'e'); return; }
 
   const btype = document.getElementById(`im-btype-${id}`)?.value || '';
   if (!btype) { toast('Battery Type select karo', 'e'); return; }
@@ -823,7 +897,8 @@ function saveAndAddMore() {
     'Ampere':        amp || '',
     'Per Watt Price': perWatt ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : '',
     'Price Type':    pt,
-    'Warranty':      document.getElementById(`im-warranty-${id}`)?.value || ''
+    'Warranty':      document.getElementById(`im-warranty-${id}`)?.value || '',
+    'Model Source':  document.getElementById(`im-model-${id}`)?.dataset.source || ''
   };
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -935,7 +1010,7 @@ function addItemRow() {
   div.id = `item-row-${id}`;
   div.style.cssText = 'background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px 14px 14px;position:relative;transition:border-color 0.15s;overflow:hidden;';
 
-  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','E-Cycle Battery']
     .map(o => `<option>${o}</option>`).join('');
 
   const lbl = (t, req) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}${req ? ' <span class="req-mark">*</span>' : ''}</label>`;
@@ -945,7 +1020,7 @@ function addItemRow() {
       <span style="font-size:11px;font-weight:600;color:var(--accent);">New Item</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>${lbl('Product Model')}<input class="form-control" id="im-model-${id}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Product Model', true)}${modelPickerHTML('im', id)}<input type="hidden" id="im-model-${id}"></div>
       <div>${lbl('Battery Type', true)}<select class="form-control" id="im-btype-${id}" style="font-size:13px;" onchange="autoGST(${id})"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -957,10 +1032,10 @@ function addItemRow() {
           <option>Last Price</option>
         </select>
       </div>
-      <div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+      <div>${lbl('Voltage (V)')}<input class="form-control" id="im-volt-${id}" type="number" placeholder="48" oninput="calcItemAuto(${id})" readonly style="font-size:13px;background:var(--surface2);"></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px;">
-      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
+      <div>${lbl('Ampere (Ah)')}<input class="form-control" id="im-amp-${id}" type="number" placeholder="20" oninput="calcItemAuto(${id})" readonly style="font-size:13px;background:var(--surface2);"></div>
       <div>${lbl('Qty', true)}<input class="form-control" id="im-qty-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;"></div>
       <div id="im-pricefield-${id}">
         ${lbl('Rate/Unit (₹)', true)}<input class="form-control" id="im-price-${id}" type="number" placeholder="0" oninput="calcItemAuto(${id})" style="font-size:13px;">
@@ -1087,7 +1162,7 @@ function calcItemAuto(id) {
   const qty  = parseFloat(document.getElementById(`im-qty-${id}`)?.value) || 0;
 
   const modelEl = document.getElementById(`im-model-${id}`);
-  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+  if (modelEl && modelEl.dataset.source === 'Other') modelEl.value = (volt && amp) ? `${volt}V-${amp}AH` : '';
 
   let total = 0;
   if (pt === 'Per Watt') {
@@ -1109,7 +1184,7 @@ function calcVAItem(id) {
   const volt = parseFloat(document.getElementById(`im-volt-${id}`)?.value) || 0;
   const amp  = parseFloat(document.getElementById(`im-amp-${id}`)?.value) || 0;
   const modelEl = document.getElementById(`im-model-${id}`);
-  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+  if (modelEl && modelEl.dataset.source === 'Other') modelEl.value = (volt && amp) ? `${volt}V-${amp}AH` : '';
   calcAbsoluteItem(id);
   updateOrderTotals();
 }
@@ -1161,7 +1236,8 @@ function getItemRows() {
         'Remarks': document.getElementById(`im-remarks-${id}`)?.value || '',
         'Voltage': volt || '',
         'Ampere': amp || '',
-        'Per Watt Price': pt === 'Per Watt' ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : ''
+        'Per Watt Price': pt === 'Per Watt' ? (document.getElementById(`im-perwatt-${id}`)?.value || '') : '',
+        'Model Source': document.getElementById(`im-model-${id}`)?.dataset.source || ''
       });
     }
   });
@@ -1251,7 +1327,8 @@ function submitOrder() {
           'Voltage': volt || '',
           'Ampere': amp || '',
           'Price Type': pt,
-          'Warranty': document.getElementById(`im-warranty-${id}`)?.value || ''
+          'Warranty': document.getElementById(`im-warranty-${id}`)?.value || '',
+          'Model Source': document.getElementById(`im-model-${id}`)?.dataset.source || ''
         };
         api({ action: 'addOrderItem', 'Order ID': currentOrderID, ...itemData }, () => {
           finishOrder();
@@ -3956,7 +4033,7 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
   const id     = 'e' + editItemRowCount;
   const crmVal = crm || document.getElementById('e-crm').value || '';
 
-  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery']
+  const btypeOptions = ['2 Wheeler Battery','3 Wheeler Battery','Inverter Battery','Solar Battery','E-Rikshaw Battery','E-Cycle Battery']
     .map(o => `<option ${btype===o?'selected':''}>${o}</option>`).join('');
 
   const lbl = (t, req) => `<label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">${t}${req ? ' <span class="req-mark">*</span>' : ''}</label>`;
@@ -3973,7 +4050,9 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
       <button class="btn btn-sm btn-danger" onclick="removeEditItemRow('${id}')">✕ Remove</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>${lbl('Product Model')}<input class="form-control" id="eim-model-${id}" value="${model}" readonly placeholder="Auto: 48V 20Ah" style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;"></div>
+      <div>${lbl('Product Model')}${isExisting
+        ? `<input class="form-control" id="eim-model-${id}" value="${model}" readonly style="background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:13px;">`
+        : `${modelPickerHTML('eim', id)}<input type="hidden" id="eim-model-${id}">`}</div>
       <div>${lbl('Battery Type', true)}<select class="form-control" id="eim-btype-${id}" style="font-size:13px;"><option value="">Select type</option>${btypeOptions}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -4006,7 +4085,14 @@ function addEditItemRow(model='', btype='', qty='', price='', total='', crm='', 
 
   document.getElementById('editItemsBody').appendChild(div);
 
-  // Agar priceType set hai to show/hide fields
+  // Master model = lock | purana model (48V 20Ah) = pehle jaisa | naya row = picker se
+  const eModelEl = document.getElementById(`eim-model-${id}`);
+  const eVoltEl  = document.getElementById(`eim-volt-${id}`);
+  const eAmpEl   = document.getElementById(`eim-amp-${id}`);
+  const inMaster = isExisting && masterModels.some(x => x.code.toLowerCase() === String(model).trim().toLowerCase());
+  eModelEl.dataset.source = isExisting ? (inMaster ? 'Master' : 'Legacy') : '';
+  if (!isExisting || inMaster) [eVoltEl, eAmpEl].forEach(el => { el.readOnly = true; el.style.background = 'var(--surface2)'; });
+
   // Agar priceType set hai to show/hide fields
   if (priceType === 'Per Watt') {
     document.getElementById(`eim-pwfield-${id}`).style.display = 'block';
@@ -4055,7 +4141,11 @@ function calcEditItemAuto(id) {
   const qty  = parseFloat(document.getElementById(`eim-qty-${id}`)?.value) || 0;
 
   const modelEl = document.getElementById(`eim-model-${id}`);
-  if (modelEl && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;
+  if (modelEl) {
+    const src = modelEl.dataset.source;
+    if (src === 'Other') modelEl.value = (volt && amp) ? `${volt}V-${amp}AH` : '';
+    else if (src === 'Legacy' && volt && amp) modelEl.value = `${volt}V ${amp}Ah`;   // purane items pehle jaisa
+  }
 
   let total = 0;
   if (pt === 'Per Watt') {
@@ -4239,7 +4329,7 @@ function openEditOrder() {
   loadEditChargers(o['Order ID']);
   editItemRowCount = 0;
   document.getElementById('editItemsBody').innerHTML = '';
-  api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
+  loadMasterModels(() => api({ action: 'getItemsByOrder', 'Order ID': o['Order ID'] }, r => {
     if (r.success && r.data.length) {
       r.data.forEach(item => {
         addEditItemRow(
@@ -4261,7 +4351,7 @@ function openEditOrder() {
       });
     }
     addEditItemRow('','','','','','','', false, '');
-  });
+  }));
 }
 
 function submitEditOrder() {
@@ -4337,7 +4427,8 @@ function submitEditOrder() {
         'Voltage': eVolt || '',
         'Ampere': eAmp || '',
         'Price Type': ePT,
-        'Warranty': document.getElementById(`eim-warranty-${id}`)?.value || ''
+        'Warranty': document.getElementById(`eim-warranty-${id}`)?.value || '',
+        'Model Source': document.getElementById(`eim-model-${id}`)?.dataset.source || ''
       };
       if (row.dataset.existing === 'true' && row.dataset.itemid) updateTasks.push({ ...itemData, 'Item ID': row.dataset.itemid, 'Order ID': orderID });
       else addTasks.push({ ...itemData, 'Order ID': orderID });
