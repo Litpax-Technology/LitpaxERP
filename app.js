@@ -2010,7 +2010,7 @@ function renderPlannedPicker() {
       <td>${parseFloat(p['Qty'])||0}</td>
       <td style="color:var(--success);font-weight:600;">${parseFloat(p['Produced Qty'])||0}</td>
       <td style="color:var(--warning);font-weight:600;">${pend}</td>
-      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="0" oninput="setPlannedQty('${iid}',this.value)" style="font-size:12px;padding:5px 8px;" ${checked?'':'disabled'}></td>
+      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="0" oninput="setPlannedQty('${iid}',this.value,this)" style="font-size:12px;padding:5px 8px;${(parseFloat(val)||0) > pend ? 'border-color:var(--error);background:var(--error-dim);' : ''}" ${checked?'':'disabled'}></td>
     </tr>`;
   }).join('');
   updatePlannedSummary();
@@ -2030,9 +2030,16 @@ function togglePlannedItem(iid, el) {
   updatePlannedSummary();
 }
 
-function setPlannedQty(iid, val) {
+function setPlannedQty(iid, val, el) {
   if (plannedSel[iid] === undefined) return;
   plannedSel[iid] = val;
+  if (el) {
+    const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
+    const over = p && (parseFloat(val) || 0) > plannedPending(p);
+    el.style.borderColor = over ? 'var(--error)' : '';
+    el.style.background  = over ? 'var(--error-dim)' : '';
+    el.title = over ? 'Pending (' + plannedPending(p) + ') se zyada' : '';
+  }
   updatePlannedSummary();
 }
 
@@ -2120,20 +2127,33 @@ function renderMaterialCheck(d) {
   const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]));
   const comps  = d.components || [];
   const models = d.models || [];
-  _mcAnyShort = comps.some(c => c.short > 0);
+  comps.forEach(c => { c.storeShort = Math.max(0, (c.required || 0) - (c.store || 0)); });
+  const anyTotalShort = comps.some(c => c.short > 0);
+  const anyStoreShort = comps.some(c => c.storeShort > 0);
+  _mcAnyShort = anyTotalShort || anyStoreShort;
 
   const rows = comps.map(c => {
-    const bk = (c.short > 0 && c.backups && c.backups.length)
+    const bk = (c.storeShort > 0 && c.backups && c.backups.length)
       ? `<div style="font-size:10.5px;color:var(--text2);margin-top:3px;">↳ Backup: ${c.backups.map(b => `${esc(b.component)} — Store ${fmt(b.store)} / WIP ${fmt(b.wip)}`).join(' · ')}</div>`
       : '';
     const miss = c.inItems ? '' : '<div style="font-size:10.5px;color:var(--error);">IMS Items mein ye naam nahi mila</div>';
+    let shortCell;
+    if (c.short > 0) {
+      shortCell = `<span style="color:var(--error);">⛔ ${fmt(c.storeShort)}</span>
+        <div style="font-size:10px;color:var(--error);font-weight:500;">WIP ke baad bhi ${fmt(c.short)} kam</div>`;
+    } else if (c.storeShort > 0) {
+      shortCell = `<span style="color:var(--warning);">⚠ ${fmt(c.storeShort)}</span>
+        <div style="font-size:10px;color:var(--text3);font-weight:500;">Store se zyada — WIP se cover</div>`;
+    } else {
+      shortCell = `<span style="color:var(--success);">✓</span>`;
+    }
     return `<tr>
       <td><div style="font-weight:600;">${esc(c.component)}</div>
           <div style="font-size:10.5px;color:var(--text3);">${esc(c.models.join(', '))}</div>${miss}${bk}</td>
       <td style="text-align:right;font-weight:600;">${fmt(c.required)}</td>
       <td style="text-align:right;">${fmt(c.store)}</td>
       <td style="text-align:right;">${fmt(c.wip)}</td>
-      <td style="text-align:right;font-weight:700;color:${c.short > 0 ? 'var(--error)' : 'var(--success)'};">${c.short > 0 ? fmt(c.short) : '✓'}</td>
+      <td style="text-align:right;font-weight:700;">${shortCell}</td>
     </tr>`;
   }).join('');
 
@@ -2142,30 +2162,44 @@ function renderMaterialCheck(d) {
     .map(m => `<div>• <b>${esc(m.model)}</b> — ${m.status === 'noBom' ? 'Master BOM nahi bhara' : 'Master mein nahi, check nahi hua'}</div>`)
     .join('');
 
+  const badge = anyTotalShort ? ['b-delay', '⛔ Stock kam hai']
+              : anyStoreShort ? ['b-pending', '⚠ Store stock se zyada']
+              : ['b-ready', '✓ Stock theek hai'];
+
   box.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <div style="font-size:12px;font-weight:700;color:var(--text);">📦 Material Check (IMS)</div>
-      <span class="badge ${_mcAnyShort ? 'b-delay' : 'b-ready'}">${_mcAnyShort ? '⚠ Stock kam hai' : '✓ Stock theek hai'}</span>
+      <span class="badge ${badge[0]}">${badge[1]}</span>
     </div>
     ${rows ? `<div class="table-wrap" style="border:1px solid var(--border);border-radius:10px;">
-      <table><thead><tr><th>Component</th><th style="text-align:right;">Required</th><th style="text-align:right;">Store</th><th style="text-align:right;">WIP</th><th style="text-align:right;">Short</th></tr></thead>
+      <table><thead><tr><th>Component</th><th style="text-align:right;">Required</th><th style="text-align:right;">Store</th><th style="text-align:right;">WIP</th><th style="text-align:right;">Short (Store)</th></tr></thead>
       <tbody>${rows}</tbody></table></div>` : ''}
     ${notes ? `<div style="margin-top:8px;font-size:11.5px;color:var(--warning);line-height:1.6;">${notes}</div>` : ''}`;
 
-  applyMcBadges(models);
+  applyMcBadges(models, comps);
 }
 
-function applyMcBadges(models) {
-  const st = {};
-  (models || []).forEach(m => { st[String(m.model).trim().toLowerCase()] = m.status; });
+function mcKey(s) { return String(s || '').trim().replace(/\s+/g, '-').toLowerCase(); }   // "60V 32Ah" = "60V-32AH"
+
+function applyMcBadges(models, comps) {
+  const lvl = {};
+  (models || []).forEach(m => {
+    lvl[mcKey(m.model)] = m.status === 'short' ? 'short' : m.status === 'ok' ? 'ok' : '';
+  });
+  (comps || []).forEach(c => {
+    const storeShort = Math.max(0, (c.required || 0) - (c.store || 0));
+    if (storeShort > 0 && !(c.short > 0)) {
+      (c.models || []).forEach(mc => { const k = mcKey(mc); if (lvl[k] === 'ok') lvl[k] = 'warn'; });
+    }
+  });
   plannedPickerItems.forEach(p => {
     const iid = p['Item ID'] || '';
     const el = document.getElementById('ps-mc-' + iid);
     if (!el) return;
     const selected = plannedSel[iid] !== undefined && (parseFloat(plannedSel[iid]) || 0) > 0;
-    const s = selected ? st[String(p['Product Model']||'').trim().toLowerCase()] : '';
-    el.textContent = s === 'ok' ? '✓' : s === 'short' ? '⚠' : '';
-    el.style.color = s === 'ok' ? 'var(--success)' : 'var(--error)';
+    const s = selected ? lvl[mcKey(p['Product Model'])] : '';
+    el.textContent = s === 'ok' ? '✓' : s === 'warn' ? '⚠' : s === 'short' ? '⛔' : '';
+    el.style.color = s === 'ok' ? 'var(--success)' : s === 'warn' ? 'var(--warning)' : 'var(--error)';
   });
 }
 
@@ -2195,7 +2229,7 @@ function confirmPlannedSlip() {
     });
   }
   if (!rows.length) { toast('Kam se kam ek item me Planned Qty daalo', 'e'); return; }
-  if (_mcAnyShort) warns.push('Material Check: kuch components ka IMS stock (Store + WIP) kam hai');
+  if (_mcAnyShort) warns.push('Material Check: kuch components ki requirement IMS Store stock se zyada hai');
 
   if (warns.length) {
     const ok = confirm('⚠ Dhyan do:\n\n• ' + warns.join('\n• ') + '\n\nFir bhi slip banayein?');
