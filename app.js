@@ -1970,6 +1970,9 @@ function openPlannedSlip() {
     d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   document.getElementById('ps-search').value = '';
   const sa = document.getElementById('ps-select-all'); if (sa) sa.checked = false;
+  _mcLastKey = ''; _mcLast = null; _mcAnyShort = false;
+  const mcBox = document.getElementById('ps-material-check');
+  if (mcBox) { mcBox.innerHTML = ''; mcBox.style.display = 'none'; }
   openModal('plannedSlipModal');
   renderPlannedPicker();
 }
@@ -2000,7 +2003,7 @@ function renderPlannedPicker() {
       <td class="td-id">${p['Order ID']||''}</td>
       <td class="td-id">${iid}</td>
       <td class="td-bold">${p['Customer Name']||''}</td>
-      <td>${p['Product Model']||''}</td>
+      <td>${p['Product Model']||''} <span id="ps-mc-${iid}" style="font-size:12px;font-weight:700;"></span></td>
       <td>${p['Battery Type']||''}</td>
       <td>${cModel ? '⚡ '+cModel : '<span style="color:var(--text3);">—</span>'}</td>
       <td>${cQty > 0 ? '<span style="color:var(--warning);font-weight:600;">'+cQty+'</span>' : '<span style="color:var(--text3);">—</span>'}</td>
@@ -2049,6 +2052,121 @@ function updatePlannedSummary() {
   ids.forEach(iid => { qty += parseFloat(plannedSel[iid]) || 0; });
   document.getElementById('ps-sel-count').textContent = ids.length;
   document.getElementById('ps-sel-qty').textContent = qty;
+  scheduleMaterialCheck();
+}
+
+// ========== MATERIAL CHECK (IMS stock vs planned) ==========
+let _mcTimer = null, _mcSeq = 0, _mcLastKey = '', _mcLast = null, _mcAnyShort = false;
+
+function scheduleMaterialCheck() {
+  clearTimeout(_mcTimer);
+  _mcTimer = setTimeout(runMaterialCheck, 600);
+}
+
+function planModelTotals() {
+  const agg = {};
+  Object.keys(plannedSel).forEach(iid => {
+    const q = parseFloat(plannedSel[iid]) || 0;
+    if (q <= 0) return;
+    const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
+    const m = p ? String(p['Product Model']||'').trim() : '';
+    if (m) agg[m] = (agg[m] || 0) + q;
+  });
+  return Object.keys(agg).sort().map(m => ({ model: m, qty: agg[m] }));
+}
+
+async function runMaterialCheck() {
+  const box = document.getElementById('ps-material-check');
+  if (!box) return;
+  const items = planModelTotals();
+  if (!items.length) { box.innerHTML = ''; box.style.display = 'none'; _mcAnyShort = false; applyMcBadges(null); return; }
+
+  const key = JSON.stringify(items);
+  if (key === _mcLastKey && _mcLast) { renderMaterialCheck(_mcLast); return; }   // same plan — dobara call nahi
+
+  if (!window.IMS_URL) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="padding:10px;color:var(--error);font-size:12px;">⚠ config.js mein IMS_URL nahi hai</div>';
+    return;
+  }
+  const seq = ++_mcSeq;
+  box.style.display = 'block';
+  box.innerHTML = '<div class="loading"><div class="spin"></div> IMS se stock check ho raha hai...</div>';
+  try {
+    let d = null;
+    for (let attempt = 1; attempt <= 2 && !d; attempt++) {
+      const r = await fetch(window.IMS_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'checkPlanStock', items })
+      });
+      const t = (await r.text()).trim();
+      if (t.startsWith('{')) d = JSON.parse(t);        // HTML/404 aaya to ek baar retry
+    }
+    if (seq !== _mcSeq) return;
+    if (!d || d.error || !d.success) throw new Error((d && (d.error || d.message)) || 'IMS se jawab nahi aaya');
+    _mcLastKey = key; _mcLast = d;
+    renderMaterialCheck(d);
+  } catch (e) {
+    if (seq !== _mcSeq) return;
+    _mcAnyShort = false;
+    box.innerHTML = `<div style="padding:10px;color:var(--error);font-size:12px;">⚠ Material check nahi hua: ${e.message}</div>`;
+  }
+}
+
+function renderMaterialCheck(d) {
+  const box = document.getElementById('ps-material-check');
+  if (!box) return;
+  const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]));
+  const comps  = d.components || [];
+  const models = d.models || [];
+  _mcAnyShort = comps.some(c => c.short > 0);
+
+  const rows = comps.map(c => {
+    const bk = (c.short > 0 && c.backups && c.backups.length)
+      ? `<div style="font-size:10.5px;color:var(--text2);margin-top:3px;">↳ Backup: ${c.backups.map(b => `${esc(b.component)} — Store ${fmt(b.store)} / WIP ${fmt(b.wip)}`).join(' · ')}</div>`
+      : '';
+    const miss = c.inItems ? '' : '<div style="font-size:10.5px;color:var(--error);">IMS Items mein ye naam nahi mila</div>';
+    return `<tr>
+      <td><div style="font-weight:600;">${esc(c.component)}</div>
+          <div style="font-size:10.5px;color:var(--text3);">${esc(c.models.join(', '))}</div>${miss}${bk}</td>
+      <td style="text-align:right;font-weight:600;">${fmt(c.required)}</td>
+      <td style="text-align:right;">${fmt(c.store)}</td>
+      <td style="text-align:right;">${fmt(c.wip)}</td>
+      <td style="text-align:right;font-weight:700;color:${c.short > 0 ? 'var(--error)' : 'var(--success)'};">${c.short > 0 ? fmt(c.short) : '✓'}</td>
+    </tr>`;
+  }).join('');
+
+  const notes = models
+    .filter(m => m.status === 'notInMaster' || m.status === 'noBom')
+    .map(m => `<div>• <b>${esc(m.model)}</b> — ${m.status === 'noBom' ? 'Master BOM nahi bhara' : 'Master mein nahi, check nahi hua'}</div>`)
+    .join('');
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text);">📦 Material Check (IMS)</div>
+      <span class="badge ${_mcAnyShort ? 'b-delay' : 'b-ready'}">${_mcAnyShort ? '⚠ Stock kam hai' : '✓ Stock theek hai'}</span>
+    </div>
+    ${rows ? `<div class="table-wrap" style="border:1px solid var(--border);border-radius:10px;">
+      <table><thead><tr><th>Component</th><th style="text-align:right;">Required</th><th style="text-align:right;">Store</th><th style="text-align:right;">WIP</th><th style="text-align:right;">Short</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` : ''}
+    ${notes ? `<div style="margin-top:8px;font-size:11.5px;color:var(--warning);line-height:1.6;">${notes}</div>` : ''}`;
+
+  applyMcBadges(models);
+}
+
+function applyMcBadges(models) {
+  const st = {};
+  (models || []).forEach(m => { st[String(m.model).trim().toLowerCase()] = m.status; });
+  plannedPickerItems.forEach(p => {
+    const iid = p['Item ID'] || '';
+    const el = document.getElementById('ps-mc-' + iid);
+    if (!el) return;
+    const selected = plannedSel[iid] !== undefined && (parseFloat(plannedSel[iid]) || 0) > 0;
+    const s = selected ? st[String(p['Product Model']||'').trim().toLowerCase()] : '';
+    el.textContent = s === 'ok' ? '✓' : s === 'short' ? '⚠' : '';
+    el.style.color = s === 'ok' ? 'var(--success)' : 'var(--error)';
+  });
 }
 
 function confirmPlannedSlip() {
@@ -2077,6 +2195,7 @@ function confirmPlannedSlip() {
     });
   }
   if (!rows.length) { toast('Kam se kam ek item me Planned Qty daalo', 'e'); return; }
+  if (_mcAnyShort) warns.push('Material Check: kuch components ka IMS stock (Store + WIP) kam hai');
 
   if (warns.length) {
     const ok = confirm('⚠ Dhyan do:\n\n• ' + warns.join('\n• ') + '\n\nFir bhi slip banayein?');
