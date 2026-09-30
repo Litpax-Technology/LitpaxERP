@@ -131,7 +131,7 @@
         </div>
         <div class="panel-body">
           <table>
-            <thead><tr><th>Model</th><th class="r">Cells/Batt</th><th class="r">Bani</th><th class="r">Dispatch</th><th class="r">Cells Consumed</th></tr></thead>
+            <thead><tr><th>Model</th><th class="r">Cells/Batt</th><th class="r">Production</th><th class="r">Cells Consumed</th></tr></thead>
             <tbody id="crm-tb"></tbody>
           </table>
         </div>
@@ -154,13 +154,14 @@
       <div class="panel-head made">
         <div class="ph-title">📦 Finished Goods Stock <span class="ph-src" id="fg-asof">—</span></div>
         <div class="fg-tools">
+          <button id="fg-full-btn" class="fg-toggle" onclick="MPapp.toggleFGFull()">📋 Total FG</button>
           <select id="fg-model" class="en-model fg-sel" onchange="MPapp.renderFG()"><option value="">Sabhi Models</option></select>
           <label class="fg-chk"><input type="checkbox" id="fg-zero" onchange="MPapp.renderFG()"> 0 wale bhi</label>
         </div>
       </div>
       <div class="panel-body">
         <table>
-          <thead><tr><th>Model</th><th class="r">Opening</th><th class="r">Bani</th><th class="r">Dispatch</th><th class="r">FG Stock</th></tr></thead>
+          <thead id="fg-th"></thead>
           <tbody id="fg-tb"></tbody>
         </table>
       </div>
