@@ -62,8 +62,9 @@ const MPapp = (function () {
     return new Promise((resolve) => {
       const cb = 'mp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
       const s = document.createElement('script');
-      window[cb] = (res) => { resolve(res); delete window[cb]; s.remove(); };
-      s.onerror = () => { resolve({ success: false, message: 'ERP network error' }); delete window[cb]; s.remove(); };
+      const tm = setTimeout(() => { resolve({ success: false, message: 'ERP timeout' }); window[cb] = () => {}; s.remove(); }, 20000);
+      window[cb] = (res) => { clearTimeout(tm); resolve(res); delete window[cb]; s.remove(); };
+      s.onerror = () => { clearTimeout(tm); resolve({ success: false, message: 'ERP network error' }); delete window[cb]; s.remove(); };
       const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       s.src = `${MP.ERP_URL}?${qs}&callback=${cb}`;
       document.head.appendChild(s);
