@@ -15,6 +15,9 @@ const MPapp = (function () {
   let _loadedFor = '';         // form me kis date|type ki entry load hui
   let _entryReq = 0;           // race guard
   let _fgRows = [];            // FG stock model-wise (last load)
+  let _bmRows = [];            // range model-wise (FG range view)
+  let _fgFull = false;         // false = range view, true = poora hisaab
+  let _fgMeta = {};            // FG badge ke liye from/to
   // Link se role: ?type=bani → sirf Bani, ?type=dispatch → sirf Dispatch, bina type → dono
   const LINK_TYPE = ({ bani: 'Bani', dispatch: 'Dispatch' })[
     (new URLSearchParams(location.search).get('type') || '').toLowerCase()] || '';
@@ -210,7 +213,7 @@ const MPapp = (function () {
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
     ['cr-issued', 'cr-bani', 'cr-consumed', 'cr-gap', 'cr-disp', 'cr-fg']
       .forEach(id => { document.getElementById(id).textContent = '…'; });
-    document.getElementById('crm-tb').innerHTML = `<tr class="lrow"><td colspan="5"><span class="spin"></span> Loading…</td></tr>`;
+    document.getElementById('crm-tb').innerHTML = `<tr class="lrow"><td colspan="4"><span class="spin"></span> Loading…</td></tr>`;
     document.getElementById('crd-tb').innerHTML = `<tr class="lrow"><td colspan="6"><span class="spin"></span> Loading…</td></tr>`;
     try {
       const res = await imsApi('getCellRecon', { from: R.fromISO, to: R.toISO });
@@ -279,9 +282,8 @@ const MPapp = (function () {
       <td class="td-name">${esc(m.model)}</td>
       <td class="r">${m.cpb ? m.cpb : '<span class="neg">0 ⚠️</span>'}</td>
       <td class="r"><span class="qty made">${num(m.bani)}</span></td>
-      <td class="r">${num(m.dispatch)}</td>
       <td class="r">${num(m.consumed)}</td>
-    </tr>`).join('') : `<tr class="lrow"><td colspan="5">Is range me koi entry nahi</td></tr>`;
+    </tr>`).join('') : `<tr class="lrow"><td colspan="4">Is range me koi entry nahi</td></tr>`;
 
     // daily (latest upar)
     const days = (d.daily || []).slice().reverse();
@@ -296,41 +298,111 @@ const MPapp = (function () {
 
     // FG stock
     _fgRows = d.fgStock || [];
-    document.getElementById('fg-asof').textContent = fmtD(parseISO(d.to)) + ' tak';
+    _bmRows = bm;
+    _fgMeta = {
+      from: (d.opening && d.opening.startDate) || d.startDate || '',
+      to: d.to,
+      hasOpening: !!(d.opening && d.opening.startDate),
+    };
     fillFGFilter();
     renderFG();
+  }
+
+  function fgModelList() {
+    const seen = {}, list = [];
+    _fgRows.concat(_bmRows).forEach(r => {
+      if (r.model && !seen[r.model]) { seen[r.model] = 1; list.push(r.model); }
+    });
+    return list;
   }
 
   function fillFGFilter() {
     const sel = document.getElementById('fg-model');
     const cur = sel.value;
+    const list = fgModelList();
     sel.innerHTML = '<option value="">Sabhi Models</option>' +
-      _fgRows.map(r => `<option value="${esc(r.model)}">${esc(r.model)}</option>`).join('');
-    if (_fgRows.some(r => r.model === cur)) sel.value = cur;
+      list.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+    if (list.indexOf(cur) > -1) sel.value = cur;
+  }
+
+  function rangeLbl() {
+    if (_mode === 'week') return 'Is Hafte';
+    if (_mode === 'month') return 'Is Mahine';
+    const a = document.getElementById('anchor-date').value;
+    return (!a || a === todayISO()) ? 'Aaj' : fmtD(parseISO(a));
   }
 
   function renderFG() {
     const m = document.getElementById('fg-model').value;
     const showZero = document.getElementById('fg-zero').checked;
-    const rows = _fgRows.filter(r => (!m || r.model === m) && (showZero || r.stock !== 0));
+    const fgMap = {}, bmMap = {};
+    _fgRows.forEach(r => { fgMap[r.model] = r; });
+    _bmRows.forEach(r => { bmMap[r.model] = r; });
+
+    const rows = fgModelList().map(model => {
+      const f = fgMap[model] || {}, b = bmMap[model] || {};
+      return {
+        model,
+        opening: Number(f.opening) || 0,
+        totBani: Number(f.bani) || 0,
+        totDisp: Number(f.dispatch) || 0,
+        stock:   Number(f.stock) || 0,
+        rBani:   Number(b.bani) || 0,
+        rDisp:   Number(b.dispatch) || 0,
+      };
+    }).filter(r => (!m || r.model === m) &&
+      (showZero || r.stock !== 0 || (!_fgFull && (r.rBani || r.rDisp))));
+
+    const toLbl = fmtD(parseISO(_fgMeta.to));
+    const th = document.getElementById('fg-th');
+    const asof = document.getElementById('fg-asof');
+    const btn = document.getElementById('fg-full-btn');
     const tb = document.getElementById('fg-tb');
     const ft = document.getElementById('fg-foot');
+
+    if (_fgFull) {
+      th.innerHTML = `<tr><th>Model</th><th class="r">Opening</th><th class="r">Total Bani</th><th class="r">Total Dispatch</th><th class="r">FG Stock</th></tr>`;
+      asof.textContent = (_fgMeta.from ? fmtD(parseISO(_fgMeta.from)) + ' se ' : '') + toLbl + ' tak' +
+        (_fgMeta.hasOpening ? '' : ' · Opening set nahi');
+      btn.textContent = '← Wapas';
+    } else {
+      const rl = esc(rangeLbl());
+      th.innerHTML = `<tr><th>Model</th><th class="r">Bani (${rl})</th><th class="r">Dispatch (${rl})</th><th class="r">FG Stock (${esc(toLbl)} tak)</th></tr>`;
+      asof.textContent = 'Stock ' + toLbl + ' tak';
+      btn.textContent = '📋 Poora Hisaab';
+    }
+
     if (!rows.length) {
-      tb.innerHTML = `<tr class="lrow"><td colspan="5">Koi FG stock nahi</td></tr>`;
+      tb.innerHTML = `<tr class="lrow"><td colspan="${_fgFull ? 5 : 4}">Koi FG data nahi</td></tr>`;
       ft.textContent = '';
       return;
     }
-    const tot = rows.reduce((s, r) => s + r.stock, 0);
-    tb.innerHTML = rows.map(r => `<tr>
-      <td class="td-name">${esc(r.model)}</td>
-      <td class="r">${num(r.opening)}</td>
-      <td class="r">${num(r.bani)}</td>
-      <td class="r">${num(r.dispatch)}</td>
-      <td class="r"><span class="qty ${r.stock < 0 ? 'neg' : 'made'}">${num(r.stock)}</span></td>
-    </tr>`).join('') +
-      `<tr class="fg-total"><td>Total</td><td></td><td></td><td></td><td class="r"><span class="qty">${num(tot)}</span></td></tr>`;
-    ft.innerHTML = `${rows.length} model · FG stock <b>${num(tot)}</b>`;
+
+    const sum = k => rows.reduce((s, r) => s + r[k], 0);
+    const stockTd = r => `<td class="r"><span class="qty ${r.stock < 0 ? 'neg' : 'made'}">${num(r.stock)}</span></td>`;
+
+    if (_fgFull) {
+      tb.innerHTML = rows.map(r => `<tr>
+        <td class="td-name">${esc(r.model)}</td>
+        <td class="r">${num(r.opening)}</td>
+        <td class="r">${num(r.totBani)}</td>
+        <td class="r">${num(r.totDisp)}</td>
+        ${stockTd(r)}
+      </tr>`).join('') +
+        `<tr class="fg-total"><td>Total</td><td class="r">${num(sum('opening'))}</td><td class="r">${num(sum('totBani'))}</td><td class="r">${num(sum('totDisp'))}</td><td class="r"><span class="qty">${num(sum('stock'))}</span></td></tr>`;
+    } else {
+      tb.innerHTML = rows.map(r => `<tr>
+        <td class="td-name">${esc(r.model)}</td>
+        <td class="r">${r.rBani ? '<span class="qty made">' + num(r.rBani) + '</span>' : '0'}</td>
+        <td class="r">${num(r.rDisp)}</td>
+        ${stockTd(r)}
+      </tr>`).join('') +
+        `<tr class="fg-total"><td>Total</td><td class="r">${num(sum('rBani'))}</td><td class="r">${num(sum('rDisp'))}</td><td class="r"><span class="qty">${num(sum('stock'))}</span></td></tr>`;
+    }
+    ft.innerHTML = `${rows.length} model · FG stock <b>${num(sum('stock'))}</b>`;
   }
+
+  function toggleFGFull() { _fgFull = !_fgFull; renderFG(); }
 
   // ── Entry modal ──
   function openEntry(type) {
@@ -581,5 +653,5 @@ const MPapp = (function () {
 
   window.addEventListener('load', init);
   return { load, setMode, switchView, openEntry, closeEntry, loadEntryFor, addEntryRow, removeEntryRow, saveEntry,
-           openOpening, closeOpening, addOpeningRow, saveOpening, renderFG };
+           openOpening, closeOpening, addOpeningRow, saveOpening, renderFG, toggleFGFull };
 })();
