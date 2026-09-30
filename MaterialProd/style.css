@@ -202,3 +202,16 @@ tbody tr:hover td{background:#fafbff;}
 .op-hint{font-size:12px;color:var(--muted);margin-top:-6px;line-height:1.5;}
 .op-hint:empty{display:none;}
 .op-sub{margin:16px 0 6px;}
+
+.fg-toggle {
+  padding: 6px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fg-toggle:hover { background: #f2f4f7; }
