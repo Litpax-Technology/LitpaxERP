@@ -81,8 +81,10 @@ const MPapp = (function () {
   }
 
   // ── main load ──
+  let _loadReq = 0;
   async function load() {
-    if (_view === 'cell') return loadCell();
+    const reqId = ++_loadReq;
+    if (_view === 'cell') return loadCell(reqId);
     const R = computeRange();
     document.getElementById('range-note').textContent =
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
@@ -100,6 +102,7 @@ const MPapp = (function () {
       loadMaterial(R),
       loadProduction(R),
     ]);
+    if (reqId !== _loadReq) return;
 
     let ok = true;
     if (matRes.status === 'fulfilled') renderMaterial(matRes.value);
@@ -138,7 +141,7 @@ const MPapp = (function () {
     const tb = document.getElementById('mat-tb');
     const em = document.getElementById('mat-empty');
     const ft = document.getElementById('mat-foot');
-    if (!items.length) { tb.innerHTML = ''; em.style.display = 'block'; ft.textContent = ''; return; }
+    if (!items.length) { tb.innerHTML = ''; em.style.display = 'block'; ft.textContent = ''; document.getElementById('mat-count').textContent = '0 items'; return; }
     em.style.display = 'none';
     tb.innerHTML = items.map(i => `<tr>
       <td class="td-name">${esc(i.name)}</td>
@@ -163,7 +166,7 @@ const MPapp = (function () {
     const tb = document.getElementById('prod-tb');
     const em = document.getElementById('prod-empty');
     const ft = document.getElementById('prod-foot');
-    if (!rows.length) { tb.innerHTML = ''; em.style.display = 'block'; ft.textContent = ''; return; }
+    if (!rows.length) { tb.innerHTML = ''; em.style.display = 'block'; ft.textContent = ''; document.getElementById('prod-count').textContent = '0 rows'; return; }
     em.style.display = 'none';
     tb.innerHTML = rows.map(p => {
       const q = Number(p['Produced Qty']) || Number(p['Qty']) || 0;
@@ -200,7 +203,7 @@ const MPapp = (function () {
 
   function num(n) { return (Number(n) || 0).toLocaleString('en-IN'); }
 
-  async function loadCell() {
+  async function loadCell(reqId) {
     const R = computeRange();
     document.getElementById('range-note').textContent =
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
@@ -210,11 +213,13 @@ const MPapp = (function () {
     document.getElementById('crd-tb').innerHTML = `<tr class="lrow"><td colspan="6"><span class="spin"></span> Loading…</td></tr>`;
     try {
       const res = await imsApi('getCellRecon', { from: R.fromISO, to: R.toISO });
+      if (reqId !== _loadReq) return;
       if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
       _models = res.models || [];
       renderCell(res);
       setDot('ok', 'Connected');
     } catch (e) {
+      if (reqId !== _loadReq) return;
       setDot('err', 'Error');
       toast('Cell data load nahi hua: ' + e.message, 'err');
       document.getElementById('crm-tb').innerHTML = '';
