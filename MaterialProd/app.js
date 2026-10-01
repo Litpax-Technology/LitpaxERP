@@ -47,6 +47,14 @@ const MPapp = (function () {
 
   // anchor date se range nikalo
   function computeRange() {
+    if (_mode === 'custom') {
+      const fv = document.getElementById('from-date').value;
+      const tv = document.getElementById('to-date').value;
+      if (!fv || !tv) { toast('From aur To dono date daalo', 'err'); return null; }
+      if (fv > tv) { toast('From date, To se pehle honi chahiye', 'err'); return null; }
+      if (tv > todayISO()) { toast('To date aaj se aage nahi ho sakti', 'err'); return null; }
+      return { from: parseISO(fv), to: parseISO(tv), fromISO: fv, toISO: tv };
+    }
     const anchorVal = document.getElementById('anchor-date').value || todayISO();
     const anchor = parseISO(anchorVal);
     let from, to = anchor;
