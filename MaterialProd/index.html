@@ -30,17 +30,28 @@
 
   <!-- Controls -->
   <div class="controls">
-    <div class="ctrl-group">
+    <div class="ctrl-group" id="grp-anchor">
       <label class="ctrl-lbl">Date</label>
       <input type="date" id="anchor-date" class="date-inp" onchange="MPapp.load()">
+    </div>
+
+    <div class="ctrl-group" id="grp-from" style="display:none;">
+      <label class="ctrl-lbl">From</label>
+      <input type="date" id="from-date" class="date-inp" onchange="MPapp.load()">
+    </div>
+
+    <div class="ctrl-group" id="grp-to" style="display:none;">
+      <label class="ctrl-lbl">To</label>
+      <input type="date" id="to-date" class="date-inp" onchange="MPapp.load()">
     </div>
 
     <div class="ctrl-group">
       <label class="ctrl-lbl">Range</label>
       <div class="pills">
-        <button class="pill active" id="pill-day"   onclick="MPapp.setMode('day')">Aaj</button>
-        <button class="pill"        id="pill-week"  onclick="MPapp.setMode('week')">Is Hafte</button>
-        <button class="pill"        id="pill-month" onclick="MPapp.setMode('month')">Is Mahine</button>
+        <button class="pill active" id="pill-day"    onclick="MPapp.setMode('day')">Aaj</button>
+        <button class="pill"        id="pill-week"   onclick="MPapp.setMode('week')">Is Hafte</button>
+        <button class="pill"        id="pill-month"  onclick="MPapp.setMode('month')">Is Mahine</button>
+        <button class="pill"        id="pill-custom" onclick="MPapp.setMode('custom')">Custom</button>
       </div>
     </div>
 
