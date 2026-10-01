@@ -98,6 +98,7 @@ const MPapp = (function () {
     const reqId = ++_loadReq;
     if (_view === 'cell') return loadCell(reqId);
     const R = computeRange();
+    if (!R) return;
     document.getElementById('range-note').textContent =
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
 
@@ -217,6 +218,7 @@ const MPapp = (function () {
 
   async function loadCell(reqId) {
     const R = computeRange();
+    if (!R) return;
     document.getElementById('range-note').textContent =
       _mode === 'day' ? fmtD(R.from) : (fmtD(R.from) + '  →  ' + fmtD(R.to));
     ['cr-issued', 'cr-bani', 'cr-consumed', 'cr-gap', 'cr-disp', 'cr-fg']
@@ -342,6 +344,12 @@ const MPapp = (function () {
   function rangeLbl() {
     if (_mode === 'week') return 'Is Hafte';
     if (_mode === 'month') return 'Is Mahine';
+    if (_mode === 'custom') {
+      const fv = document.getElementById('from-date').value;
+      const tv = document.getElementById('to-date').value;
+      const s = v => { const d = parseISO(v); return d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'; };
+      return fv === tv ? s(fv) : s(fv) + ' → ' + s(tv);
+    }
     const a = document.getElementById('anchor-date').value;
     return (!a || a === todayISO()) ? 'Aaj' : fmtD(parseISO(a));
   }
@@ -425,7 +433,10 @@ const MPapp = (function () {
     const isBani = type === 'Bani';
     document.getElementById('en-title').textContent = isBani ? '🔋 Bani Entry — Production' : '🚚 Dispatch Entry';
     document.getElementById('en-qty-h').textContent = isBani ? 'Qty Bani' : 'Qty Dispatch';
-    document.getElementById('en-date').value = document.getElementById('anchor-date').value || todayISO();
+    const defDate = _mode === 'custom'
+      ? document.getElementById('to-date').value
+      : document.getElementById('anchor-date').value;
+    document.getElementById('en-date').value = defDate || todayISO();
     try { document.getElementById('en-by').value = localStorage.getItem('mp_enby_' + type) || ''; } catch (e) {}
     document.getElementById('entry-modal').style.display = 'flex';
     loadEntryFor();
@@ -629,9 +640,19 @@ const MPapp = (function () {
   // ── mode toggle ──
   function setMode(mode) {
     _mode = mode;
-    ['day', 'week', 'month'].forEach(m => {
+    ['day', 'week', 'month', 'custom'].forEach(m => {
       document.getElementById('pill-' + m).classList.toggle('active', m === mode);
     });
+    const isC = mode === 'custom';
+    document.getElementById('grp-anchor').style.display = isC ? 'none' : '';
+    document.getElementById('grp-from').style.display   = isC ? '' : 'none';
+    document.getElementById('grp-to').style.display     = isC ? '' : 'none';
+    if (isC) {                                         // pehli baar: pichhle 7 din bhar do
+      const fEl = document.getElementById('from-date');
+      const tEl = document.getElementById('to-date');
+      if (!tEl.value) tEl.value = document.getElementById('anchor-date').value || todayISO();
+      if (!fEl.value) { const f = parseISO(tEl.value); f.setDate(f.getDate() - 6); fEl.value = toISO(f); }
+    }
     load();
   }
 
@@ -654,6 +675,8 @@ const MPapp = (function () {
   // ── init ──
   function init() {
     document.getElementById('anchor-date').value = todayISO();
+    document.getElementById('from-date').max = todayISO();
+    document.getElementById('to-date').max = todayISO();
     if (LINK_TYPE) {                                   // role link: tabs chhupao, seedha Cell tab
       document.querySelector('.tabs').style.display = 'none';
       switchView('cell');
