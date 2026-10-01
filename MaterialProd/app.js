@@ -214,7 +214,7 @@ const MPapp = (function () {
     ['cr-issued', 'cr-bani', 'cr-consumed', 'cr-gap', 'cr-disp', 'cr-fg']
       .forEach(id => { document.getElementById(id).textContent = '…'; });
     document.getElementById('crm-tb').innerHTML = `<tr class="lrow"><td colspan="4"><span class="spin"></span> Loading…</td></tr>`;
-    document.getElementById('crd-tb').innerHTML = `<tr class="lrow"><td colspan="6"><span class="spin"></span> Loading…</td></tr>`;
+    document.getElementById('crd-tb').innerHTML = `<tr class="lrow"><td colspan="7"><span class="spin"></span> Loading…</td></tr>`;
     try {
       const res = await imsApi('getCellRecon', { from: R.fromISO, to: R.toISO });
       if (reqId !== _loadReq) return;
@@ -287,14 +287,20 @@ const MPapp = (function () {
 
     // daily (latest upar)
     const days = (d.daily || []).slice().reverse();
-    document.getElementById('crd-tb').innerHTML = days.map(x => `<tr>
+    document.getElementById('crd-tb').innerHTML = days.map(x => {
+      const hasBal = x.balance != null;
+      const close = Number(x.balance) || 0;
+      const open = close - (Number(x.gap) || 0);              // Opening = Closing − Gap
+      return `<tr>
       <td>${fmtD(parseISO(x.date))}</td>
+      <td class="r ${hasBal && open < 0 ? 'neg' : ''}">${hasBal ? num(open) : '—'}</td>
       <td class="r">${num(x.issued)}</td>
       <td class="r">${num(x.bani)}</td>
       <td class="r">${num(x.consumed)}</td>
       <td class="r ${x.gap < 0 ? 'neg' : ''}">${num(x.gap)}</td>
-      <td class="r ${x.balance != null && x.balance < 0 ? 'neg' : ''}">${x.balance == null ? '—' : num(x.balance)}</td>
-    </tr>`).join('');
+      <td class="r ${hasBal && close < 0 ? 'neg' : ''}"><b>${hasBal ? num(close) : '—'}</b></td>
+    </tr>`;
+    }).join('');
 
     // FG stock
     _fgRows = d.fgStock || [];
