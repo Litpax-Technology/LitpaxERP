@@ -215,3 +215,4 @@ tbody tr:hover td{background:#fafbff;}
   white-space: nowrap;
 }
 .fg-toggle:hover { background: #f2f4f7; }
+#crd-tb td:first-child { white-space: nowrap; }
