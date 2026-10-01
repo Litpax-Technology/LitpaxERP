@@ -216,3 +216,10 @@ tbody tr:hover td{background:#fafbff;}
 }
 .fg-toggle:hover { background: #f2f4f7; }
 #crd-tb td:first-child { white-space: nowrap; }
+
+.cr-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
