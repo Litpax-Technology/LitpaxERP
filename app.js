@@ -476,7 +476,8 @@ function loadOrders() {
 }
 
 function isOrderCompleted(o) {
-  return String(o['Final Status'] || '').toLowerCase().includes('production complete');
+  const s = String(o['Final Status'] || '').toLowerCase();
+  return s.includes('production complete') || s.includes('dispatched');
 }
 
 function renderOrders() {
