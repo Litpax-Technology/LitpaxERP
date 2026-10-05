@@ -1,4 +1,4 @@
 // Single source of truth — GAS deploy URL yahan se change karo, bas
-window.GAS_URL = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzbXxlvtNpk3XIAP0EwvXIiGknfO1N0uqyMqIhmCdmURZcmleVCrypk6gsC6IiNkQ_u9A/exec';
+window.GAS_URL = 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzeChRbgndC1cBnSOTcaGlV_cDNqAr4mb3awt4_RkfayVbBF72pQHwFdYrnAcPpoZsvBA/exec';
 
 window.IMS_URL = 'https://script.google.com/macros/s/AKfycbx88SVB46Qpu8gcKGGMZ1C14hbxkNptJFKxHCN8wRCZvIV6IcebyMjMWby3FJ00bt6u/exec';
