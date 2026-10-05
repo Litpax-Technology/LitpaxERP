@@ -3235,6 +3235,10 @@ function submitDispatch() {
   if (dq <= 0) { toast('Dispatch Qty 0 se zyada bharo', 'e'); return; }
   const transport = document.getElementById('dsp-transport').value.trim();
   if (!transport) { toast('Transport Name bharo', 'e'); return; }
+  const lrEl = document.getElementById('dsp-lr');
+  const lrNo = (lrEl?.value || '').trim();
+  clearErr(lrEl);
+  if (!lrNo) { markErr(lrEl); toast('LR / Bilty No bharo', 'e'); lrEl?.focus(); return; }
 
   // ⚠ WARNINGS — block kuch nahi, sirf confirm
   const warn = [];
@@ -3256,7 +3260,7 @@ function submitDispatch() {
     'Dispatch Date': fmtDisplayDate(document.getElementById('dsp-date').value),
     'Transport Name': transport,
     'Vehicle No': document.getElementById('dsp-vehicle').value,
-    'LR No': document.getElementById('dsp-lr').value,
+    'LR No': lrNo,
     'Driver No': document.getElementById('dsp-driver').value,
     'Remarks': document.getElementById('dsp-remarks').value,
     'Added By': user.name || ''
@@ -4659,6 +4663,7 @@ document.getElementById('o-date').style.cursor = 'not-allowed';
 
 markRequired(['o-date','o-sales','o-cust','o-phone','o-city','o-paymode','o-status','o-paystatus']);
 markRequired(['e-cust','e-phone','e-city','e-paymode','e-status','e-paystatus']);
+markRequired(['dsp-lr','dsp-transport','dsp-qty']);
 
 // Field-error class ko auto-clear karo jab user field fix kare
 document.addEventListener('input', e => {
