@@ -8,5 +8,5 @@ window.MP = {
   ERP_URL: 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbzeChRbgndC1cBnSOTcaGlV_cDNqAr4mb3awt4_RkfayVbBF72pQHwFdYrnAcPpoZsvBA/exec',
 
   // IMS ka GAS URL — already bhara hua
-  IMS_URL: 'https://script.google.com/macros/s/AKfycbynjxEuNWXyIetMFCM0LuHFfoERarePIW5uHm4nEzkcMT0HJ7Pxk9DcmzBiLafAbGjB/exec'
+  IMS_URL: 'https://script.google.com/macros/s/AKfycbx2jhMdP_wGK54AQ8sx2guZ4oGDQVRE9gbNt3AeGglkr4esIegEsDqESkznSCK9mC5b/exec'
 };
