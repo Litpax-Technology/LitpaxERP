@@ -3279,42 +3279,90 @@ function submitDispatch() {
 }
 
 // ========== MASTER DATA ==========
+// ========== CUSTOMERS (Regular / Inactive / All) ==========
+let allCustInsights = [], custFilter = 'regular';
+
+function ensureCustPipeline() {
+  if (document.getElementById('custPipeline')) return;
+  const tbody = document.getElementById('custTable');
+  const anchor = tbody && (tbody.closest('.card') || tbody.closest('table'));
+  if (!anchor) return;
+  anchor.insertAdjacentHTML('beforebegin', `
+    <div id="custPipeline" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-sm cust-f-btn" id="cf-regular"  onclick="filterCustomers('regular')">🔁 Regular (<span id="cfc-regular">0</span>)</button>
+      <button class="btn btn-sm cust-f-btn" id="cf-inactive" onclick="filterCustomers('inactive')">⚠️ Inactive (<span id="cfc-inactive">0</span>)</button>
+      <button class="btn btn-sm cust-f-btn" id="cf-all"      onclick="filterCustomers('all')">👥 All (<span id="cfc-all">0</span>)</button>
+      <input class="form-control" id="custSearch" placeholder="Search name / city / phone..." oninput="renderCustomers()" style="max-width:240px;margin-left:auto;font-size:13px;">
+    </div>`);
+  const thead = tbody.closest('table')?.querySelector('thead');
+  if (thead) thead.innerHTML = '<tr><th>Customer</th><th>City</th><th>Phone</th><th>Sales Person</th><th style="text-align:right;">Orders</th><th style="text-align:right;">Total Value</th><th>Last Order</th><th style="text-align:right;">Days Since</th><th style="text-align:right;">Avg Gap</th><th>Next Expected</th><th>Status</th><th>Actions</th></tr>';
+}
+
 function loadCustomers() {
-  if (user.role === 'Sales' && user.salesName) {
-    const head = document.getElementById('custTableHead');
-    if (head) head.innerHTML = '<tr><th>Customer Name</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City</th><th>Docs</th></tr>';
-    api({ action: 'getCustomers' }, r => {
-      let customers = (r.data || []).filter(c => (c['Added By']||'') === user.salesName);
-      if (!customers.length) { document.getElementById('custTable').innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">Koi customer nahi abhi</div></div></td></tr>`; return; }
-      document.getElementById('custTable').innerHTML = customers.map(c => `
-        <tr>
-          <td class="td-bold">${c.CompanyName||''}</td>
-          <td>${c.ContactPerson||'—'}</td>
-          <td>${c.Phone||'—'}</td>
-          <td style="font-family:monospace;font-size:11px;">${c.GSTIN||'—'}</td>
-          <td>${c.City||'—'}</td>
-          <td style="white-space:nowrap;">
-          <button class="btn btn-sm btn-warning" onclick='openCustEdit(${JSON.stringify(c)})' title="Edit">📝</button>
-          <button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')" style="margin-left:4px;">📎</button>
-          <button class="btn btn-sm" onclick="openBatterySpec('${c.CompanyName}')" style="margin-left:4px;background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" title="Battery Spec">🔋</button>
-        </td>
-        </tr>`).join('');
-    });
-  } else {
-    api({ action: 'getCustomers' }, r => {
-      if (!r.success || !r.data.length) { document.getElementById('custTable').innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">No customers</div></div></td></tr>`; return; }
-      document.getElementById('custTable').innerHTML = r.data.map(c => `<tr>
-        <td class="td-id">${c.CustomerID}</td>
-        <td class="td-bold">${c.CompanyName}</td>
-        <td>${c.ContactPerson}</td>
-        <td>${c.Phone}</td>
-        <td style="font-family:monospace;font-size:11px;">${c.GSTIN}</td>
-        <td>${c.City}</td>
-        <td>${c.CreditDays} days</td>
-        <td style="white-space:nowrap;"><button class="btn btn-sm btn-info" onclick="openCustDocs('${c.CompanyName}')">📎</button> <button class="btn btn-sm" onclick="openBatterySpec('${c.CompanyName}')" style="background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" title="Battery Spec">🔋</button></td>
-      </tr>`).join('');
-    });
-  }
+  ensureCustPipeline();
+  const isSales = user.role === 'Sales' && user.salesName;
+  document.getElementById('custTable').innerHTML = '<tr><td colspan="12"><div class="loading"><div class="spin"></div> Loading...</div></td></tr>';
+  api({ action: 'getCustomerInsights', salesName: isSales ? user.salesName : '' }, r => {
+    allCustInsights = (r.success && r.data) ? r.data : [];
+    allCustInsights.forEach((c, i) => { c._i = i; });
+    if (!r.success) toast(r.message || 'Customers load nahi hue', 'e');
+    renderCustomers();
+  });
+}
+
+function filterCustomers(f) { custFilter = f; renderCustomers(); }
+
+function renderCustomers() {
+  const esc = v => String(v == null ? '' : v).replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
+  const all = allCustInsights;
+
+  setText('cfc-regular',  all.filter(c => c.isRegular).length);
+  setText('cfc-inactive', all.filter(c => c.isInactive).length);
+  setText('cfc-all',      all.length);
+  document.querySelectorAll('.cust-f-btn').forEach(b => b.classList.remove('btn-primary'));
+  document.getElementById('cf-' + custFilter)?.classList.add('btn-primary');
+
+  let data = custFilter === 'regular'  ? all.filter(c => c.isRegular)
+           : custFilter === 'inactive' ? all.filter(c => c.isInactive)
+           : all.slice();
+
+  const q = (document.getElementById('custSearch')?.value || '').trim().toLowerCase();
+  if (q) data = data.filter(c => [c.name, c.city, c.phone, c.salesPerson].some(v => String(v || '').toLowerCase().includes(q)));
+
+  if (custFilter === 'regular')       data.sort((a, b) => (a.daysToNext ?? 9999) - (b.daysToNext ?? 9999));   // overdue pehle
+  else if (custFilter === 'inactive') data.sort((a, b) => (b.daysSince ?? 0) - (a.daysSince ?? 0));         // sabse purana pehle
+  else                                data.sort((a, b) => a.name.localeCompare(b.name));
+
+  const tbl = document.getElementById('custTable');
+  if (!data.length) { tbl.innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">Is list me koi customer nahi</div></div></td></tr>'; return; }
+
+  tbl.innerHTML = data.map(c => {
+    const st = c.status === 'Overdue'  ? `<span class="badge b-delay">🔴 Overdue (${Math.abs(c.daysToNext)}d)</span>`
+             : c.status === 'Due Soon' ? `<span class="badge b-pending">🟡 Due in ${c.daysToNext}d</span>`
+             : c.status === 'On Track' ? `<span class="badge b-ready">🟢 On Track</span>` : '';
+    const inact = c.isInactive ? ` <span class="badge b-credit">⚠️ Inactive</span>` : '';
+    const noOrd = !c.orders ? `<span style="color:var(--text3);font-size:11px;">No orders</span>` : '';
+    const dsCol = c.daysSince == null ? '—'
+                : `<span style="font-weight:600;color:${c.daysSince > 30 ? 'var(--error)' : 'var(--text)'};">${c.daysSince}d</span>`;
+    return `<tr>
+      <td class="td-bold">${esc(c.name)}</td>
+      <td>${esc(c.city) || '—'}</td>
+      <td>${esc(c.phone) || '—'}</td>
+      <td>${esc(c.salesPerson) || '—'}</td>
+      <td style="text-align:right;font-weight:600;">${c.orders}</td>
+      <td style="text-align:right;font-weight:600;color:var(--accent);">${c.totalValue ? '₹' + fmt(c.totalValue) : '—'}</td>
+      <td>${c.lastOrder || '—'}</td>
+      <td style="text-align:right;">${dsCol}</td>
+      <td style="text-align:right;">${c.avgGap != null ? c.avgGap + 'd' : '—'}</td>
+      <td>${c.nextExpected || '—'}</td>
+      <td>${st}${inact}${noOrd}</td>
+      <td style="white-space:nowrap;">
+        ${(user.role === 'Sales' && c.cust) ? `<button class="btn btn-sm btn-warning" onclick="openCustEdit(allCustInsights[${c._i}].cust)" title="Edit">📝</button>` : ''}
+        <button class="btn btn-sm btn-info" onclick="openCustDocs(allCustInsights[${c._i}].name)" title="Docs">📎</button>
+        <button class="btn btn-sm" onclick="openBatterySpec(allCustInsights[${c._i}].name)" style="background:var(--warning-dim);color:var(--warning);border-color:var(--warning-b);" title="Battery Spec">🔋</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 function submitCust() {
   api({ action:'addCustomer', CompanyName:document.getElementById('c-name').value, ContactPerson:document.getElementById('c-contact').value, Phone:document.getElementById('c-phone').value, GSTIN:document.getElementById('c-gst').value, City:document.getElementById('c-city').value, CreditDays:document.getElementById('c-credit').value, 'Added By': user.salesName || user.name || '' }, r => {
