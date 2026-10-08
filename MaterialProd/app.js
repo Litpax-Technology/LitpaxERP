@@ -444,9 +444,11 @@ const MPapp = (function () {
   function closeEntry() { document.getElementById('entry-modal').style.display = 'none'; }
 
   function modelOptions(sel) {
+    const inList = !sel || _models.some(m => m.bomName === sel);
     return '<option value="">— Model —</option>' + _models.map(m =>
       `<option value="${esc(m.bomName)}"${m.bomName === sel ? ' selected' : ''}>${esc(m.bomName)}${m.cpb ? ' (' + m.cpb + ' cells)' : ' ⚠️'}</option>`
-    ).join('');
+    ).join('') +
+      (inList ? '' : `<option value="${esc(sel)}" selected>${esc(sel)} (purana)</option>`);   // purani entry ka legacy model
   }
 
   function addEntryRow(r) {
