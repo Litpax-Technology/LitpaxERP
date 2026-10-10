@@ -36,6 +36,10 @@ const roleAccess = {
   const leadBtn = document.getElementById('btnCreateLead');
   if (leadBtn && user.role === 'Sales') leadBtn.style.display = 'inline-flex';
 
+  // Dealer Check button — Sales ko dikhega
+  const dealerBtn = document.getElementById('btnDealerCheck');
+  if (dealerBtn && user.role === 'Sales') dealerBtn.style.display = 'inline-flex';
+
   if (user.role === 'Sales' || user.role === 'Admin') {
     const pipeline = document.getElementById('ordersPipeline');
     if (pipeline) pipeline.style.display = 'none';
@@ -3773,6 +3777,12 @@ function goToLeadTracker() {
     } catch (e) {}
   }
   window.location.href = LEAD_TRACKER_URL;
+}
+
+const DEALER_CHECK_URL = 'https://litpax-technology.github.io/Dealer-Check/';
+
+function goToDealerCheck() {
+  window.open(DEALER_CHECK_URL, '_blank');   // nayi tab — ERP wahin khula rahega
 }
 
 // ========== PAYMENT SLIPS (legacy) ==========
