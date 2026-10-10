@@ -18,6 +18,7 @@ const MPapp = (function () {
   let _bmRows = [];            // range model-wise (FG range view)
   let _fgFull = false;         // false = range view, true = poora hisaab
   let _fgMeta = {};            // FG badge ke liye from/to
+  let _fgReg = null;           // FG Register data (last load)
   // Link se role: ?type=bani → sirf Bani, ?type=dispatch → sirf Dispatch, bina type → dono
   const LINK_TYPE = ({ bani: 'Bani', dispatch: 'Dispatch' })[
     (new URLSearchParams(location.search).get('type') || '').toLowerCase()] || '';
@@ -232,6 +233,7 @@ const MPapp = (function () {
       _models = res.models || [];
       renderCell(res);
       setDot('ok', 'Connected');
+      if (!LINK_TYPE) loadFGReg(R, reqId);        // FG Register — sirf full link wale ko
     } catch (e) {
       if (reqId !== _loadReq) return;
       setDot('err', 'Error');
@@ -425,6 +427,126 @@ const MPapp = (function () {
   }
 
   function toggleFGFull() { _fgFull = !_fgFull; renderFG(); }
+
+    // ============================================================
+  // FG REGISTER — model × date (Cell Recon ke andar, sirf full link)
+  // ============================================================
+  function ensureFGReg() {
+    if (document.getElementById('fgreg')) return true;
+    const host = document.getElementById('view-cell');
+    if (!host) return false;
+    host.insertAdjacentHTML('beforeend', `
+      <div id="fgreg" class="panel fg-panel">
+        <div class="panel-head">
+          <div class="ph-title">📋 FG Register <span id="fgreg-range" class="ph-src"></span></div>
+          <div class="fg-tools">
+            <label class="fg-chk"><input type="checkbox" id="fgreg-zero" onchange="MPapp.renderFGReg()"> Zero wale bhi dikhao</label>
+            <button class="fg-toggle" onclick="MPapp.downloadFGReg()">⬇️ CSV</button>
+          </div>
+        </div>
+        <div class="panel-body"><table class="fgreg-table"><thead id="fgreg-th"></thead><tbody id="fgreg-tb"></tbody></table></div>
+        <div id="fgreg-foot" class="panel-foot"></div>
+      </div>`);
+    return true;
+  }
+
+  async function loadFGReg(R, reqId) {
+    if (!ensureFGReg()) return;
+    const tb = document.getElementById('fgreg-tb');
+    document.getElementById('fgreg-th').innerHTML = '';
+    tb.innerHTML = `<tr class="lrow"><td><span class="spin"></span> Loading…</td></tr>`;
+    try {
+      const res = await imsApi('getFGRegister', { from: R.fromISO, to: R.toISO });
+      if (reqId !== _loadReq) return;
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'IMS error');
+      _fgReg = res;
+      renderFGReg();
+    } catch (e) {
+      if (reqId !== _loadReq) return;
+      _fgReg = null;
+      tb.innerHTML = `<tr class="lrow"><td>FG Register load nahi hua: ${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function ddmm(iso) { const p = String(iso).split('-'); return p[2] + '/' + p[1]; }
+
+  function fgRegVisible() {
+    if (!_fgReg) return [];
+    const showZero = document.getElementById('fgreg-zero')?.checked;
+    return (_fgReg.rows || []).filter(r => showZero || r.opening || r.closing ||
+      r.prod.some(v => v) || r.disp.some(v => v));
+  }
+
+  function renderFGReg() {
+    if (!_fgReg) return;
+    const dates = _fgReg.dates || [];
+    const rows = fgRegVisible();
+    document.getElementById('fgreg-range').textContent =
+      fmtD(parseISO(_fgReg.from)) + (_fgReg.from === _fgReg.to ? '' : '  →  ' + fmtD(parseISO(_fgReg.to)));
+    document.getElementById('fgreg-th').innerHTML =
+      `<tr><th rowspan="2" class="fgreg-model">Model</th><th rowspan="2" class="r">Opening</th>` +
+      dates.map(d => `<th colspan="2" class="c fgreg-date">${ddmm(d)}</th>`).join('') +
+      `<th rowspan="2" class="r fgreg-date">Closing</th></tr>` +
+      `<tr>${dates.map(() => '<th class="r fgreg-date">Prod</th><th class="r">Disp</th>').join('')}</tr>`;
+
+    const tb = document.getElementById('fgreg-tb');
+    const ft = document.getElementById('fgreg-foot');
+    if (!rows.length) {
+      tb.innerHTML = `<tr class="lrow"><td colspan="${dates.length * 2 + 3}">Is range me koi FG data nahi</td></tr>`;
+      ft.textContent = '';
+      return;
+    }
+    const cell = v => v ? num(v) : '<span class="fgreg-zero">0</span>';
+    const sum = k => rows.reduce((s, r) => s + (r[k] || 0), 0);
+    const sumAt = (k, i) => rows.reduce((s, r) => s + (r[k][i] || 0), 0);
+
+    tb.innerHTML = rows.map(r => `<tr>
+      <td class="td-name fgreg-model">${esc(r.model)}</td>
+      <td class="r">${cell(r.opening)}</td>
+      ${dates.map((d, i) => `<td class="r fgreg-date">${r.prod[i] ? '<span class="qty made">' + num(r.prod[i]) + '</span>' : cell(0)}</td><td class="r">${cell(r.disp[i])}</td>`).join('')}
+      <td class="r fgreg-date"><b class="${r.closing < 0 ? 'neg' : ''}">${num(r.closing)}</b></td>
+    </tr>`).join('') +
+      `<tr class="fg-total"><td class="fgreg-model">Total</td><td class="r">${num(sum('opening'))}</td>` +
+      dates.map((d, i) => `<td class="r fgreg-date">${num(sumAt('prod', i))}</td><td class="r">${num(sumAt('disp', i))}</td>`).join('') +
+      `<td class="r fgreg-date">${num(sum('closing'))}</td></tr>`;
+
+    ft.textContent = rows.length + ' model' +
+      (_fgReg.startDate ? ' · Hisaab ' + fmtD(parseISO(_fgReg.startDate)) + ' se' : ' · Opening set nahi');
+  }
+
+  function downloadFGReg() {
+    if (!_fgReg) return toast('Pehle data load hone do', 'err');
+    const dates = _fgReg.dates || [];
+    const rows = fgRegVisible();
+    if (!rows.length) return toast('Download ke liye koi row nahi', 'err');
+
+    const q = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const head = ['Model', 'Opening'];
+    dates.forEach(d => head.push(ddmm(d) + ' Prod', ddmm(d) + ' Dispatch'));
+    head.push('Closing');
+
+    const lines = [head];
+    rows.forEach(r => {
+      const l = [r.model, r.opening];
+      dates.forEach((d, i) => l.push(r.prod[i] || 0, r.disp[i] || 0));
+      l.push(r.closing);
+      lines.push(l);
+    });
+    const tot = ['Total', rows.reduce((s, r) => s + r.opening, 0)];
+    dates.forEach((d, i) => tot.push(
+      rows.reduce((s, r) => s + (r.prod[i] || 0), 0),
+      rows.reduce((s, r) => s + (r.disp[i] || 0), 0)));
+    tot.push(rows.reduce((s, r) => s + r.closing, 0));
+    lines.push(tot);
+
+    const csv = '\ufeff' + lines.map(l => l.map(q).join(',')).join('\r\n');   // \ufeff = Excel me sahi khule
+    const dmy = s => s.split('-').reverse().join('-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `FG_Register_${dmy(_fgReg.from)}_to_${dmy(_fgReg.to)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
 
   // ── Entry modal ──
   function openEntry(type) {
@@ -692,5 +814,6 @@ const MPapp = (function () {
 
   window.addEventListener('load', init);
   return { load, setMode, switchView, openEntry, closeEntry, loadEntryFor, addEntryRow, removeEntryRow, saveEntry,
-           openOpening, closeOpening, addOpeningRow, saveOpening, renderFG, toggleFGFull };
+           openOpening, closeOpening, addOpeningRow, saveOpening, renderFG, toggleFGFull,
+           renderFGReg, downloadFGReg };
 })();
