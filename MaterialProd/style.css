@@ -222,4 +222,15 @@ tbody tr:hover td{background:#fafbff;}
   flex-direction: column;
   gap: 16px;
   margin-bottom: 16px;
+
+  /* ── FG Register ── */
+.fgreg-table thead th{position:static;}
+.fgreg-table thead th,.fgreg-table tbody td{padding:8px 10px;white-space:nowrap;}
+.fgreg-table th.c{text-align:center;}
+.fgreg-table td{font-family:var(--mono);}
+.fgreg-table td.fgreg-model{font-family:inherit;}
+.fgreg-date{border-left:1px solid var(--border);}
+.fgreg-model{position:sticky;left:0;z-index:1;background:var(--surface);}
+.fgreg-table thead th.fgreg-model{background:var(--s2);}
+.fgreg-zero{color:var(--light);}
 }
