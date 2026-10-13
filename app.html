@@ -26,8 +26,19 @@
     <div class="page-sub" id="pageSub">Sales order management</div>
   </div>
   <div class="topbar-right">
-    <button id="btnCreateLead" class="btn btn-primary" onclick="goToLeadTracker()" style="display:none;margin-right:10px;">+ Create Lead</button>
-    <button id="btnDealerCheck" class="btn" onclick="goToDealerCheck()" style="display:none;margin-right:10px;">🔍 Dealer Check</button>
+    <div class="apps-menu" id="appsMenu" style="display:none;">
+      <button class="apps-btn" onclick="toggleAppsMenu(event)" title="Apps">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </button>
+      <div class="apps-drop">
+        <a class="apps-tile" onclick="goToLeadTracker()"><div class="apps-ico">🎯</div><div class="apps-lbl">Sales Lead</div></a>
+        <a class="apps-tile" onclick="goToDealerCheck()"><div class="apps-ico">🔍</div><div class="apps-lbl">Dealer Check</div></a>
+        <!-- 👇 3 naye links — URL / icon / naam yahan badal dena -->
+        <a class="apps-tile" href="LINK_3_URL" target="_blank"><div class="apps-ico">🔗</div><div class="apps-lbl">Link 3</div></a>
+        <a class="apps-tile" href="LINK_4_URL" target="_blank"><div class="apps-ico">🔗</div><div class="apps-lbl">Link 4</div></a>
+        <a class="apps-tile" href="LINK_5_URL" target="_blank"><div class="apps-ico">🔗</div><div class="apps-lbl">Link 5</div></a>
+      </div>
+    </div>
     <div class="user-pill">
       <div class="user-av" id="userAv">D</div>
       <div>
