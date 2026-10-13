@@ -32,13 +32,9 @@ const roleAccess = {
     el.style.display = allowed.includes(mod) ? 'flex' : 'none';
   });
 
-  // Create Lead button — har Sales user ko dikhega
-  const leadBtn = document.getElementById('btnCreateLead');
-  if (leadBtn && user.role === 'Sales') leadBtn.style.display = 'inline-flex';
-
-  // Dealer Check button — Sales ko dikhega
-  const dealerBtn = document.getElementById('btnDealerCheck');
-  if (dealerBtn && user.role === 'Sales') dealerBtn.style.display = 'inline-flex';
+  // Apps launcher (6 dots) — Sales ko dikhega
+  const appsMenu = document.getElementById('appsMenu');
+  if (appsMenu && user.role === 'Sales') appsMenu.style.display = 'block';
 
   if (user.role === 'Sales' || user.role === 'Admin') {
     const pipeline = document.getElementById('ordersPipeline');
@@ -3784,6 +3780,16 @@ const DEALER_CHECK_URL = 'https://litpax-technology.github.io/Dealer-Check/';
 function goToDealerCheck() {
   window.open(DEALER_CHECK_URL, '_blank');   // nayi tab — ERP wahin khula rahega
 }
+
+// ========== APPS LAUNCHER (mobile tap + bahar click pe band) ==========
+function toggleAppsMenu(e) {
+  e.stopPropagation();
+  document.getElementById('appsMenu')?.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const m = document.getElementById('appsMenu');
+  if (m && !m.contains(e.target)) m.classList.remove('open');
+});
 
 // ========== PAYMENT SLIPS (legacy) ==========
 function loadSlips(orderID) {
