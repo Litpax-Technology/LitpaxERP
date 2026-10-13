@@ -1264,3 +1264,23 @@ input.field-error:focus {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ===== APPS LAUNCHER (6 dots) ===== */
+.apps-menu{position:relative;margin-right:10px;}
+.apps-btn{width:36px;height:36px;display:grid;grid-template-columns:repeat(2,5px);grid-auto-rows:5px;gap:4px;
+  place-content:center;background:var(--surface);border:1px solid var(--border);border-radius:9px;cursor:pointer;transition:all .15s;}
+.apps-btn span{width:5px;height:5px;border-radius:50%;background:var(--text2);}
+.apps-menu:hover .apps-btn,.apps-menu.open .apps-btn{background:var(--accent-dim);border-color:#C7D2FE;}
+.apps-menu:hover .apps-btn span,.apps-menu.open .apps-btn span{background:var(--accent);}
+
+.apps-drop{display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:999;width:300px;padding:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.14);
+  grid-template-columns:repeat(3,1fr);gap:6px;}
+.apps-drop::before{content:'';position:absolute;top:-10px;left:0;right:0;height:10px;} /* hover gap bridge */
+.apps-menu:hover .apps-drop,.apps-menu.open .apps-drop{display:grid;}
+
+.apps-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:9px;
+  text-decoration:none;cursor:pointer;transition:background .15s;}
+.apps-tile:hover{background:var(--accent-dim);}
+.apps-ico{font-size:22px;line-height:1;}
+.apps-lbl{font-size:11.5px;font-weight:600;color:var(--text);text-align:center;line-height:1.25;}
