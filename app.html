@@ -73,6 +73,7 @@
   <div class="nav-item" onclick="nav('suppliers',this)" id="nav-suppliers"><span class="nav-icon">🏭</span>Suppliers</div>
   <div class="nav-sec" id="sec-finance">Finance</div>
   <div class="nav-item" onclick="nav('accounts',this)" id="nav-accounts"><span class="nav-icon">💰</span>Accounts</div>
+  <div class="nav-item" onclick="nav('inwardapproval',this)" id="nav-inwardapproval"><span class="nav-icon">📥</span>Inward Approval<span id="iaBadge" style="display:none;margin-left:auto;background:var(--error);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;">0</span></div>
   <div class="nav-sec" id="sec-admin">Admin</div>
   <div class="nav-item" onclick="nav('users',this)" id="nav-users"><span class="nav-icon">🔐</span>Users</div>
   <div class="sidebar-foot"><div class="sidebar-ver">LitpaxERP v3.0</div></div>
@@ -459,6 +460,29 @@
         <tbody id="accountsTable"><tr><td colspan="14"><div class="loading"><div class="spin"></div> Loading...</div></td></tr></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ===== INWARD APPROVAL PAGE (IMS → Accountant) ===== -->
+<div class="page" id="page-inwardapproval">
+  <div class="pipeline" id="iaPipeline">
+    <div class="pipe-node active" onclick="filterInwardApproval('Pending',this)"><div class="pipe-icon">⏳</div><div class="pipe-count" id="iac-pending">0</div><div class="pipe-lbl">Pending</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterInwardApproval('Approved',this)"><div class="pipe-icon">✅</div><div class="pipe-count" id="iac-approved">0</div><div class="pipe-lbl">Approved</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterInwardApproval('Rejected',this)"><div class="pipe-icon">✕</div><div class="pipe-count" id="iac-rejected">0</div><div class="pipe-lbl">Rejected</div></div>
+    <div class="pipe-sep">›</div>
+    <div class="pipe-node" onclick="filterInwardApproval('all',this)"><div class="pipe-icon">📋</div><div class="pipe-count" id="iac-all">0</div><div class="pipe-lbl">All</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📥 IMS Inward Approval — Cells / BMS / Nickel</div>
+      <div class="card-actions">
+        <input class="search-input" id="iaSearch" placeholder="Search item / invoice / PO..." oninput="renderInwardApproval()" style="width:200px;padding:6px 10px;font-size:12px;">
+        <button class="btn btn-sm" onclick="loadInwardApproval()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="ia-list" style="padding:12px 16px;"><div class="loading"><div class="spin"></div></div></div>
   </div>
 </div>
 
@@ -1373,6 +1397,32 @@
       <button class="btn" onclick="closeModal('challanModal')">Cancel</button>
       <button class="btn btn-primary" id="ch-submit-btn" onclick="submitChallan()">💾 Save & Print Challan</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== INWARD APPROVAL — PIN MODAL ===== -->
+<div class="modal-overlay" id="iaPinModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head"><div class="modal-title">🔐 Approval PIN</div><button class="modal-close" onclick="closeModal('iaPinModal')">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Approve / Reject ke liye Approval PIN daalo (page khula rahe tab tak ek hi baar).</div>
+      <input class="form-control" type="password" id="ia-pin-input" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter')submitIAPin()">
+      <div id="ia-pin-err" style="display:none;font-size:12px;color:var(--error);margin-top:8px;"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('iaPinModal')">Cancel</button><button class="btn btn-primary" id="ia-pin-btn" onclick="submitIAPin()">Verify</button></div>
+  </div>
+</div>
+
+<!-- ===== INWARD APPROVAL — REJECT MODAL ===== -->
+<div class="modal-overlay" id="iaRejectModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head"><div class="modal-title">✕ Reject Inward</div><button class="modal-close" onclick="closeModal('iaRejectModal')">✕</button></div>
+    <div class="modal-body">
+      <div id="ia-rej-info" style="font-size:13px;margin-bottom:10px;"></div>
+      <label class="form-label">Reject Reason <span class="req-mark">*</span></label>
+      <textarea class="form-control" id="ia-rej-reason" placeholder="e.g. Bill photo saaf nahi / Qty bill se match nahi"></textarea>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('iaRejectModal')">Cancel</button><button class="btn btn-danger" id="ia-rej-btn" onclick="submitIAReject()">✕ Reject</button></div>
   </div>
 </div>
 
