@@ -17,9 +17,9 @@ document.getElementById('userAv').textContent = (user.name || 'U')[0].toUpperCas
 
 // Role access
 const roleAccess = {
-    Admin:      ['admindashboard','ordertracking','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','customers','products','suppliers','users','materialprod'],
+    Admin:      ['admindashboard','ordertracking','orders','pendingorders','completedorders','crm','production','batteryexchange','dispatch','accounts','inwardapproval','customers','products','suppliers','users','materialprod'],
   Sales:      ['orders','pendingorders','completedorders','customers','mydashboard','batteryexchange'],
-  Accounts:   ['accounts'],
+  Accounts:   ['accounts','inwardapproval'],
   Production: ['production','batteryexchange','deliverychallan'],
   CRM:        ['crm','orders','pendingorders','completedorders'],
   Dispatch:   ['dispatch']
@@ -93,7 +93,8 @@ const pageMeta = {
   products:{title:'Products',sub:'Product master data'},
   suppliers:{title:'Suppliers',sub:'Supplier master data'},
   users:{title:'Users & Access',sub:'Manage users and roles'},
-  accounts:{title:'Accounts',sub:'Order accounts & finance tracking'}
+  accounts:{title:'Accounts',sub:'Order accounts & finance tracking'},
+  inwardapproval:{title:'Inward Approval',sub:'IMS Cells / BMS / Nickel inward — approve ya reject'}
 };
 
 function nav(id, el) {
@@ -145,6 +146,7 @@ function loadPage(id) {
   else if (id === 'suppliers') loadSuppliers();
   else if (id === 'users') loadUsers();
   else if (id === 'accounts') loadAccounts();
+  else if (id === 'inwardapproval') loadInwardApproval();
 }
 
 // ========== ADMIN DASHBOARD ==========
@@ -5028,4 +5030,203 @@ loadOrders();
   }
 
 })();
+// ============================================================
+// INWARD APPROVAL — IMS ka Cells/BMS/Nickel inward → Accountant
+// ERP GAS touch nahi hota — seedha IMS_URL (config.js) pe call
+// ============================================================
+let iaAll = [], iaFilter = 'Pending', iaPin = '', iaPinNext = null, iaRejectId = '';
 
+function iaEsc(v) { return String(v == null ? '' : v).replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c])); }
+
+async function imsPost(action, body, isRead) {
+  if (!window.IMS_URL) throw new Error('config.js mein IMS_URL nahi hai');
+  for (let a = 1; a <= (isRead ? 2 : 1); a++) {
+    const r = await fetch(window.IMS_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(Object.assign({ action }, body || {}))
+    });
+    const t = (await r.text()).trim();
+    if (t.startsWith('{') || t.startsWith('[')) {
+      const d = JSON.parse(t);
+      if (d && d.error) throw new Error(d.error);
+      return d;
+    }
+  }
+  throw new Error('IMS se jawab nahi aaya — dobara try karo');
+}
+
+function iaSetBadge(n) {
+  const b = document.getElementById('iaBadge');
+  if (b) { b.textContent = n; b.style.display = n > 0 ? 'inline-block' : 'none'; }
+}
+
+function iaSetCounts() {
+  const c = s => iaAll.filter(p => p.status === s).length;
+  setText('iac-pending', c('Pending'));
+  setText('iac-approved', c('Approved'));
+  setText('iac-rejected', c('Rejected'));
+  setText('iac-all', iaAll.length);
+  iaSetBadge(c('Pending'));
+}
+
+async function loadInwardApproval() {
+  const el = document.getElementById('ia-list');
+  if (el) el.innerHTML = '<div class="loading"><div class="spin"></div> IMS se load ho raha hai...</div>';
+  try {
+    const d = await imsPost('getPendingInwards', {}, true);
+    iaAll = d.data || [];
+    iaSetCounts();
+    renderInwardApproval();
+  } catch (e) {
+    if (el) el.innerHTML = `<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-txt">${iaEsc(e.message)}</div></div>`;
+  }
+}
+
+function filterInwardApproval(f, el) {
+  iaFilter = f;
+  document.querySelectorAll('#iaPipeline .pipe-node').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderInwardApproval();
+}
+
+function iaFmtTs(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d) ? String(v) : d.toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+function renderInwardApproval() {
+  const el = document.getElementById('ia-list');
+  if (!el) return;
+  let list = iaFilter === 'all' ? iaAll : iaAll.filter(p => p.status === iaFilter);
+  const q = (document.getElementById('iaSearch')?.value || '').trim().toLowerCase();
+  if (q) list = list.filter(p => [p.itemName, p.invoice, p.poId, p.supplier, p.id].some(v => String(v || '').toLowerCase().includes(q)));
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">${iaFilter === 'Pending' ? '✅' : '📭'}</div><div class="empty-txt">${iaFilter === 'Pending' ? 'Koi pending approval nahi' : 'Koi record nahi'}</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const photos = String(p.photos || '').split(',').filter(Boolean);
+    const photoHTML = photos.length
+      ? photos.map(id => `<a href="https://drive.google.com/file/d/${iaEsc(id)}/view" target="_blank" rel="noopener" title="Badi photo dekho"><img src="https://drive.google.com/thumbnail?id=${iaEsc(id)}&sz=w300" style="width:92px;height:92px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block;" alt="Bill"></a>`).join('')
+      : `<div style="font-size:12px;color:var(--error);font-weight:600;padding:8px 10px;background:var(--error-dim);border-radius:8px;">⚠ Bill photo nahi lagai</div>`;
+    const st = p.status === 'Approved' ? '<span class="badge b-ready">✓ Approved</span>'
+             : p.status === 'Rejected' ? '<span class="badge b-delay">✕ Rejected</span>'
+             : '<span class="badge b-pending">⏳ Pending</span>';
+    const src = p.source === 'PO' ? `<span class="badge b-processing">PO ${iaEsc(p.poId)}</span>` : '<span class="badge b-advance">Direct Inward</span>';
+    const f = (l, v) => `<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">${l}</div><div style="font-size:12.5px;font-weight:600;color:var(--text);">${v || '—'}</div></div>`;
+    const info = p.status === 'Approved'
+      ? `<div style="margin-top:10px;font-size:12px;color:var(--success);">✓ ${iaEsc(p.actionBy)} ne approve kiya · ${iaFmtTs(p.actionAt)}</div>`
+      : p.status === 'Rejected'
+      ? `<div style="margin-top:10px;font-size:12px;color:var(--error);">✕ ${iaEsc(p.actionBy)} · ${iaFmtTs(p.actionAt)} — <b>${iaEsc(p.reason)}</b></div>` : '';
+    const actions = p.status === 'Pending' ? `
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:120px;">
+        <button class="btn btn-success" id="ia-ok-${iaEsc(p.id)}" onclick="iaApprove('${iaEsc(p.id)}')">✓ Approve</button>
+        <button class="btn btn-danger" onclick="iaOpenReject('${iaEsc(p.id)}')">✕ Reject</button>
+      </div>` : '';
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--surface);">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="flex:1;min-width:240px;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+            <span class="td-id">${iaEsc(p.id)}</span>${st}${src}<span class="badge" style="background:var(--surface2);color:var(--text2);">${iaEsc(p.cat)}</span>
+          </div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);">${iaEsc(p.itemName)}</div>
+          <div style="font-size:20px;font-weight:800;color:var(--accent);margin:2px 0 10px;">${iaEsc(p.qty)} <span style="font-size:12px;font-weight:600;color:var(--text3);">${iaEsc(p.unit)}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
+            ${f('Supplier', iaEsc(p.supplier))}${f('Invoice No', iaEsc(p.invoice))}${f('Entry Date', fmtDisplayDate(p.date))}${f('Entered By', iaEsc(p.by))}
+          </div>
+          ${p.remarks ? `<div style="margin-top:8px;font-size:12px;color:var(--text2);">📝 ${iaEsc(p.remarks)}</div>` : ''}
+          ${info}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:300px;">${photoHTML}</div>
+        ${actions}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- PIN (ek baar per page-load) ----
+function iaWithPin(next) {
+  if (iaPin) { next(); return; }
+  iaPinNext = next;
+  document.getElementById('ia-pin-input').value = '';
+  document.getElementById('ia-pin-err').style.display = 'none';
+  openModal('iaPinModal');
+  setTimeout(() => document.getElementById('ia-pin-input')?.focus(), 100);
+}
+
+async function submitIAPin() {
+  const pin = document.getElementById('ia-pin-input').value.trim();
+  const err = document.getElementById('ia-pin-err');
+  const btn = document.getElementById('ia-pin-btn');
+  if (!pin) return;
+  btn.disabled = true; btn.textContent = 'Checking...';
+  try {
+    const r = await imsPost('verifyApprover', { pin }, true);
+    if (!r || !r.ok) { err.textContent = '❌ Galat PIN'; err.style.display = 'block'; return; }
+    iaPin = pin;
+    closeModal('iaPinModal');
+    const next = iaPinNext; iaPinNext = null;
+    if (next) next();
+  } catch (e) { err.textContent = '⚠ ' + e.message; err.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Verify'; }
+}
+
+function iaFail(e) {
+  if (/pin/i.test(e.message || '')) iaPin = '';
+  toast(e.message || 'Failed', 'e');
+}
+
+// ---- APPROVE ----
+function iaApprove(id) {
+  const p = iaAll.find(x => x.id === id);
+  if (!p) return;
+  iaWithPin(async () => {
+    if (!confirm(`${p.itemName}\nQty: ${p.qty} ${p.unit}\n\nApprove karein? IMS stock me ${fmtDisplayDate(p.date)} ki date se add ho jayega.`)) return;
+    const btn = document.getElementById('ia-ok-' + id);
+    if (btn) { btn.disabled = true; btn.textContent = 'Approving...'; }
+    try {
+      await imsPost('approveInward', { id, pin: iaPin, by: user.name || 'Accountant' });
+      toast('Approved — IMS me inward ho gaya ✓');
+      loadInwardApproval();
+    } catch (e) {
+      iaFail(e);
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
+    }
+  });
+}
+
+// ---- REJECT ----
+function iaOpenReject(id) {
+  const p = iaAll.find(x => x.id === id);
+  if (!p) return;
+  iaWithPin(() => {
+    iaRejectId = id;
+    document.getElementById('ia-rej-info').innerHTML =
+      `<b>${iaEsc(p.itemName)}</b> — ${iaEsc(p.qty)} ${iaEsc(p.unit)}<div style="font-size:11px;color:var(--text3);">${iaEsc(p.id)} · Invoice: ${iaEsc(p.invoice || '—')}</div>`;
+    document.getElementById('ia-rej-reason').value = '';
+    openModal('iaRejectModal');
+  });
+}
+
+async function submitIAReject() {
+  const reason = document.getElementById('ia-rej-reason').value.trim();
+  if (!reason) { toast('Reject reason likho', 'e'); return; }
+  const btn = document.getElementById('ia-rej-btn');
+  btn.disabled = true; btn.textContent = 'Rejecting...';
+  try {
+    await imsPost('rejectInward', { id: iaRejectId, pin: iaPin, by: user.name || 'Accountant', reason });
+    toast('Rejected — store ko IMS me dikh jayega', 'w');
+    closeModal('iaRejectModal');
+    loadInwardApproval();
+  } catch (e) { iaFail(e); }
+  finally { btn.disabled = false; btn.textContent = '✕ Reject'; }
+}
+
+// Sidebar badge — Accounts / Admin ko login pe hi pending count dikhe
+(function () {
+  if (user.role !== 'Accounts' && user.role !== 'Admin') return;
+  imsPost('getPendingInwards', { status: 'Pending' }, true)
+    .then(d => iaSetBadge((d.data || []).length)).catch(() => {});
+})();
