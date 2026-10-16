@@ -5147,14 +5147,7 @@ function renderInwardApproval() {
 }
 
 // ---- PIN (ek baar per page-load) ----
-function iaWithPin(next) {
-  if (iaPin) { next(); return; }
-  iaPinNext = next;
-  document.getElementById('ia-pin-input').value = '';
-  document.getElementById('ia-pin-err').style.display = 'none';
-  openModal('iaPinModal');
-  setTimeout(() => document.getElementById('ia-pin-input')?.focus(), 100);
-}
+function iaWithPin(next) { next(); }   // PIN nahi chahiye — seedha action
 
 async function submitIAPin() {
   const pin = document.getElementById('ia-pin-input').value.trim();
