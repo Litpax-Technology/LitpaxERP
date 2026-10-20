@@ -5,7 +5,7 @@
 // ============================================================
 window.MP = {
   // 👇 LitpaxERP ka apna GAS URL yahan paste karo (ERP config.js me GAS_URL hai)
-  ERP_URL: 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbw59UiblCDVUoNKxnOCB8WaT0Vysb7S_Yke_LS8EP4WwClqvs1PxFtf7IG9kXvaOQzcNA/exec',
+  ERP_URL: 'https://script.google.com/a/macros/litpaxtechnology.com/s/AKfycbxURW38Qau_c0aFfS3-05i-NF9HhyaWqleIL5zeBb413tNYT_phqO2pOeMkxIp1L5mzrg/exec',
 
   // IMS ka GAS URL — already bhara hua
   IMS_URL: 'https://script.google.com/macros/s/AKfycbyMB31aJcHCUAGCHW6njoXv7XagZ8AoDdKz6l5oJlmvAPgeD45QKXesPoBqBWEEu2dN/exec'
