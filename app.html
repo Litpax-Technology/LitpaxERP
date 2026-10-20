@@ -1306,7 +1306,7 @@
 
   <!-- ===== PLANNED PRODUCTION SLIP MODAL ===== -->
 <div class="modal-overlay" id="plannedSlipModal">
-  <div class="modal" style="max-width:840px;">
+  <div class="modal" style="max-width:1150px;">
     <div class="modal-head">
       <div class="modal-title">🖨️ Planned Production Slip</div>
       <button class="modal-close" onclick="closeModal('plannedSlipModal')">✕</button>
@@ -1326,16 +1326,18 @@
       <div class="table-wrap" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
         <table>
           <thead><tr>
-            <th style="width:36px;"></th><th>Order ID</th><th>Item ID</th><th>Customer</th>
-            <th>Product Model</th><th>Battery Type</th><th>Charger Model</th><th>Charger Qty</th><th>Total</th><th>Produced</th><th>Pending</th><th style="width:110px;">Planned Qty</th>
+            <th style="width:36px;"></th><th>Order ID</th><th>Item ID</th><th>Customer</th><th>Product Model</th><th>Battery Type</th><th>Charger Model</th><th>Charger Qty</th><th>Total</th><th>Produced</th><th>Pending</th>
+<th style="width:70px;">⏰ 9-12</th><th style="width:70px;">⏰ 12-3</th><th style="width:70px;">⏰ 3-6</th><th style="width:70px;">⏰ OT</th><th>Planned</th>
           </tr></thead>
-          <tbody id="ps-picker-body"><tr><td colspan="10"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
+          <tbody id="ps-picker-body"><tr><td colspan="16"><div class="loading"><div class="spin"></div></div></td></tr></tbody>
         </table>
       </div>
       <div style="margin-top:10px;padding:10px 14px;background:var(--accent-dim);border:1px solid #C7D2FE;border-radius:10px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;">Selected</span><span style="font-size:16px;font-weight:700;color:var(--text);" id="ps-sel-count">0</span></div>
         <div style="width:1px;height:24px;background:#C7D2FE;"></div>
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;">Total Planned Qty</span><span style="font-size:16px;font-weight:700;color:var(--accent);" id="ps-sel-qty">0</span></div>
+        <div style="width:1px;height:24px;background:#C7D2FE;"></div>
+        <div id="ps-slot-sum" style="font-size:12px;color:var(--text2);"></div>
       </div>
       <div id="ps-material-check" style="display:none;margin-top:12px;"></div>
     </div>
