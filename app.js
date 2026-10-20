@@ -1955,7 +1955,16 @@ function showProdSpec(custName) {
 
 // ========== PLANNED PRODUCTION SLIP ==========
 let plannedPickerItems = [];
-let plannedSel = {};   // Item ID -> planned qty (string)
+let plannedSel = {};   // Item ID -> { s1, s2, s3, ot } slot-wise qty
+
+const PLAN_SLOTS = [
+  { key: 's1', label: '9-12', col: 'Slot 9-12' },
+  { key: 's2', label: '12-3', col: 'Slot 12-3' },
+  { key: 's3', label: '3-6',  col: 'Slot 3-6'  },
+  { key: 'ot', label: 'OT',   col: 'Slot OT'   }
+];
+function emptySlots() { return { s1: '', s2: '', s3: '', ot: '' }; }
+function slotTotal(sel) { return sel ? PLAN_SLOTS.reduce((t, s) => t + (parseFloat(sel[s.key]) || 0), 0) : 0; }
 
 function plannedPending(p) {
   const t = parseFloat(p['Qty']) || 0;
@@ -1993,14 +2002,17 @@ function plannedFiltered() {
 function renderPlannedPicker() {
   const data = plannedFiltered();
   const body = document.getElementById('ps-picker-body');
-  if (!data.length) { body.innerHTML = '<tr><td colspan="12"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
+  if (!data.length) { body.innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
   body.innerHTML = data.map(p => {
     const iid = p['Item ID'] || '';
     const pend = plannedPending(p);
-    const checked = plannedSel[iid] !== undefined;
-    const val = checked ? plannedSel[iid] : '';
+    const sel = plannedSel[iid];
+    const checked = sel !== undefined;
+    const tot = checked ? slotTotal(sel) : 0;
+    const over = tot > pend;
     const cModel = p['Charger Model'] || '';
     const cQty   = parseFloat(p['Charger Qty']) || 0;
+    const slotInputs = PLAN_SLOTS.map(s => `<td><input class="form-control" type="number" min="0" value="${checked ? (sel[s.key] || '') : ''}" placeholder="0" oninput="setPlannedSlot('${iid}','${s.key}',this.value)" style="font-size:12px;padding:5px 6px;width:62px;" ${checked ? '' : 'disabled'}></td>`).join('');
     return `<tr>
       <td><input type="checkbox" ${checked?'checked':''} onchange="togglePlannedItem('${iid}',this)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"></td>
       <td class="td-id">${p['Order ID']||''}</td>
@@ -2013,44 +2025,51 @@ function renderPlannedPicker() {
       <td>${parseFloat(p['Qty'])||0}</td>
       <td style="color:var(--success);font-weight:600;">${parseFloat(p['Produced Qty'])||0}</td>
       <td style="color:var(--warning);font-weight:600;">${pend}</td>
-      <td><input class="form-control" type="number" min="1" value="${val}" placeholder="0" oninput="setPlannedQty('${iid}',this.value,this)" style="font-size:12px;padding:5px 8px;${(parseFloat(val)||0) > pend ? 'border-color:var(--error);background:var(--error-dim);' : ''}" ${checked?'':'disabled'}></td>
+      ${slotInputs}
+      <td id="ps-tot-${iid}" style="font-weight:700;color:${over ? 'var(--error)' : 'var(--accent)'};" title="${over ? 'Pending (' + pend + ') se zyada' : ''}">${tot || '—'}</td>
     </tr>`;
   }).join('');
   updatePlannedSummary();
 }
 
 function togglePlannedItem(iid, el) {
-  const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
-  if (!p) return;
-  const input = el.closest('tr')?.querySelector('input[type="number"]');
+  const row = el.closest('tr');
+  const inputs = row ? row.querySelectorAll('input[type="number"]') : [];
   if (el.checked) {
-    plannedSel[iid] = '';
-    if (input) { input.disabled = false; input.value = ''; input.focus(); }
+    plannedSel[iid] = emptySlots();
+    inputs.forEach(i => { i.disabled = false; i.value = ''; });
+    if (inputs[0]) inputs[0].focus();
   } else {
     delete plannedSel[iid];
-    if (input) { input.disabled = true; input.value = ''; }
+    inputs.forEach(i => { i.disabled = true; i.value = ''; });
   }
+  refreshPlannedTotal(iid);
   updatePlannedSummary();
 }
 
-function setPlannedQty(iid, val, el) {
+function setPlannedSlot(iid, key, val) {
   if (plannedSel[iid] === undefined) return;
-  plannedSel[iid] = val;
-  if (el) {
-    const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
-    const over = p && (parseFloat(val) || 0) > plannedPending(p);
-    el.style.borderColor = over ? 'var(--error)' : '';
-    el.style.background  = over ? 'var(--error-dim)' : '';
-    el.title = over ? 'Pending (' + plannedPending(p) + ') se zyada' : '';
-  }
+  plannedSel[iid][key] = val;
+  refreshPlannedTotal(iid);
   updatePlannedSummary();
+}
+
+function refreshPlannedTotal(iid) {
+  const cell = document.getElementById('ps-tot-' + iid);
+  if (!cell) return;
+  const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
+  const tot = slotTotal(plannedSel[iid]);
+  const over = p && tot > plannedPending(p);
+  cell.textContent = tot || '—';
+  cell.style.color = over ? 'var(--error)' : 'var(--accent)';
+  cell.title = over ? 'Pending (' + plannedPending(p) + ') se zyada' : '';
 }
 
 function togglePlannedSelectAll() {
   const on = document.getElementById('ps-select-all').checked;
   plannedFiltered().forEach(p => {
     const iid = p['Item ID'] || '';
-    if (on) plannedSel[iid] = '';   // select to karega, par qty khaali — user khud daalega
+    if (on) { if (!plannedSel[iid]) plannedSel[iid] = emptySlots(); }
     else delete plannedSel[iid];
   });
   renderPlannedPicker();
@@ -2058,10 +2077,14 @@ function togglePlannedSelectAll() {
 
 function updatePlannedSummary() {
   const ids = Object.keys(plannedSel);
-  let qty = 0;
-  ids.forEach(iid => { qty += parseFloat(plannedSel[iid]) || 0; });
+  const qty = ids.reduce((t, iid) => t + slotTotal(plannedSel[iid]), 0);
   document.getElementById('ps-sel-count').textContent = ids.length;
   document.getElementById('ps-sel-qty').textContent = qty;
+  const sumEl = document.getElementById('ps-slot-sum');
+  if (sumEl) sumEl.innerHTML = PLAN_SLOTS.map(s => {
+    const t = ids.reduce((a, iid) => a + (parseFloat(plannedSel[iid][s.key]) || 0), 0);
+    return `⏰ ${s.label}: <b>${t}</b>`;
+  }).join(' &nbsp;·&nbsp; ');
   scheduleMaterialCheck();
 }
 
@@ -2076,7 +2099,7 @@ function scheduleMaterialCheck() {
 function planModelTotals() {
   const agg = {};
   Object.keys(plannedSel).forEach(iid => {
-    const q = parseFloat(plannedSel[iid]) || 0;
+    const q = slotTotal(plannedSel[iid]);
     if (q <= 0) return;
     const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
     const m = p ? String(p['Product Model']||'').trim() : '';
@@ -2199,7 +2222,7 @@ function applyMcBadges(models, comps) {
     const iid = p['Item ID'] || '';
     const el = document.getElementById('ps-mc-' + iid);
     if (!el) return;
-    const selected = plannedSel[iid] !== undefined && (parseFloat(plannedSel[iid]) || 0) > 0;
+    const selected = plannedSel[iid] !== undefined && slotTotal(plannedSel[iid]) > 0;
     const s = selected ? lvl[mcKey(p['Product Model'])] : '';
     el.textContent = s === 'ok' ? '✓' : s === 'warn' ? '⚠' : s === 'short' ? '⛔' : '';
     el.style.color = s === 'ok' ? 'var(--success)' : s === 'warn' ? 'var(--warning)' : 'var(--error)';
@@ -2215,11 +2238,12 @@ function confirmPlannedSlip() {
   for (const iid of ids) {
     const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
     if (!p) continue;
-    const planned = parseFloat(plannedSel[iid]) || 0;
-    if (planned <= 0) continue;   // khaali/0 wale skip — sirf qty daale hue items lo
+    const sel = plannedSel[iid];
+    const planned = slotTotal(sel);
+    if (planned <= 0) continue;   // kisi slot me qty nahi → skip
     const pend = plannedPending(p);
     if (planned > pend) warns.push(`${p['Product Model']||iid}: planned ${planned} > pending ${pend}`);
-    rows.push({
+    const row = {
       'Plan Date': fmtDisplayDate(planDate),
       'Order ID': p['Order ID']||'',
       'Item ID': iid,
@@ -2229,9 +2253,11 @@ function confirmPlannedSlip() {
       'Total Qty': parseFloat(p['Qty'])||0,
       'Produced Qty': parseFloat(p['Produced Qty'])||0,
       'Planned Qty': planned
-    });
+    };
+    PLAN_SLOTS.forEach(s => { row[s.col] = parseFloat(sel[s.key]) || 0; });
+    rows.push(row);
   }
-  if (!rows.length) { toast('Kam se kam ek item me Planned Qty daalo', 'e'); return; }
+  if (!rows.length) { toast('Kam se kam ek item ke kisi slot me qty daalo', 'e'); return; }
   if (_mcAnyShort) warns.push('Material Check: kuch components ki requirement IMS Store stock se zyada hai');
 
   if (warns.length) {
@@ -2299,6 +2325,10 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMa
   const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
   const totPlanned = rows.reduce((s,r)=> s + (parseFloat(r['Planned Qty'])||0), 0);
+  const slotStrip = `<div class="slot-strip">${PLAN_SLOTS.map(s => {
+    const t = rows.reduce((a,r)=> a + (parseFloat(r[s.col])||0), 0);
+    return `<div class="slot-box"><div class="t">⏰ ${s.label}</div><div class="v">${t}</div></div>`;
+  }).join('')}</div>`;
 
   // Order-wise group
   const groups = {}, seq = [];
@@ -2326,10 +2356,11 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMa
         <td>${esc(r['Product Model'])||'—'}</td>
         <td>${esc(r['Battery Type'])||'—'}</td>
         <td class="c">${r['Total Qty']||'—'}</td>
+        ${PLAN_SLOTS.map(s => `<td class="c sl">${parseFloat(r[s.col]) || '—'}</td>`).join('')}
         <td class="pq">${r['Planned Qty']||'—'}</td>
       </tr>`).join('');
     return `<table>
-      <thead><tr><th style="width:36px;">#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th class="c">Total</th><th class="c">Planned</th></tr></thead>
+      <thead><tr><th style="width:36px;">#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th class="c">Total</th>${PLAN_SLOTS.map(s => `<th class="c">⏰ ${s.label}</th>`).join('')}<th class="c">Planned</th></tr></thead>
       <tbody>${body}</tbody></table>`;
   }
 
@@ -2395,6 +2426,11 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMa
     tbody td{padding:7px 9px;border-bottom:1px solid #eee;}
     tbody td.c{text-align:center;}
     tbody td.pq{text-align:center;font-weight:700;font-size:14px;color:#6366f1;}
+    tbody td.sl{text-align:center;font-weight:600;font-size:13px;}
+    .slot-strip{display:flex;gap:10px;margin-bottom:16px;}
+    .slot-box{flex:1;border:1.5px solid #d9d6f0;border-radius:8px;padding:8px 12px;text-align:center;}
+    .slot-box .t{font-size:11px;font-weight:700;color:#555;}
+    .slot-box .v{font-size:22px;font-weight:800;color:#6366f1;}
 
     .charger-line{margin-top:9px;font-size:12px;font-weight:600;color:#b45309;background:#fef3c7;border-left:3px solid #f59e0b;padding:6px 11px;border-radius:4px;}
 
@@ -2418,6 +2454,7 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMa
     <button class="btn-print" onclick="window.print()">🖨️ Print</button>
     <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
+  ${slotStrip}
   ${blocks}
   <div class="footer"><span>Litpax Technology Pvt. Ltd.</span><span>LitpaxERP v3.0 — ${planDateDisp}</span></div>
   </body></html>`;
