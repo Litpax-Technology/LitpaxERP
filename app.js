@@ -94,7 +94,7 @@ const pageMeta = {
   suppliers:{title:'Suppliers',sub:'Supplier master data'},
   users:{title:'Users & Access',sub:'Manage users and roles'},
   accounts:{title:'Accounts',sub:'Order accounts & finance tracking'},
-  inwardapproval:{title:'Inward Approval',sub:'IMS Cells / BMS / Nickel inward — approve ya reject'}
+  inwardapproval:{title:'Inward Approval',sub:'IMS ka har inward — approve ya reject'}
 };
 
 function nav(id, el) {
