@@ -2002,7 +2002,7 @@ function plannedFiltered() {
 function renderPlannedPicker() {
   const data = plannedFiltered();
   const body = document.getElementById('ps-picker-body');
-  if (!data.length) { body.innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
+  if (!data.length) { body.innerHTML = '<tr><td colspan="17"><div class="empty"><div class="empty-txt">Koi pending item nahi</div></div></td></tr>'; updatePlannedSummary(); return; }
   body.innerHTML = data.map(p => {
     const iid = p['Item ID'] || '';
     const pend = plannedPending(p);
@@ -2020,6 +2020,7 @@ function renderPlannedPicker() {
       <td class="td-bold">${p['Customer Name']||''}</td>
       <td>${p['Product Model']||''} <span id="ps-mc-${iid}" style="font-size:12px;font-weight:700;"></span></td>
       <td>${p['Battery Type']||''}</td>
+      <td style="font-size:12px;color:var(--text2);">${p['Sales Remarks']||'<span style="color:var(--text3);">—</span>'}</td>
       <td>${cModel ? '⚡ '+cModel : '<span style="color:var(--text3);">—</span>'}</td>
       <td>${cQty > 0 ? '<span style="color:var(--warning);font-weight:600;">'+cQty+'</span>' : '<span style="color:var(--text3);">—</span>'}</td>
       <td>${parseFloat(p['Qty'])||0}</td>
@@ -2234,7 +2235,7 @@ function confirmPlannedSlip() {
   if (!planDate) { toast('Plan Date select karo', 'e'); return; }
   const ids = Object.keys(plannedSel);
 
-  const rows = [], warns = [];
+  const rows = [], warns = [], remarkMap = {};
   for (const iid of ids) {
     const p = plannedPickerItems.find(x => (x['Item ID']||'') === iid);
     if (!p) continue;
@@ -2255,6 +2256,7 @@ function confirmPlannedSlip() {
       'Planned Qty': planned
     };
     PLAN_SLOTS.forEach(s => { row[s.col] = parseFloat(sel[s.key]) || 0; });
+    remarkMap[iid] = p['Sales Remarks'] || '';
     rows.push(row);
   }
   if (!rows.length) { toast('Kam se kam ek item ke kisi slot me qty daalo', 'e'); return; }
@@ -2310,7 +2312,7 @@ function confirmPlannedSlip() {
         api({ action: 'getBatterySpecsBulk', customerNames: JSON.stringify(uniqueCusts) }, sr => {
           const specCols = (sr && sr.success && sr.columns) ? sr.columns : [];
           const specMap  = (sr && sr.success && sr.specs)   ? sr.specs   : {};
-          const html = buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap);
+          const html = buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap, remarkMap);
           if (win) { win.document.open(); win.document.write(html); win.document.close(); }
         });
       }
@@ -2318,8 +2320,9 @@ function confirmPlannedSlip() {
   });
 }
 
-function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap) {
+function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMap, remarkMap) {
   chargerList = chargerList || [];
+  remarkMap = remarkMap || {};
   specCols = specCols || [];
   specMap  = specMap || {};
   const esc = v => String(v == null ? '' : v).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
@@ -2355,12 +2358,13 @@ function buildPlannedSlipPrint(rows, planDateDisp, chargerList, specCols, specMa
         <td>${esc(r['Item ID'])||'—'}</td>
         <td>${esc(r['Product Model'])||'—'}</td>
         <td>${esc(r['Battery Type'])||'—'}</td>
+        <td>${esc(remarkMap[r['Item ID']])||'—'}</td>
         <td class="c">${r['Total Qty']||'—'}</td>
         ${PLAN_SLOTS.map(s => `<td class="c sl">${parseFloat(r[s.col]) || '—'}</td>`).join('')}
         <td class="pq">${r['Planned Qty']||'—'}</td>
       </tr>`).join('');
     return `<table>
-      <thead><tr><th style="width:36px;">#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th class="c">Total</th>${PLAN_SLOTS.map(s => `<th class="c">⏰ ${s.label}</th>`).join('')}<th class="c">Planned</th></tr></thead>
+      <thead><tr><th style="width:36px;">#</th><th>Item ID</th><th>Product Model</th><th>Battery Type</th><th>Remarks</th><th class="c">Total</th>${PLAN_SLOTS.map(s => `<th class="c">⏰ ${s.label}</th>`).join('')}<th class="c">Planned</th></tr></thead>
       <tbody>${body}</tbody></table>`;
   }
 
@@ -3180,7 +3184,7 @@ function buildChallanPrint(ch) {
   <div class="meta">
     <div>Challan No: <b>${esc(ch.dcNo)}</b></div>
     <div>Order ID: <b>${esc(ch.orderId)}</b></div>
-    ${ch.billNo ? `<div>Bill No: <b>${esc(ch.billNo)}</b></div>` : ''}
+    <div>Bill No: <b>${esc(ch.billNo || '')}</b></div>
     <div>Date: <b>${esc(dateDisp)}</b></div>
   </div>
   <div class="addr"><span class="lbl">Name &amp; Address</span>${esc(ch.address)}</div>
