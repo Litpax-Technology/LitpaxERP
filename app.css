@@ -1235,6 +1235,15 @@ input.field-error:focus {
   min-height: auto;
 }
 
+/* Inward Approval: page natural height le, .main scroll kare */
+#page-inwardapproval.page.active {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+#page-inwardapproval .card {
+  flex-shrink: 0;
+}
+
 /* Track Order — search box hamesha upar chipka rahe */
 #page-ordertracking { position: relative; }
 #page-ordertracking > .card:first-child {
