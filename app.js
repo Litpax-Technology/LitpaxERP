@@ -4712,8 +4712,9 @@ function submitEditOrder() {
           const btype = document.getElementById('eim-btype-' + id)?.value || '';
           if (qty > 0 && (model || btype)) totalQty += qty;   // model ya btype koi bhi ho, qty count karo
         });
-        api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': String(totalQty) }, () => {
-          toast('Order updated!');
+        api({ action: 'updateOrder', 'Order ID': orderID, 'Total Qty': String(totalQty),
+      'Transportation Charges': document.getElementById('e-transchg').value }, () => {
+  toast('Order updated!');
           if (editBtn) { editBtn.disabled = false; editBtn.textContent = 'Save Changes'; }
           closeModal('editOrderModal');
           loadOrders();
